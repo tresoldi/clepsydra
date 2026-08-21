@@ -219,7 +219,7 @@ render black-on-black for half its viewers.
 
 ## Deployment
 
-`.github/workflows/pages.yml` publishes `web/` on a push to `master`. Nothing is
+`.github/workflows/pages.yml` publishes `web/` on a push to `main`. Nothing is
 compiled: the artifact is committed, so the job's work is proving the artifact
 deserves to be published. Four gates:
 
