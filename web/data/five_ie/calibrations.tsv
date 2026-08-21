@@ -1,0 +1,7 @@
+calibration_id	target_id	type	p1	p2	p3	is_hard	source_key
+vedic_age	VedicEarly	fixed_tip	3200	.	.	1	ILLUSTRATIVE_Rigvedic
+greek_age	AncientGreek	fixed_tip	2400	.	.	1	ILLUSTRATIVE_Classical
+latin_age	Latin	fixed_tip	2050	.	.	1	ILLUSTRATIVE_Classical
+oldirish_age	OldIrish	fixed_tip	1250	.	.	1	ILLUSTRATIVE_OldIrish
+ocs_age	OldChurchSlavonic	fixed_tip	1050	.	.	1	ILLUSTRATIVE_OCS
+pie_root	proto_indo_european	uniform_node	4000	10000	.	0	ILLUSTRATIVE_broad

@@ -1,0 +1,176 @@
+name: CI
+
+# What has to keep working, checked on every push. The jobs are split by what
+# they would tell you when they go red, not by convenience: a C test failure, a
+# broken example, a Python tool, a browser engine that no longer matches the
+# CLI, and a page that no longer behaves are five different problems.
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  tests:
+    name: C tests (${{ matrix.cc }}, ${{ matrix.sanitizer }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # The everyday build: gcc with AddressSanitizer, which is what
+          # `make test` does locally.
+          - cc: gcc
+            sanitizer: asan
+            sanflags: "-fsanitize=address -fno-omit-frame-pointer"
+          # clang, and undefined behaviour rather than memory errors. Signed
+          # overflow and bad shifts are the failure modes a log-space likelihood
+          # and a PCG32 stream can hide for a long time. Unsigned wrap is
+          # excluded because the RNG relies on it deliberately.
+          - cc: clang
+            sanitizer: ubsan
+            sanflags: >-
+              -fsanitize=undefined,integer
+              -fno-sanitize=unsigned-integer-overflow,unsigned-shift-base
+              -fno-sanitize-recover=all
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Build and run the suite
+        run: make test CC=${{ matrix.cc }} SANFLAGS="${{ matrix.sanflags }}"
+
+      # -Werror is not on by default (a new compiler version should not break a
+      # user's build), so warnings are turned into an error here instead, where
+      # the compiler version is pinned by the runner image.
+      - name: The library builds warning-free
+        run: |
+          make clean
+          make native CC=${{ matrix.cc }} CFLAGS="-std=c99 -Wall -Wextra \
+            -Wpedantic -Wconversion -Wshadow -Wstrict-prototypes \
+            -Wmissing-prototypes -Werror -O2"
+
+      # NDEBUG is the one configuration that removes the assertions, so it is
+      # the one where an assertion with a side effect would go missing. There
+      # are none; this is how that stays true.
+      - name: The release configuration builds
+        run: |
+          make clean
+          make release CC=${{ matrix.cc }}
+
+  analyze:
+    name: Static analysis (gcc -fanalyzer, clang --analyze)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # Both analyzers ship with the compilers the runner already has, so this
+      # job installs nothing. The gate is zero findings with no suppressions
+      # anywhere in the tree; docs/static-analysis.md records the baseline, the
+      # four real defects it found, and what to do if a false positive appears
+      # that cannot be written around.
+      #
+      # This runs separately from the -Werror build because it answers a
+      # different question: warnings are about this line, the analyzers are
+      # about this path — and the two defects they found were both on paths no
+      # test reaches (an out-of-memory cleanup, and a partial input load).
+      - name: The analyzers find nothing
+        run: make analyze
+
+  fuzz:
+    name: Fuzz the parsers
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # Short and bounded: this is a regression gate, not a campaign. Each
+      # harness starts from the committed corpus, so a run reaches real parser
+      # states in seconds rather than rediscovering the format. A real hunt is
+      # a local `build/fuzz_newick fuzz/corpus/newick` with no time limit.
+      #
+      # A crash here means a committed corpus entry or a quick mutation broke
+      # something; the reproducer libFuzzer writes becomes a test under
+      # tests/regression/. See docs/fuzzing.md.
+      - name: The parsers survive their corpora
+        run: make fuzz-run FUZZ_SECONDS=45
+
+  examples:
+    name: Worked examples run from a clean checkout
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Build
+        run: make native
+
+      # M12's acceptance gate is that every example runs from a clean checkout.
+      # These are real datasets and real MCMC, so this is also the closest thing
+      # the project has to an end-to-end test of the CLI.
+      - name: Run every example
+        run: |
+          failed=0
+          for run in examples/*/run.sh examples/*/*/run.sh; do
+              echo "::group::$run"
+              if ! "$run" > /dev/null; then
+                  echo "::error::$run failed"
+                  failed=1
+              fi
+              echo "::endgroup::"
+          done
+          exit $failed
+
+      # A converged run whose output is empty would pass the step above.
+      - name: The chronologies actually produced dates
+        run: |
+          failed=0
+          for out in examples/*/output/posterior_nodes.tsv; do
+              [ -e "$out" ] || continue
+              rows=$(($(wc -l < "$out") - 1))
+              echo "$out: $rows node ages"
+              if [ "$rows" -lt 1 ]; then
+                  echo "::error::$out has no node ages"
+                  failed=1
+              fi
+          done
+          exit $failed
+
+  python:
+    name: Python toolchain
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      # The toolchain is standard-library only by design, so there is nothing
+      # to install: if this job ever needs a requirements file, that itself is
+      # the thing to notice.
+      - name: Reference builder, validation and dataset tools
+        run: python3 -m unittest discover -s tools/tests -v
+
+  web:
+    name: Browser engine matches the CLI
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+
+      # Runs on every push, not only on a deploy: an engine older than its
+      # sources should be caught when it is committed, not when it ships.
+      - name: The committed WebAssembly build is current
+        run: ./scripts/wasm-provenance.sh --check
+
+      - name: Build the native CLI to compare against
+        run: make native
+
+      # The central M10 claim: a date computed in the browser is the date the
+      # CLI computes. Both engines run the same seeded analyses and every
+      # reported quantity is compared.
+      - name: Native and WebAssembly agree
+        run: ./scripts/wasm-verify.sh
+
+      # The page is the one part of the project no C test can reach: a working
+      # engine behind a broken worker looks fine from the command line.
+      - name: The page behaves as it claims
+        run: node scripts/page-smoke.js

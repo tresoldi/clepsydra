@@ -1,0 +1,28 @@
+{
+  "version": "1.0.0",
+  "built_at": "2026-07-30T21:43:28.743919+00:00",
+  "sources": [
+    "PAGEL_2007_SYNTH",
+    "VEJDEMO_2016_SYNTH",
+    "ASJP_SYNTH"
+  ],
+  "files": {
+    "concept_priors.tsv": {
+      "sha256": "e19b093191d4402ab664abeb158b9f3315747f195396466f8a90099d00f3d1df",
+      "size": 3181
+    },
+    "family_priors.tsv": {
+      "sha256": "3295d29d7ac882296a32226ab255ce2a7dd40ca6547f31fc63d077f252ac8899",
+      "size": 653
+    },
+    "concepts.tsv": {
+      "sha256": "47939c8f00af4ae011890235a6f9856377a5b4f94c87c9b009e765547b53bc16",
+      "size": 1801
+    }
+  },
+  "warnings": [
+    "SYNTHETIC DATA: Pagel 2007 Supplementary Table 2 not supplied; using synthetic rates. Replace with real data when available.",
+    "SYNTHETIC DATA: Vejdemo-H\u00f6rberg 2016 Supporting Info not supplied; using synthetic predictors.",
+    "SYNTHETIC DATA: ASJP database not supplied; using synthetic stability."
+  ]
+}

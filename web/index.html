@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>clepsydra — Bayesian dates for language divergence</title>
+<meta name="description" content="Estimate when languages diverged from basic-vocabulary cognate data, with explicit models, calibrations and posterior uncertainty. Runs in the browser via WebAssembly.">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="wrap">
+
+  <div class="top">
+    <h1>clepsydra</h1>
+    <span class="version" id="version"></span>
+    <span class="spacer"></span>
+    <button id="guide-open">Guide</button>
+    <a href="https://github.com/tresoldi/clepsydra">Source</a>
+  </div>
+
+  <p class="tagline">Hierarchical Bayesian lexical dating — when did these languages diverge, and how sure can we be?</p>
+
+  <p class="status-banner">
+    This page runs the whole inference engine locally in your browser via
+    WebAssembly — no data is sent anywhere. It is the same C code the
+    command-line tool runs, so a date computed here is the date the CLI
+    computes. The bundled datasets are real, published cognate data
+    (CC-BY-4.0; each is credited where it is selected).
+  </p>
+
+  <div class="boundary">
+    <section>
+      <h2>What this does</h2>
+      <p>
+        Given which languages share cognates for each concept, plus a tree and
+        some age calibrations, it estimates the age of every node with a
+        posterior distribution — a range, not a number. The pairwise model does
+        the same for two languages without a tree.
+      </p>
+    </section>
+    <section class="is-not">
+      <h2>What this does not do</h2>
+      <p>
+        It does not infer the tree, judge whether your cognate coding is right,
+        or turn a weak signal into a confident date. A wide interval is the
+        answer, not a failure. Deep-time estimates depend heavily on the rate
+        prior, and the defaults here are shortened for responsiveness — a
+        result you intend to publish belongs on the CLI.
+      </p>
+    </section>
+  </div>
+
+  <div class="tabs" id="tabs">
+    <button class="tab on" data-tab="pair">Pair</button>
+    <button class="tab" data-tab="tree">Tree</button>
+    <button class="tab" data-tab="decay">Decay laws</button>
+    <button class="tab" data-tab="validation">Validation</button>
+  </div>
+
+  <!-- ------------------------------------------------------------ Pair -->
+  <div class="tab-content" id="tab-pair">
+    <p class="hint" style="color:var(--muted);font-size:13.5px;margin:0 0 10px">
+      Two languages, no tree: the hierarchical constant-rate pairwise model
+      (P1). It runs in well under a second, so it updates as you change things.
+    </p>
+
+    <div class="controls">
+      <label for="pair-dataset">Dataset</label>
+      <select id="pair-dataset" aria-label="Dataset"></select>
+      <label for="pair-a">A</label>
+      <select id="pair-a" aria-label="First language"></select>
+      <label for="pair-b">B</label>
+      <select id="pair-b" aria-label="Second language"></select>
+    </div>
+    <div class="options">
+      <label for="pair-tlo">time range (BP)</label>
+      <!-- value= is a last resort: app.js fills these from the engine's own
+           defaults at load (clepsydra_defaults_json), so the numbers are not
+           restated here. -->
+      <input type="number" id="pair-tlo" value="100" min="1" step="50" aria-label="Earliest divergence considered">
+      <span>to</span>
+      <input type="number" id="pair-thi" value="8000" min="2" step="100" aria-label="Latest divergence considered">
+    </div>
+    <p class="dataset-note" id="pair-note"></p>
+
+    <details class="custom-data">
+      <summary>Use your own data</summary>
+      <p class="hint">
+        A forms table in Clepsydra's TSV format: columns
+        <code>language_id</code>, <code>concept_id</code>, <code>cognate_id</code>,
+        and optionally <code>primary_weight</code>. It is read in this tab and
+        goes nowhere else.
+      </p>
+      <div class="controls">
+        <label for="pair-file">forms.tsv</label>
+        <input type="file" id="pair-file" accept=".tsv,.csv,.txt">
+        <span class="file-status" id="pair-file-status"></span>
+      </div>
+    </details>
+
+    <div id="pair-error"></div>
+
+    <div class="results" id="pair-results">
+      <div class="headline">
+        <span class="value" id="pair-median">—</span>
+        <span class="unit">years BP (median)</span>
+        <span class="interval" id="pair-interval"></span>
+      </div>
+      <div class="summary" id="pair-summary"></div>
+
+      <div class="panel">
+        <h2>posterior over divergence time</h2>
+        <p class="hint">
+          The whole distribution, not just its middle. The shaded band is the
+          central 90%; the dashed line is the median.
+        </p>
+        <div class="figure" id="pair-figure"></div>
+        <div class="figure-tools"><a id="pair-download">Download SVG</a></div>
+      </div>
+
+      <p class="caveat" id="pair-caveat"></p>
+    </div>
+  </div>
+
+  <!-- ------------------------------------------------------------ Tree -->
+  <div class="tab-content" id="tab-tree" hidden>
+    <p class="hint" style="color:var(--muted);font-size:13.5px;margin:0 0 10px">
+      A whole chronology: the strict novel-state tree likelihood (T1) sampled
+      by MCMC over every node age. This one takes a while — it runs off the
+      main thread, and you can stop it.
+    </p>
+
+    <div class="controls">
+      <label for="tree-dataset">Dataset</label>
+      <select id="tree-dataset" aria-label="Dataset"></select>
+      <button id="tree-run" class="primary">Run</button>
+      <button id="tree-cancel" hidden>Cancel</button>
+    </div>
+    <div class="options">
+      <label for="tree-chains">chains</label>
+      <input type="number" id="tree-chains" value="2" min="1" max="8" step="1">
+      <label for="tree-warmup">warm-up</label>
+      <input type="number" id="tree-warmup" value="4000" min="100" step="500">
+      <label for="tree-samples">samples</label>
+      <input type="number" id="tree-samples" value="4000" min="100" step="500">
+      <label for="tree-seed">seed</label>
+      <input type="number" id="tree-seed" value="42" min="0" step="1">
+      <label class="check">
+        <input type="checkbox" id="tree-relaxed">
+        relaxed clock
+      </label>
+      <label class="check">
+        <input type="checkbox" id="tree-sensitivity">
+        calibration sensitivity (runs twice)
+      </label>
+    </div>
+    <p class="dataset-note" id="tree-note"></p>
+
+    <details class="custom-data">
+      <summary>Use your own data</summary>
+      <p class="hint">
+        Three files: a Newick tree, a forms table
+        (<code>language_id</code>, <code>concept_id</code>,
+        <code>cognate_id</code>), and a calibrations table
+        (<code>target_id</code>, <code>type</code>, <code>p1</code>…). The tip
+        names in the tree must match the <code>language_id</code>s. Nothing is
+        uploaded — the files are read in this tab.
+      </p>
+      <div class="controls">
+        <label for="tree-file-nwk">tree.nwk</label>
+        <input type="file" id="tree-file-nwk" accept=".nwk,.newick,.tre,.txt">
+        <label for="tree-file-forms">forms.tsv</label>
+        <input type="file" id="tree-file-forms" accept=".tsv,.csv,.txt">
+        <label for="tree-file-cal">calibrations.tsv</label>
+        <input type="file" id="tree-file-cal" accept=".tsv,.csv,.txt">
+      </div>
+      <div class="options">
+        <label for="tree-logmean">rate log-mean</label>
+        <input type="number" id="tree-logmean" value="-8.8" step="0.1">
+        <label for="tree-logsd">log-sd</label>
+        <input type="number" id="tree-logsd" value="0.8" step="0.1" min="0.01">
+        <span class="file-status" id="tree-file-status"></span>
+      </div>
+    </details>
+
+    <div class="progress" id="tree-progress">
+      <div class="bar"><div class="fill" id="tree-progress-fill"></div></div>
+      <div class="label" id="tree-progress-label"></div>
+    </div>
+
+    <div id="tree-error"></div>
+
+    <div class="results" id="tree-results">
+      <div class="summary" id="tree-summary"></div>
+
+      <div class="panel">
+        <h2>dated tree</h2>
+        <p class="hint">
+          Time runs right to left: the present is at the right edge, so a
+          node's horizontal position is its age. Ancient tips stand at their
+          own attested ages rather than level with the living languages.
+        </p>
+        <div class="figure" id="tree-figure"></div>
+        <div class="fig-legend">
+          <span><i class="est"></i> estimated age</span>
+          <span><i class="cal"></i> calibrated (given, not inferred)</span>
+          <span><i class="hpd"></i> 90% credible interval</span>
+        </div>
+        <div class="figure-tools"><a id="tree-download">Download SVG</a></div>
+      </div>
+
+      <div class="panel">
+        <h2>node ages</h2>
+        <div class="scroll"><table id="tree-table"></table></div>
+      </div>
+
+      <div class="panel" id="tree-sens-panel" hidden>
+        <h2>how much do the calibrations decide this?</h2>
+        <p class="hint" id="tree-sens-hint"></p>
+        <div class="scroll"><table id="tree-sens-table"></table></div>
+        <p class="caveat">
+          Loosening a window does not make the estimate worse — it shows how
+          much of the estimate was the calibration talking rather than the
+          cognate data. A node that barely moves is carried by the data; one
+          that moves a long way is carried by an assumption you supplied. For
+          the stronger test — withholding each calibration entirely and asking
+          whether the model recovers it — use <code>clepsydra
+          calib-sensitivity --mode loco</code> on the command line.
+        </p>
+      </div>
+
+      <div class="panel">
+        <h2>convergence</h2>
+        <p class="hint" id="tree-diag-hint"></p>
+        <div class="figure scroll" id="tree-diag-figure"></div>
+        <div class="scroll"><table id="tree-diagnostics"></table></div>
+      </div>
+
+      <p class="caveat" id="tree-caveat"></p>
+    </div>
+  </div>
+
+  <!-- ----------------------------------------------------------- Decay -->
+  <div class="tab-content" id="tab-decay" hidden>
+    <p class="hint" style="color:var(--muted);font-size:13.5px;margin:0 0 10px">
+      The same two languages under five different assumptions about how
+      vocabulary is lost. These are <b>competing models to compare</b>, not
+      settings to choose from: they disagree, and which one is right is decided
+      by held-out prediction on your data, never by preference.
+    </p>
+
+    <div class="controls">
+      <label for="decay-dataset">Dataset</label>
+      <select id="decay-dataset" aria-label="Dataset"></select>
+      <label for="decay-a">A</label>
+      <select id="decay-a" aria-label="First language"></select>
+      <label for="decay-b">B</label>
+      <select id="decay-b" aria-label="Second language"></select>
+    </div>
+    <p class="dataset-note" id="decay-note"></p>
+
+    <div id="decay-error"></div>
+
+    <div class="results" id="decay-results">
+      <div class="panel">
+        <h2>five laws, one pair</h2>
+        <p class="hint">
+          Each curve is a full posterior over the divergence time; the tick
+          under the axis marks its median. All five searched the same
+          100–8,000 BP range.
+        </p>
+        <div class="figure" id="decay-figure"></div>
+        <div class="fig-legend" id="decay-legend"></div>
+      </div>
+
+      <div class="panel">
+        <h2>where they disagree</h2>
+        <div class="scroll"><table id="decay-table"></table></div>
+      </div>
+
+      <p class="caveat" id="decay-caveat"></p>
+    </div>
+  </div>
+
+  <!-- ------------------------------------------------------ Validation -->
+  <div class="tab-content" id="tab-validation" hidden>
+    <p class="hint" style="color:var(--muted);font-size:13.5px;margin:0 0 10px">
+      Nothing on this tab runs a model. It is the evidence that the models on
+      the other tabs deserve any trust, and the places where they do not.
+    </p>
+
+    <div class="panel">
+      <h2>validity is not adequacy</h2>
+      <p class="hint" style="max-width:78ch">
+        Two different claims get confused constantly, so they are kept apart
+        here. <b>Validity</b> is evidence that the implementation computes what
+        the model says — brute-force agreement on small trees, simulation-based
+        calibration, seeded reproducibility. <b>Adequacy</b> is evidence that
+        the model describes the data at hand, which no amount of correct
+        arithmetic can establish. A model can be perfectly implemented and
+        wrong about your languages.
+      </p>
+    </div>
+
+    <div class="panel">
+      <h2>held-out calibration across three families</h2>
+      <p class="hint" style="max-width:78ch">
+        The hardest test the project runs: take a language whose age is
+        historically attested, hide that age from the model, re-date it, and
+        ask whether the withheld date lands inside the credible interval.
+        Nine ancient tips across Indo-European, Sino-Tibetan and Romance.
+      </p>
+      <div class="figure" id="loco-figure"></div>
+      <div class="fig-legend">
+        <span><i class="loco-strict"></i> strict clock</span>
+        <span><i class="loco-relaxed"></i> relaxed clock</span>
+        <span>whisker = 90% interval · dashed line = perfect agreement</span>
+      </div>
+      <div class="summary" id="loco-summary"></div>
+      <p class="caveat" id="loco-caveat"></p>
+      <div class="scroll"><table id="loco-table"></table></div>
+    </div>
+
+    <div class="panel">
+      <h2>what the simulations say</h2>
+      <div class="scroll"><table id="validation-table"></table></div>
+      <p class="caveat">
+        Every validity claim above names a test that runs in the project's test
+        suite; every adequacy claim is a posterior-predictive or held-out check
+        with its limits stated. Passing simulation-based calibration is never
+        presented as adequacy — it only shows the sampler recovers what the
+        model itself generates.
+      </p>
+    </div>
+  </div>
+
+</div>
+
+<aside class="guide" id="guide" aria-hidden="true">
+  <header>
+    <h2 id="guide-title">Guide</h2>
+    <button id="guide-close">Close</button>
+  </header>
+  <div class="body" id="guide-body"></div>
+</aside>
+
+<script src="data/datasets.js"></script>
+<script src="guide-content.js"></script>
+<script src="clepsydra.js"></script>
+<script src="viz.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

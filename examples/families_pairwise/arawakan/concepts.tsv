@@ -1,0 +1,102 @@
+concept_id	label	external_namespace	external_id	word_class	status
+C100_who	WHO	Concepticon	1235	unknown	active
+C101_woman	WOMAN	Concepticon	962	unknown	active
+C102_yellow	YELLOW	Concepticon	1424	unknown	active
+C10_blood	BLOOD	Concepticon	946	unknown	active
+C11_bone	BONE	Concepticon	1394	unknown	active
+C12_breast1	BREAST	Concepticon	1402	unknown	active
+C13_breast2	BREAST	Concepticon	1402	unknown	active
+C14_burn1	BURN	Concepticon	2102	unknown	active
+C15_burn2	BURN	Concepticon	2102	unknown	active
+C16_claw	CLAW	Concepticon	72	unknown	active
+C17_cloud	CLOUD	Concepticon	1489	unknown	active
+C18_cold	COLD	Concepticon	1287	unknown	active
+C19_come	COME	Concepticon	1446	unknown	active
+C1_i	I	Concepticon	1209	unknown	active
+C20_die	DIE	Concepticon	1494	unknown	active
+C21_dog	DOG	Concepticon	2009	unknown	active
+C22_drink	DRINK	Concepticon	1401	unknown	active
+C23_dryn	DRY UP	Concepticon	1786	unknown	active
+C24_ear	EAR	Concepticon	1247	unknown	active
+C25_earth	EARTH (SOIL)	Concepticon	1228	unknown	active
+C26_eat	EAT	Concepticon	1336	unknown	active
+C27_egg	EGG	Concepticon	744	unknown	active
+C28_eye	EYE	Concepticon	1248	unknown	active
+C2_all	ALL	Concepticon	98	unknown	active
+C30_fire	FIRE	Concepticon	221	unknown	active
+C31_fishn	FISH	Concepticon	227	unknown	active
+C32_flesh	FLESH	Concepticon	2259	unknown	active
+C33_flyv	FLY (MOVE THROUGH AIR)	Concepticon	1441	unknown	active
+C34_foot	FOOT	Concepticon	1301	unknown	active
+C35_full	FULL	Concepticon	1429	unknown	active
+C36_give	GIVE	Concepticon	1447	unknown	active
+C37_good	GOOD	Concepticon	1035	unknown	active
+C38_grease	FAT (ORGANIC SUBSTANCE)	Concepticon	323	unknown	active
+C39_green	GREEN	Concepticon	1425	unknown	active
+C3_ash	ASH	Concepticon	646	unknown	active
+C40_hair	HAIR	Concepticon	1040	unknown	active
+C41_hand	HAND	Concepticon	1277	unknown	active
+C42_head	HEAD	Concepticon	1256	unknown	active
+C43_hear	HEAR	Concepticon	1408	unknown	active
+C44_heart	HEART	Concepticon	1223	unknown	active
+C45_horn	HORN (ANATOMY)	Concepticon	1393	unknown	active
+C46_hot	HOT	Concepticon	1286	unknown	active
+C47_kill	KILL	Concepticon	1417	unknown	active
+C48_knee	KNEE	Concepticon	1371	unknown	active
+C49_know	KNOW (SOMETHING)	Concepticon	1410	unknown	active
+C4_bark	BARK	Concepticon	1204	unknown	active
+C50_leaf	LEAF	Concepticon	628	unknown	active
+C51_lie	LIE DOWN	Concepticon	215	unknown	active
+C52_liver	LIVER	Concepticon	1224	unknown	active
+C53_long	LONG	Concepticon	1203	unknown	active
+C54_louse	LOUSE	Concepticon	1392	unknown	active
+C55_manadultmale	MAN	Concepticon	1554	unknown	active
+C56_many	MANY	Concepticon	1198	unknown	active
+C57_moon	MOON	Concepticon	1313	unknown	active
+C58_mountain	MOUNTAIN	Concepticon	639	unknown	active
+C59_mouth	MOUTH	Concepticon	674	unknown	active
+C5_belly	BELLY	Concepticon	1251	unknown	active
+C60_name	NAME	Concepticon	1405	unknown	active
+C61_neck	NECK	Concepticon	1333	unknown	active
+C62_new	NEW	Concepticon	1231	unknown	active
+C63_night	NIGHT	Concepticon	1233	unknown	active
+C64_nose	NOSE	Concepticon	1221	unknown	active
+C65_not	NOT	Concepticon	1240	unknown	active
+C66_one	ONE	Concepticon	1493	unknown	active
+C67_path	PATH	Concepticon	2252	unknown	active
+C68_person	PERSON	Concepticon	683	unknown	active
+C69_rain	RAIN (PRECIPITATION)	Concepticon	658	unknown	active
+C6_big	BIG	Concepticon	1202	unknown	active
+C70_red	RED	Concepticon	156	unknown	active
+C71_root	ROOT	Concepticon	670	unknown	active
+C72_round	ROUND	Concepticon	1395	unknown	active
+C73_sand	SAND	Concepticon	671	unknown	active
+C74_say	SAY	Concepticon	1458	unknown	active
+C75_see	SEE	Concepticon	1409	unknown	active
+C76_seed	SEED	Concepticon	714	unknown	active
+C77_sit	SIT	Concepticon	1416	unknown	active
+C78_skin	SKIN	Concepticon	763	unknown	active
+C79_sleep	SLEEP	Concepticon	1585	unknown	active
+C7_bird	BIRD	Concepticon	937	unknown	active
+C80_small	SMALL	Concepticon	1246	unknown	active
+C81_smoke	SMOKE (EXHAUST)	Concepticon	778	unknown	active
+C82_stand	STAND	Concepticon	1442	unknown	active
+C83_star	STAR	Concepticon	1430	unknown	active
+C84_stone	STONE	Concepticon	857	unknown	active
+C85_sun	SUN	Concepticon	1343	unknown	active
+C86_swim	SWIM	Concepticon	1439	unknown	active
+C87_tail	TAIL	Concepticon	1220	unknown	active
+C88_that	THAT	Concepticon	78	unknown	active
+C89_this	THIS	Concepticon	1214	unknown	active
+C8_bite	BITE	Concepticon	1403	unknown	active
+C90_thouyou	THOU	Concepticon	1215	unknown	active
+C91_tongue	TONGUE	Concepticon	1205	unknown	active
+C92_tooth	TOOTH	Concepticon	1380	unknown	active
+C93_treewood	TREE	Concepticon	906	unknown	active
+C94_two	TWO	Concepticon	1498	unknown	active
+C95_walk	WALK	Concepticon	1443	unknown	active
+C96_water	WATER	Concepticon	948	unknown	active
+C97_we	WE	Concepticon	1212	unknown	active
+C98_what	WHAT	Concepticon	1236	unknown	active
+C99_white	WHITE	Concepticon	1335	unknown	active
+C9_black	BLACK	Concepticon	163	unknown	active

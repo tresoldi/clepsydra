@@ -1,0 +1,10 @@
+calibration_id	target_id	type	p1	p2	p3	is_hard	source_key
+tongan_age	Tongan	fixed_tip	0	.	.	1	EXTANT
+niuean_age	Niuean	fixed_tip	0	.	.	1	EXTANT
+samoan_age	Samoan	fixed_tip	0	.	.	1	EXTANT
+eastfutuna_age	EastFutuna	fixed_tip	0	.	.	1	EXTANT
+rapanui_age	Rapanui	fixed_tip	0	.	.	1	EXTANT
+hawaiian_age	Hawaiian	fixed_tip	0	.	.	1	EXTANT
+maori_age	Maori	fixed_tip	0	.	.	1	EXTANT
+tahitian_age	Tahitian	fixed_tip	0	.	.	1	EXTANT
+ppn_root	proto_polynesian	uniform_node	2600	3100	.	0	ILLUSTRATIVE_ProtoPolynesian_archaeology

@@ -1,0 +1,44 @@
+{
+  "defaults": {"warmup": 4000, "samples": 4000, "chains": 4, "seed": 42, "relaxed": 0},
+  "families": [
+    {
+      "label": "indo_european",
+      "tree": "../five_ie_reproduction/tree.nwk",
+      "forms": "../five_ie_reproduction/data/forms.tsv",
+      "calibrations": "../five_ie_reproduction/calibrations.tsv",
+      "rate_logmean": -8.8, "rate_logsd": 0.8,
+      "source": "IE-CoR (Heggarty et al. 2023)",
+      "held_out_tips": {
+        "VedicEarly": "Rigvedic Sanskrit, ~1200 BCE (Witzel 1995)",
+        "AncientGreek": "Classical Greek, ~450 BCE",
+        "Latin": "Classical Latin, mid-1st c. BCE",
+        "OldIrish": "Old Irish, ~750 CE",
+        "OldChurchSlavonic": "Old Church Slavonic, ~950 CE"
+      }
+    },
+    {
+      "label": "sino_tibetan",
+      "tree": "../sinotibetan_tree/tree.nwk",
+      "forms": "../sinotibetan_tree/data/forms.tsv",
+      "calibrations": "../sinotibetan_tree/calibrations.tsv",
+      "rate_logmean": -8.8, "rate_logsd": 1.0,
+      "source": "Sagart et al. 2019 (ST cognates via Lexibank)",
+      "held_out_tips": {
+        "Sinitic_Old_Chinese": "Old Chinese, Zhou period ~800 BCE (Baxter & Sagart 2014)",
+        "Tibetan_Old_Tibetan": "Old Tibetan, ~7th-9th c. CE",
+        "Burmish_Old_Burmese": "Old Burmese, ~11th-12th c. CE inscriptions"
+      }
+    },
+    {
+      "label": "romance",
+      "tree": "../romance_tree/tree.nwk",
+      "forms": "../romance_tree/data/forms.tsv",
+      "calibrations": "../romance_tree/calibrations.tsv",
+      "rate_logmean": -8.8, "rate_logsd": 0.8,
+      "source": "IE-CoR Romance subset",
+      "held_out_tips": {
+        "Latin": "Classical Latin, mid-1st c. BCE"
+      }
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+calibration_id	target_id	type	p1	p2	p3	is_hard	source_key
+oldchinese_age	Sinitic_Old_Chinese	fixed_tip	2800	.	.	1	ILLUSTRATIVE_OldChinese
+oldtibetan_age	Tibetan_Old_Tibetan	fixed_tip	1300	.	.	1	ILLUSTRATIVE_OldTibetan
+oldburmese_age	Burmish_Old_Burmese	fixed_tip	950	.	.	1	ILLUSTRATIVE_OldBurmese
+beijing_age	Sinitic_Beijing	fixed_tip	0	.	.	1	EXTANT
+lhasa_age	Tibetan_Lhasa	fixed_tip	0	.	.	1	EXTANT
+rangoon_age	Burmish_Rangoon	fixed_tip	0	.	.	1	EXTANT
+limbu_age	Kiranti_Limbu	fixed_tip	0	.	.	1	EXTANT
+japhug_age	rGyalrong_Japhug	fixed_tip	0	.	.	1	EXTANT
+pst_root	proto_sino_tibetan	uniform_node	4500	9000	.	0	ILLUSTRATIVE_broad

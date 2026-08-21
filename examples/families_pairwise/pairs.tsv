@@ -1,0 +1,10 @@
+family	lang_a_id	lang_b_id	lang_a_name	lang_b_name	shared_concepts	retention	source
+dravidian	Betta_Kurumba	Kodava	Betta_Kurumba	Kodava	100	0.5500	Kolipakam et al. 2018 (DravLEX)
+turkic	Nogai	Yakut	Nogai	Yakut	239	0.5565	Savelyev & List 2020 (Turkic)
+uralic	503	504	Komi-Permyak	Udmurt	301	0.5548	Syrjänen et al. 2018 (UraLex)
+semitic	Amharic	Mesqan	Amharic	Mesqan	150	0.5467	Feleke 2021 (Semitic)
+polynesian	Hawaiian	Samoan	'ōlelo Hawai'i	Gagana Sāmoa	210	0.5476	Walworth 2018 (Polynesian)
+tupian	Parintintin	Wayampi	Parintintin	Wayampi	414	0.5483	Gerardi et al. 2021 (TuLeD)
+arawakan	Achagua	Baniwa	Achagua	Baniwa	97	0.5464	Chacon et al. (Arawakan)
+alorpantar	kaera	teiwa	Kaera	Teiwa	309	0.4693	Robinson & Holton 2012 (Alor-Pantar)
+koreanic	Gyeonggi	MKorean	Gyeonggi	Middle Korean	228	0.9386	Lee 2015 (Koreanic)

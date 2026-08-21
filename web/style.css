@@ -1,0 +1,362 @@
+/* clepsydra page styles.
+ *
+ * Sourcehut-inspired: flat, one background, hairline rules instead of cards,
+ * plain bold headings, default-blue links, and a single dark-red accent used
+ * only for state that must be read at a glance. Hybrid type: sans for prose,
+ * monospace for data, tables, labels and headings. Matches merkmal's and
+ * regulae's visual language deliberately — these are one family of tools. */
+
+:root {
+  --bg: #ffffff;
+  --ink: #1a1a1a;
+  --muted: #5a5a5a;
+  --line: #dcdcdc;
+  --link: #0b4fd8;
+  --accent: #8b1a1a;
+  --accent-soft: #faf2f2;
+  --hover: #f4f4f4;
+  --warn: #8a5b12;
+  --ok: #1a6b3a;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, Cantarell, "Noto Sans", sans-serif;
+  --mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #161616;
+    --ink: #e2e2e2;
+    --muted: #a0a0a0;
+    --line: #383838;
+    --link: #8ab4ff;
+    --accent: #d97b7b;
+    --accent-soft: #2a1c1c;
+    --hover: #222222;
+    --warn: #d9bc72;
+    --ok: #5cb87a;
+  }
+}
+
+* { box-sizing: border-box; }
+
+/* Read aloud, off-screen: used to voice numbers that are otherwise only drawn. */
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
+
+:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 14.5px/1.5 var(--sans);
+}
+
+a { color: var(--link); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+.wrap { max-width: 1180px; margin: 0 auto; padding: 0 20px 80px; }
+
+/* ---- header ---------------------------------------------------------- */
+
+.top {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  margin: 0 -20px;
+  padding: 10px 20px;
+  border-bottom: 1px solid var(--line);
+  flex-wrap: wrap;
+}
+.top h1 { font: 600 17px/1.2 var(--mono); margin: 0; }
+.top .version { font: 12px var(--mono); color: var(--muted); }
+.top .spacer { flex: 1; }
+
+.tagline { margin: 18px 0 0; color: var(--muted); }
+
+.status-banner {
+  margin: 14px 0 0;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  font-size: 13.5px;
+}
+
+/* What the tool does, beside what it does not. The pair is the point: a dating
+   tool that only advertises its scope invites being read as an oracle. */
+.boundary {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 32px;
+  margin: 22px 0 0;
+}
+@media (max-width: 720px) { .boundary { grid-template-columns: 1fr; } }
+.boundary h2 { font: 600 13px/1.4 var(--mono); margin: 0 0 6px; text-transform: lowercase; }
+.boundary p { margin: 0 0 12px; font-size: 13.5px; color: var(--muted); }
+.boundary .is-not h2 { color: var(--accent); }
+
+/* ---- tabs ------------------------------------------------------------ */
+
+.tabs {
+  display: flex;
+  gap: 0;
+  margin: 26px 0 0;
+  border-bottom: 1px solid var(--line);
+  flex-wrap: wrap;
+}
+.tab {
+  font: 13px var(--mono);
+  padding: 7px 14px;
+  border: none;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+.tab:hover { color: var(--ink); }
+.tab.on { color: var(--ink); border-bottom-color: var(--accent); }
+
+.tab-content { margin-top: 18px; }
+
+/* ---- controls -------------------------------------------------------- */
+
+.controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 4px 0 10px;
+  flex-wrap: wrap;
+}
+select, button, input[type="text"], input[type="number"],
+input[type="file"]::file-selector-button {
+  font: inherit;
+  font-size: 13.5px;
+  padding: 5px 10px;
+  border: 1px solid var(--line);
+  border-radius: 0;
+  background: var(--bg);
+  color: var(--ink);
+}
+select, button, input[type="file"]::file-selector-button { cursor: pointer; }
+select:hover, button:hover { border-color: var(--ink); }
+select { max-width: 340px; }
+input[type="number"] { width: 88px; font-family: var(--mono); font-size: 13px; }
+input:focus, select:focus { border-color: var(--ink); outline: none; }
+button.primary { background: var(--ink); border-color: var(--ink); color: var(--bg); }
+button.primary:hover { background: var(--accent); border-color: var(--accent); }
+button:disabled { opacity: 0.45; cursor: default; }
+button:disabled:hover { border-color: var(--line); }
+.controls .spacer { flex: 1; }
+.controls label { font: 12.5px var(--mono); color: var(--muted); }
+
+.options {
+  display: flex;
+  align-items: center;
+  gap: 6px 14px;
+  margin: 4px 0 0;
+  flex-wrap: wrap;
+  font-size: 13px;
+  color: var(--muted);
+  font-family: var(--mono);
+}
+.options label { color: var(--muted); }
+.options .check { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+.options .check input { cursor: pointer; }
+
+.dataset-note {
+  margin: 6px 0 0;
+  font-size: 12.5px;
+  color: var(--muted);
+  max-width: 70ch;
+}
+.dataset-note .source { font-family: var(--mono); font-size: 11.5px; }
+
+/* ---- progress -------------------------------------------------------- */
+
+.progress { margin: 14px 0 0; display: none; }
+.progress.active { display: block; }
+.progress .bar { height: 3px; background: var(--line); overflow: hidden; }
+.progress .fill { height: 100%; width: 0; background: var(--accent); transition: width 120ms linear; }
+.progress .label { margin-top: 5px; font-size: 12.5px; color: var(--muted); font-family: var(--mono); }
+
+/* ---- errors and notes ------------------------------------------------ */
+
+.error { margin: 14px 0 0; padding: 8px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.error .what { font-weight: 600; color: var(--accent); }
+.error .detail { color: var(--muted); font-size: 13.5px; margin-top: 4px; }
+
+.caveat {
+  margin: 16px 0 0;
+  padding: 8px 0 0;
+  border-top: 1px solid var(--line);
+  font-size: 12.5px;
+  color: var(--muted);
+  max-width: 78ch;
+}
+.caveat b { color: var(--warn); font-weight: 600; }
+
+/* ---- results --------------------------------------------------------- */
+
+.results { display: none; margin-top: 22px; }
+.results.active { display: block; }
+
+.summary {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  font-size: 13.5px;
+}
+.summary b { font-family: var(--mono); font-weight: 600; }
+.summary span { color: var(--muted); }
+
+.panel { margin-top: 24px; }
+.panel h2 { font: 600 13px/1.4 var(--mono); margin: 0 0 8px; text-transform: lowercase; }
+.panel .hint { margin: 0 0 8px; font-size: 12.5px; color: var(--muted); }
+
+.scroll { overflow-x: auto; }
+
+table { border-collapse: collapse; width: 100%; font-family: var(--mono); font-size: 12.5px; }
+th, td { text-align: right; padding: 4px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th { font-weight: 600; color: var(--muted); border-bottom-color: var(--ink); }
+th:first-child, td:first-child { text-align: left; }
+tbody tr:hover { background: var(--hover); }
+td.flag { color: var(--warn); }
+td.ok { color: var(--ok); }
+
+/* The one number a visitor will quote, with its interval beside it so the
+   interval is not the thing they have to go looking for. */
+.headline {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin: 4px 0 0;
+}
+.headline .value { font: 600 30px/1.1 var(--mono); }
+.headline .interval { font: 14px var(--mono); color: var(--muted); }
+.headline .unit { font: 13px var(--mono); color: var(--muted); }
+
+/* ---- figures --------------------------------------------------------- */
+
+.figure { margin: 10px 0 0; }
+.figure svg { display: block; max-width: 100%; height: auto; }
+.figure-tools { margin-top: 6px; font-size: 12px; }
+.figure-tools a { cursor: pointer; }
+
+/* ---- guide ----------------------------------------------------------- */
+
+.guide {
+  position: fixed;
+  top: 0; right: 0; bottom: 0;
+  width: min(460px, 92vw);
+  background: var(--bg);
+  border-left: 1px solid var(--line);
+  transform: translateX(100%);
+  transition: transform 160ms ease;
+  display: flex;
+  flex-direction: column;
+  z-index: 10;
+}
+.guide.open { transform: none; }
+.guide header {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 16px; border-bottom: 1px solid var(--line);
+}
+.guide header h2 { font: 600 14px var(--mono); margin: 0; flex: 1; }
+.guide .body { padding: 16px; overflow-y: auto; flex: 1; }
+.guide .body h3 { font: 600 13px var(--mono); margin: 18px 0 6px; }
+.guide .body p { margin: 0 0 10px; font-size: 13.5px; }
+.guide .body code { font-family: var(--mono); font-size: 12.5px; background: var(--hover); padding: 1px 4px; }
+
+/* ---- figures --------------------------------------------------------- */
+
+/* Figures are drawn with CSS classes rather than hard-coded colours, so they
+   follow the visitor's theme; downloadSvg() resolves these to literal values
+   when a figure leaves the page. */
+.fig { font-family: var(--mono); }
+.fig .axis { stroke: var(--ink); stroke-width: 1; fill: none; }
+.fig .grid { stroke: var(--line); stroke-width: 1; fill: none; }
+.fig .tick { font-size: 10.5px; fill: var(--muted); }
+.fig .axis-label { font-size: 11px; fill: var(--muted); }
+
+/* The tree. The interval bar is deliberately as visible as the branch: the
+   width of the estimate is the estimate. */
+.fig-tree .branch { stroke: var(--ink); stroke-width: 1.4; fill: none; }
+.fig-tree .hpd { fill: var(--accent); opacity: 0.22; }
+.fig-tree .node-est { fill: var(--accent); }
+.fig-tree .node-cal { fill: var(--bg); stroke: var(--ink); stroke-width: 1.4; }
+.fig-tree .tip { font-size: 12px; fill: var(--ink); font-family: var(--sans); }
+.fig-tree .node-label { font-size: 10px; fill: var(--muted); }
+
+.fig-density .curve { fill: none; stroke: var(--ink); stroke-width: 1.4; }
+.fig-density .band { fill: var(--accent); opacity: 0.22; }
+.fig-density .median { stroke: var(--accent); stroke-width: 1.2; stroke-dasharray: 3 2; }
+.fig-density .node-label { font-size: 10.5px; fill: var(--accent); }
+
+.fig-diag .col-head { font-size: 10.5px; fill: var(--muted); }
+.fig-diag .row-label { font-size: 11px; fill: var(--ink); }
+.fig-diag .row-value { font-size: 10.5px; fill: var(--muted); }
+.fig-diag .track { fill: var(--line); }
+.fig-diag .bar-ok { fill: var(--ok); }
+.fig-diag .bar-bad { fill: var(--warn); }
+.fig-diag .threshold { stroke: var(--ink); stroke-width: 1; }
+.fig-diag .trace-a { fill: none; stroke: var(--ink); stroke-width: 0.9; opacity: 0.75; }
+.fig-diag .trace-b { fill: none; stroke: var(--accent); stroke-width: 0.9; opacity: 0.75; }
+
+/* A legend that says what a shape means, rather than leaving it to be
+   inferred: a square is an age we were given, a circle one we estimated. */
+.fig-legend {
+  display: flex; gap: 18px; flex-wrap: wrap;
+  margin: 6px 0 0; font: 11.5px var(--mono); color: var(--muted);
+}
+.fig-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.fig-legend i {
+  display: inline-block; width: 10px; height: 10px; font-style: normal;
+}
+.fig-legend i.cal { border: 1.4px solid var(--ink); background: var(--bg); }
+.fig-legend i.est { border-radius: 50%; background: var(--accent); }
+.fig-legend i.hpd { background: var(--accent); opacity: 0.22; width: 22px; height: 10px; }
+.fig-tree .label-bg { fill: var(--bg); opacity: 0.88; }
+
+/* Competing laws: one accent for the default model, ink with distinct dashes
+   for the alternatives — enough to tell five curves apart without inventing a
+   palette this page does not otherwise use. */
+.fig-overlay .curve.law-p1 { stroke: var(--accent); stroke-width: 1.8; }
+.fig-overlay .curve.law-swadesh { stroke: var(--ink); }
+.fig-overlay .curve.law-starostin { stroke: var(--ink); stroke-dasharray: 5 3; }
+.fig-overlay .curve.law-vasilyev { stroke: var(--ink); stroke-dasharray: 1.5 2.5; }
+.fig-overlay .curve.law-two-component { stroke: var(--ink); stroke-dasharray: 7 2 1.5 2; }
+.fig-overlay .median-tick { stroke-width: 2; }
+.fig-overlay .median-tick.law-p1 { stroke: var(--accent); }
+.fig-overlay .median-tick { stroke: var(--ink); }
+
+.fig-loco .diagonal { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 4 3; }
+.fig-loco .whisker { stroke-width: 1.4; }
+.fig-loco .whisker.strict { stroke: var(--ink); opacity: 0.55; }
+.fig-loco .whisker.relaxed { stroke: var(--accent); opacity: 0.75; }
+.fig-loco .point.strict { fill: var(--bg); stroke: var(--ink); stroke-width: 1.4; }
+.fig-loco .point.relaxed { fill: var(--accent); }
+
+.legend-line { display: inline-block; width: 26px; height: 0; border-top: 2px solid var(--ink); }
+.legend-line.law-p1 { border-color: var(--accent); }
+.legend-line.law-starostin { border-top-style: dashed; }
+.legend-line.law-vasilyev { border-top-style: dotted; }
+.legend-line.law-two-component { border-top-style: dashed; opacity: 0.7; }
+.fig-legend i.loco-strict { border: 1.4px solid var(--ink); background: var(--bg); }
+.fig-legend i.loco-relaxed { border-radius: 50%; background: var(--accent); }
+
+/* Bringing your own data is a normal thing to want, but it is not the first
+   thing to do, so it folds away rather than competing with the examples. */
+.custom-data { margin: 10px 0 0; font-size: 13px; }
+.custom-data summary { cursor: pointer; color: var(--muted); font-family: var(--mono); font-size: 12.5px; }
+.custom-data summary:hover { color: var(--ink); }
+.custom-data .hint { margin: 8px 0 6px; color: var(--muted); font-size: 12.5px; max-width: 76ch; }
+.custom-data code { font-family: var(--mono); font-size: 12px; background: var(--hover); padding: 0 3px; }
+.custom-data input[type="file"] { font-size: 12px; max-width: 230px; }
+.file-status { font: 12px var(--mono); color: var(--ok); }
+.file-status.err { color: var(--accent); }

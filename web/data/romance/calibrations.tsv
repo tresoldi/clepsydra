@@ -1,0 +1,11 @@
+calibration_id	target_id	type	p1	p2	p3	is_hard	source_key
+latin_age	Latin	fixed_tip	2050	.	.	1	ILLUSTRATIVE_ClassicalLatin
+italian_age	Italian	fixed_tip	0	.	.	1	EXTANT
+spanish_age	Spanish	fixed_tip	0	.	.	1	EXTANT
+portuguese_age	Portuguese	fixed_tip	0	.	.	1	EXTANT
+french_age	French	fixed_tip	0	.	.	1	EXTANT
+romanian_age	Romanian	fixed_tip	0	.	.	1	EXTANT
+catalan_age	Catalan	fixed_tip	0	.	.	1	EXTANT
+sardinian_age	SardinianLogudoro	fixed_tip	0	.	.	1	EXTANT
+root_age	root	uniform_node	2050	2800	.	0	ILLUSTRATIVE_LatinEra
+proto_romance_age	proto_romance	uniform_node	1400	2050	.	0	ILLUSTRATIVE_LatinDispersal

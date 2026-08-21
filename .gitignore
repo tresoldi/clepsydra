@@ -1,0 +1,47 @@
+# Build outputs
+/build/
+/obj/
+/build_debug/
+/obj_debug/
+/build_release/
+/obj_release/
+/obj_san/
+/obj_pic/
+*.o
+*.a
+*.so
+*.exe
+clepsydra
+
+# Stray Wasm/web build output. The page under web/ IS committed — the engine is
+# built locally and shipped as an artifact (see scripts/wasm-provenance.sh), so
+# the deploy has nothing to compile.
+*.wasm
+*.js
+*.html
+!web/**
+!scripts/*.js
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+*.egg-info/
+
+# Editor / OS
+.DS_Store
+*.swp
+*~
+
+# Generated reference packages (regenerated, not committed unless pinned)
+reference/generated/*.tsv
+!reference/generated/.gitkeep
+
+# Extracted paper text (regenerated from PDFs)
+literature/*.txt
+
+# Extracted spec text
+spec.txt
+
+# Example run outputs
+examples/*/output/

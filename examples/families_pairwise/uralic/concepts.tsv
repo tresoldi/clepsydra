@@ -1,0 +1,313 @@
+concept_id	label	external_namespace	external_id	word_class	status
+C1	FIRE	Concepticon	221	unknown	active
+C10	THOU	Concepticon	1215	unknown	active
+C100	HARD	Concepticon	1884	unknown	active
+C101	GRIND	Concepticon	1033	unknown	active
+C102	ALL	Concepticon	98	unknown	active
+C103	AND	Concepticon	1577	unknown	active
+C104	ANIMAL	Concepticon	619	unknown	active
+C105	AT	Concepticon	1461	unknown	active
+C106	BAD	Concepticon	1292	unknown	active
+C107	BECAUSE	Concepticon	1157	unknown	active
+C108	BELLY	Concepticon	1251	unknown	active
+C109	BERRY	Concepticon	904	unknown	active
+C11	COME	Concepticon	1446	unknown	active
+C110	BREATHE	Concepticon	1407	unknown	active
+C111	CHILD	Concepticon	2099	unknown	active
+C112	CLAW	Concepticon	72	unknown	active
+C113	CLOUD	Concepticon	1489	unknown	active
+C114	COLD	Concepticon	1287	unknown	active
+C115	COUNT	Concepticon	1420	unknown	active
+C116	CUT	Concepticon	1432	unknown	active
+C117	DAY (NOT NIGHT)	Concepticon	1225	unknown	active
+C118	DIE	Concepticon	1494	unknown	active
+C119	DIG	Concepticon	1418	unknown	active
+C12	BREAST	Concepticon	1402	unknown	active
+C120	DRY	Concepticon	1398	unknown	active
+C121	DUST	Concepticon	2	unknown	active
+C122	FAT (ORGANIC SUBSTANCE)	Concepticon	323	unknown	active
+C123	FATHER	Concepticon	1217	unknown	active
+C124	FEAR (BE AFRAID)	Concepticon	1419	unknown	active
+C125	FEATHER	Concepticon	1201	unknown	active
+C126	FEW	Concepticon	1242	unknown	active
+C127	FIGHT	Concepticon	1423	unknown	active
+C128	FIVE	Concepticon	493	unknown	active
+C129	FLOAT	Concepticon	1574	unknown	active
+C13	RAINING OR RAIN	Concepticon	2108	unknown	active
+C130	FLOW	Concepticon	2003	unknown	active
+C131	FLOWER	Concepticon	239	unknown	active
+C132	FLY (MOVE THROUGH AIR)	Concepticon	1441	unknown	active
+C133	FOG	Concepticon	249	unknown	active
+C134	FOUR	Concepticon	1500	unknown	active
+C135	FREEZE	Concepticon	1431	unknown	active
+C136	FULL	Concepticon	1429	unknown	active
+C137	GRASS	Concepticon	606	unknown	active
+C138	GREEN	Concepticon	1425	unknown	active
+C139	GUTS	Concepticon	1334	unknown	active
+C14	I	Concepticon	1209	unknown	active
+C140	HEAD	Concepticon	1256	unknown	active
+C141	HEART	Concepticon	1223	unknown	active
+C142	HERE	Concepticon	136	unknown	active
+C143	HOLD	Concepticon	1448	unknown	active
+C144	HOW	Concepticon	1239	unknown	active
+C145	HUSBAND	Concepticon	1200	unknown	active
+C146	IF	Concepticon	1459	unknown	active
+C147	KILL	Concepticon	1417	unknown	active
+C148	LAKE	Concepticon	624	unknown	active
+C149	LEAF	Concepticon	628	unknown	active
+C15	LOUSE	Concepticon	1392	unknown	active
+C150	LIE DOWN	Concepticon	215	unknown	active
+C151	BE ALIVE	Concepticon	1422	unknown	active
+C152	MANY	Concepticon	1198	unknown	active
+C153	MOON	Concepticon	1313	unknown	active
+C154	MOTHER	Concepticon	1216	unknown	active
+C155	MOUNTAIN	Concepticon	639	unknown	active
+C156	NARROW	Concepticon	1267	unknown	active
+C157	NEAR	Concepticon	1942	unknown	active
+C158	OTHER	Concepticon	197	unknown	active
+C159	PLAY	Concepticon	1413	unknown	active
+C16	NAME	Concepticon	1405	unknown	active
+C160	PULL	Concepticon	1455	unknown	active
+C161	PUSH	Concepticon	1452	unknown	active
+C162	RIGHT	Concepticon	1019	unknown	active
+C163	CORRECT (RIGHT)	Concepticon	1725	unknown	active
+C164	RIVER	Concepticon	666	unknown	active
+C165	ROAD	Concepticon	667	unknown	active
+C166	ROUND	Concepticon	1395	unknown	active
+C167	RUB	Concepticon	1449	unknown	active
+C168	SCRATCH	Concepticon	1436	unknown	active
+C169	SEA	Concepticon	1474	unknown	active
+C17	WING	Concepticon	1257	unknown	active
+C170	SEED	Concepticon	714	unknown	active
+C171	SEW	Concepticon	1457	unknown	active
+C172	SHARP	Concepticon	1396	unknown	active
+C173	SING	Concepticon	1261	unknown	active
+C174	SIT	Concepticon	1416	unknown	active
+C175	SKY	Concepticon	1732	unknown	active
+C176	SLEEP	Concepticon	1585	unknown	active
+C177	SMELL	Concepticon	2124	unknown	active
+C178	SMOOTH	Concepticon	1234	unknown	active
+C179	SNAKE	Concepticon	730	unknown	active
+C18	FLESH OR MEAT	Concepticon	2615	unknown	active
+C180	SNOW	Concepticon	784	unknown	active
+C181	SPIT	Concepticon	1440	unknown	active
+C182	SPLIT	Concepticon	1437	unknown	active
+C183	SQUEEZE	Concepticon	1414	unknown	active
+C184	STICK	Concepticon	1295	unknown	active
+C185	STRAIGHT	Concepticon	1404	unknown	active
+C186	SUN	Concepticon	1343	unknown	active
+C187	SWELL	Concepticon	1573	unknown	active
+C188	SWIM	Concepticon	1439	unknown	active
+C189	THAT	Concepticon	78	unknown	active
+C19	HAND	Concepticon	1277	unknown	active
+C190	THERE	Concepticon	1937	unknown	active
+C191	THIN	Concepticon	2308	unknown	active
+C192	THINK	Concepticon	2271	unknown	active
+C193	THREE	Concepticon	492	unknown	active
+C194	THROW	Concepticon	1456	unknown	active
+C195	TURN	Concepticon	1588	unknown	active
+C196	TWO	Concepticon	1498	unknown	active
+C197	VOMIT	Concepticon	1278	unknown	active
+C198	WALK	Concepticon	1443	unknown	active
+C199	WARM	Concepticon	1232	unknown	active
+C2	NOSE	Concepticon	1221	unknown	active
+C20	FLY (INSECT)	Concepticon	1504	unknown	active
+C200	WASH	Concepticon	1453	unknown	active
+C201	WE	Concepticon	1212	unknown	active
+C202	WET	Concepticon	1726	unknown	active
+C203	WHEN	Concepticon	1238	unknown	active
+C204	WHERE	Concepticon	1237	unknown	active
+C205	WHITE	Concepticon	1335	unknown	active
+C206	WIPE	Concepticon	1454	unknown	active
+C207	WITH	Concepticon	1340	unknown	active
+C208	WOMAN	Concepticon	962	unknown	active
+C209	FOREST	Concepticon	420	unknown	active
+C21	NIGHT	Concepticon	1233	unknown	active
+C210	WORM	Concepticon	1219	unknown	active
+C211	YEAR	Concepticon	1226	unknown	active
+C212	YELLOW	Concepticon	1424	unknown	active
+C213	YOU	Concepticon	1213	unknown	active
+C214	LIFT	Concepticon	501	unknown	active
+C215	BEHIND	Concepticon	1686	unknown	active
+C216	UNTIE	Concepticon	352	unknown	active
+C217	THEY	Concepticon	817	unknown	active
+C218	CUT DOWN	Concepticon	355	unknown	active
+C219	TEN	Concepticon	1515	unknown	active
+C22	EAR	Concepticon	1247	unknown	active
+C220	MOSQUITO	Concepticon	1509	unknown	active
+C221	HEEL	Concepticon	980	unknown	active
+C222	TRAP (CATCH)	Concepticon	1170	unknown	active
+C223	LIGHT (IGNITE)	Concepticon	737	unknown	active
+C224	SALTY	Concepticon	1091	unknown	active
+C225	ROTTEN	Concepticon	1728	unknown	active
+C226	NINE	Concepticon	1483	unknown	active
+C227	COOKED	Concepticon	269	unknown	active
+C228	WORD	Concepticon	1599	unknown	active
+C229	BARK	Concepticon	1204	unknown	active
+C23	FAR	Concepticon	1406	unknown	active
+C230	GATHER	Concepticon	7	unknown	active
+C231	FOX	Concepticon	1312	unknown	active
+C232	TWIST (AROUND)	Concepticon	3199	unknown	active
+C233	BAKE	Concepticon	183	unknown	active
+C234	PICK UP	Concepticon	371	unknown	active
+C235	LOSE	Concepticon	1660	unknown	active
+C236	LEAVE	Concepticon	1752	unknown	active
+C237	BE HUNGRY	Concepticon	1533	unknown	active
+C238	TOUCH	Concepticon	1892	unknown	active
+C239	MOLAR TOOTH	Concepticon	1049	unknown	active
+C24	NECK	Concepticon	1333	unknown	active
+C240	PERSON	Concepticon	683	unknown	active
+C241	STRETCH	Concepticon	214	unknown	active
+C242	FACE	Concepticon	1560	unknown	active
+C243	BESIDE	Concepticon	1816	unknown	active
+C244	LEND	Concepticon	582	unknown	active
+C245	MILLET	Concepticon	931	unknown	active
+C246	SOON	Concepticon	703	unknown	active
+C247	SPIDER	Concepticon	843	unknown	active
+C248	ARRIVE	Concepticon	1387	unknown	active
+C249	BORE	Concepticon	1501	unknown	active
+C25	DO OR MAKE	Concepticon	2575	unknown	active
+C250	WIFE	Concepticon	1199	unknown	active
+C251	SHUT	Concepticon	1046	unknown	active
+C252	PIECE	Concepticon	594	unknown	active
+C253	MAN	Concepticon	1554	unknown	active
+C254	ONLY	Concepticon	1580	unknown	active
+C255	LOUD	Concepticon	377	unknown	active
+C256	GROAN	Concepticon	716	unknown	active
+C257	TREE STUMP	Concepticon	241	unknown	active
+C258	TESTICLES	Concepticon	797	unknown	active
+C259	BEGIN	Concepticon	1806	unknown	active
+C26	HOUSE	Concepticon	1252	unknown	active
+C260	SONG	Concepticon	1096	unknown	active
+C261	SOUND OR NOISE	Concepticon	1811	unknown	active
+C262	STAB	Concepticon	1434	unknown	active
+C263	BORROW	Concepticon	1823	unknown	active
+C264	TEACH	Concepticon	709	unknown	active
+C265	ROAST OR FRY	Concepticon	2146	unknown	active
+C266	HEN	Concepticon	1514	unknown	active
+C267	SHELL	Concepticon	598	unknown	active
+C268	YOUNGER BROTHER	Concepticon	1760	unknown	active
+C269	BECOME	Concepticon	1990	unknown	active
+C27	STONE	Concepticon	857	unknown	active
+C270	STINKING	Concepticon	42	unknown	active
+C271	ROUGH	Concepticon	1923	unknown	active
+C272	SHAKE	Concepticon	1909	unknown	active
+C273	MORNING	Concepticon	1339	unknown	active
+C274	CLEAN	Concepticon	704	unknown	active
+C275	SON-IN-LAW	Concepticon	1056	unknown	active
+C276	DEAF	Concepticon	996	unknown	active
+C277	DISAPPEAR	Concepticon	485	unknown	active
+C278	EARLY	Concepticon	672	unknown	active
+C279	SISTER	Concepticon	1263	unknown	active
+C28	BITTER	Concepticon	887	unknown	active
+C280	NIT	Concepticon	267	unknown	active
+C281	SHALLOW	Concepticon	193	unknown	active
+C282	BATHE	Concepticon	138	unknown	active
+C283	SUMMER	Concepticon	1342	unknown	active
+C284	SNIFF	Concepticon	375	unknown	active
+C285	BAT	Concepticon	1793	unknown	active
+C287	ICE	Concepticon	617	unknown	active
+C288	SOME	Concepticon	1241	unknown	active
+C289	HUNT	Concepticon	1435	unknown	active
+C29	SAY	Concepticon	1458	unknown	active
+C290	GIRL	Concepticon	1646	unknown	active
+C291	BLUNT	Concepticon	379	unknown	active
+C292	EXTINGUISH	Concepticon	127	unknown	active
+C293	MUMBLE	Concepticon	128	unknown	active
+C294	GRANDSON	Concepticon	1618	unknown	active
+C295	SHORT	Concepticon	1645	unknown	active
+C296	DREAM (SOMETHING)	Concepticon	1920	unknown	active
+C297	CHARCOAL	Concepticon	1188	unknown	active
+C298	UNCLE	Concepticon	1327	unknown	active
+C299	LUNG	Concepticon	688	unknown	active
+C3	GO	Concepticon	695	unknown	active
+C30	TOOTH	Concepticon	1380	unknown	active
+C300	VULTURE	Concepticon	1185	unknown	active
+C301	COMB	Concepticon	1475	unknown	active
+C302	TOP	Concepticon	1753	unknown	active
+C303	DIVIDE	Concepticon	1119	unknown	active
+C304	KEEP	Concepticon	1477	unknown	active
+C305	WHISTLE	Concepticon	1025	unknown	active
+C306	SHARE	Concepticon	884	unknown	active
+C307	SHIT (DEFECATE)	Concepticon	676	unknown	active
+C308	TIRED	Concepticon	1757	unknown	active
+C309	DIRTY	Concepticon	1230	unknown	active
+C31	HAIR	Concepticon	1040	unknown	active
+C310	RAINBOW	Concepticon	1733	unknown	active
+C311	TURTLE	Concepticon	112	unknown	active
+C312	MIND	Concepticon	1562	unknown	active
+C313	ARMPIT	Concepticon	1886	unknown	active
+C32	BIG	Concepticon	1202	unknown	active
+C33	ONE	Concepticon	1493	unknown	active
+C34	HE OR SHE	Concepticon	2642	unknown	active
+C35	WHO	Concepticon	1235	unknown	active
+C36	HIT	Concepticon	1433	unknown	active
+C37	FOOT	Concepticon	1301	unknown	active
+C38	LEG	Concepticon	1297	unknown	active
+C39	FISH	Concepticon	227	unknown	active
+C4	WATER	Concepticon	948	unknown	active
+C40	HORN (ANATOMY)	Concepticon	1393	unknown	active
+C41	THIS	Concepticon	1214	unknown	active
+C42	YESTERDAY	Concepticon	1174	unknown	active
+C43	BLACK	Concepticon	163	unknown	active
+C44	DRINK	Concepticon	1401	unknown	active
+C45	NAVEL	Concepticon	1838	unknown	active
+C46	STAND	Concepticon	1442	unknown	active
+C47	BACK	Concepticon	1291	unknown	active
+C48	BITE	Concepticon	1403	unknown	active
+C49	WIND	Concepticon	960	unknown	active
+C5	MOUTH	Concepticon	674	unknown	active
+C50	SMOKE (EXHAUST)	Concepticon	778	unknown	active
+C51	WHAT	Concepticon	1236	unknown	active
+C52	CHILD (DESCENDANT)	Concepticon	1801	unknown	active
+C53	EGG	Concepticon	744	unknown	active
+C54	BURN	Concepticon	2102	unknown	active
+C55	GIVE	Concepticon	1447	unknown	active
+C56	NEW	Concepticon	1231	unknown	active
+C57	GOOD	Concepticon	1035	unknown	active
+C58	KNOW (SOMETHING)	Concepticon	1410	unknown	active
+C59	NOT	Concepticon	1240	unknown	active
+C6	TONGUE	Concepticon	1205	unknown	active
+C60	KNEE	Concepticon	1371	unknown	active
+C61	SAND	Concepticon	671	unknown	active
+C62	HEAR	Concepticon	1408	unknown	active
+C63	LAUGH	Concepticon	1355	unknown	active
+C64	EARTH (SOIL)	Concepticon	1228	unknown	active
+C65	LEFT	Concepticon	244	unknown	active
+C66	RED	Concepticon	156	unknown	active
+C67	LIVER	Concepticon	1224	unknown	active
+C68	HIDE	Concepticon	2486	unknown	active
+C69	SKIN	Concepticon	763	unknown	active
+C7	BLOOD	Concepticon	946	unknown	active
+C70	SUCK	Concepticon	1421	unknown	active
+C71	CARRY	Concepticon	700	unknown	active
+C72	ANT	Concepticon	587	unknown	active
+C73	HEAVY	Concepticon	1210	unknown	active
+C74	TAKE	Concepticon	1749	unknown	active
+C75	OLD	Concepticon	1229	unknown	active
+C76	EAT	Concepticon	1336	unknown	active
+C77	THICK	Concepticon	1244	unknown	active
+C78	THIGH	Concepticon	800	unknown	active
+C79	LONG	Concepticon	1203	unknown	active
+C8	BONE	Concepticon	1394	unknown	active
+C80	BLOW (OF WIND)	Concepticon	175	unknown	active
+C81	TREE	Concepticon	906	unknown	active
+C82	FALL	Concepticon	1280	unknown	active
+C83	RUN	Concepticon	1519	unknown	active
+C84	EYE	Concepticon	1248	unknown	active
+C85	ASH	Concepticon	646	unknown	active
+C86	DOG	Concepticon	2009	unknown	active
+C87	TAIL	Concepticon	1220	unknown	active
+C88	CRY	Concepticon	1839	unknown	active
+C89	TIE	Concepticon	1917	unknown	active
+C9	ROOT	Concepticon	670	unknown	active
+C90	SEE	Concepticon	1409	unknown	active
+C91	SWEET	Concepticon	717	unknown	active
+C92	BIRD	Concepticon	937	unknown	active
+C93	ROPE	Concepticon	1218	unknown	active
+C94	SALT	Concepticon	1274	unknown	active
+C95	SHADE	Concepticon	1388	unknown	active
+C96	SMALL	Concepticon	1246	unknown	active
+C97	WIDE	Concepticon	1243	unknown	active
+C98	IN	Concepticon	1460	unknown	active
+C99	STAR	Concepticon	1430	unknown	active

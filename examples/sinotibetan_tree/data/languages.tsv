@@ -1,0 +1,9 @@
+language_id	name	family_id	is_extinct	metadata
+Sinitic_Old_Chinese	Sinitic_Old_Chinese	Sino-Tibetan	0	oldc1244
+Sinitic_Beijing	Sinitic_Beijing	Sino-Tibetan	0	beij1235
+Tibetan_Old_Tibetan	Tibetan_Old_Tibetan	Sino-Tibetan	0	clas1254
+Tibetan_Lhasa	Tibetan_Lhasa	Sino-Tibetan	0	utsa1239
+Burmish_Old_Burmese	Burmish_Old_Burmese	Sino-Tibetan	0	oldb1235
+Burmish_Rangoon	Burmish_Rangoon	Sino-Tibetan	0	nucl1310
+Kiranti_Limbu	Kiranti_Limbu	Sino-Tibetan	0	limb1266
+rGyalrong_Japhug	rGyalrong_Japhug	Sino-Tibetan	0	japh1234

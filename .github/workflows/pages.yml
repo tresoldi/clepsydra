@@ -1,0 +1,103 @@
+name: Deploy to GitHub Pages
+
+# The page is served straight from web/: the WebAssembly engine is a committed
+# artifact, so there is nothing to compile here. That is deliberate — building
+# it would need the Emscripten SDK on every deploy — but it means the deploy has
+# to prove the artifact is not older than the sources it claims to be, which is
+# what the provenance step below does.
+#
+# src/ and include/ are in the trigger list even though they are not published.
+# A change there without a rebuild leaves a stale engine on the page, and if the
+# workflow only watched web/ that would never be noticed: the deploy would
+# simply not run. Triggering on the sources means such a push fails loudly with
+# "rebuild the engine" instead of quietly serving the old one.
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'web/**'
+      - 'src/**'
+      - 'include/**'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v7
+
+      # Fails if src/, include/ or the shim moved on without web/build-wasm.sh
+      # being rerun, rather than publishing the previous engine.
+      - name: Check the WebAssembly build is current
+        run: ./scripts/wasm-provenance.sh --check
+
+      # The page loads these by name; a rename or a missing generated file
+      # would produce a page that loads and then silently does nothing. The
+      # list is read out of the sources rather than duplicated here, so adding a
+      # script, a stylesheet or a worker cannot bypass the check. The worker is
+      # picked up separately because it is loaded by `new Worker(...)` from
+      # JavaScript, not by a tag in the HTML.
+      - name: Check every asset the page loads is present
+        run: |
+          missing=0
+          refs=$(grep -oE '(src|href)="[^"]+"' web/index.html \
+                 | sed -E 's/.*="([^"]+)".*/\1/' \
+                 | grep -v '^https\?:')
+          workers=$(grep -oE 'new Worker\("[^"]+"' web/app.js \
+                    | sed -E 's/.*"([^"]+)".*/\1/')
+          for asset in $refs $workers clepsydra.wasm BUILD_INFO CNAME; do
+              if [ ! -s "web/$asset" ]; then
+                  echo "::error::web/$asset is missing or empty"
+                  missing=1
+              fi
+          done
+          # The bundled datasets are fetched at runtime, so a missing one is
+          # invisible until a visitor selects it.
+          for ds in $(sed -n 's/.*dir: "data\/\([a-z_]*\)".*/\1/p' web/data/datasets.js); do
+              for f in tree.nwk forms.tsv calibrations.tsv; do
+                  if [ ! -s "web/data/$ds/$f" ]; then
+                      echo "::error::web/data/$ds/$f is missing or empty"
+                      missing=1
+                  fi
+              done
+          done
+          if [ ! -s web/data/loco.tsv ]; then
+              echo "::error::web/data/loco.tsv is missing or empty"
+              missing=1
+          fi
+          exit $missing
+
+      # The held-out benchmark shown on the Validation tab must be the one the
+      # repository actually produced, not a copy that drifted from it.
+      - name: Check the published benchmark matches the committed result
+        run: |
+          if ! cmp -s web/data/loco.tsv examples/loco_benchmark/loco_multi_report.tsv; then
+              echo "::error::web/data/loco.tsv differs from examples/loco_benchmark/loco_multi_report.tsv"
+              exit 1
+          fi
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v6
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: web/
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
