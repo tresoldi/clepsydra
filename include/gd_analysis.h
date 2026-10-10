@@ -134,6 +134,7 @@ typedef struct gd_analysis_tree_config {
     double   root_lex_logmean;  /* -1.2, i.e. 0.30 */
     double   root_lex_logsd;    /* 1.5 */
     bool     prior_only;        /* 0: sample with the likelihood switched off */
+    bool     compare_prior;     /* 1: also run the prior alone and report it */
     double   hpd_level;         /* 0.90 */
 
     /*
@@ -168,6 +169,25 @@ typedef struct gd_analysis_node_age {
     const char         *label;
     gd_analysis_summary age;
     double              rhat, ess, ess_tail, mcse;
+
+    /*
+     * The three kinds of age (docs/roadmap.md, "The goal"):
+     *   age      — calendar years BP (above);
+     *   lexical  — rho * age: expected replacements per concept since the
+     *              node, which the cognates measure directly;
+     *   relative — age / root age, which needs no calendar scale at all.
+     * Under a relaxed clock rho is the mean rate, so lexical and relative
+     * ages partly reflect the prior on branch multipliers.
+     */
+    gd_analysis_summary lexical, relative;
+
+    /* The same node under the prior alone (a likelihood-free run), and how
+     * far the data moved it: `prior_overlap` is the overlap coefficient of the
+     * prior and posterior densities of log age (1 = indistinguishable), and
+     * `contraction` is 1 - var_post / var_prior of log age. NAN when no
+     * prior run was made. */
+    gd_analysis_summary prior;
+    double              prior_overlap, contraction;
 } gd_analysis_node_age;
 
 /* One sampled parameter, in the sampler's own scale. For an age or a branch
@@ -214,6 +234,23 @@ typedef struct gd_analysis_tree_result {
      * tail ESS are at least GD_CONV_ESS_PER_CHAIN per chain. A run that fails
      * is still returned -- its draws are evidence of the failure -- but the
      * CLI exits non-zero unless told otherwise. */
+    /*
+     * Where the calendar scale comes from. `scale_source` names the anchors
+     * present: "calibration" (an internal node is calibrated), "tip" (a tip
+     * has a non-zero date), both joined by "+", or "clock_prior" when there
+     * is neither and calendar ages are the lexical ones divided by the clock
+     * prior. Static storage.
+     *
+     * `rate_contraction` is 1 - var_post / var_prior of log rho. Near 0 means
+     * the data and calibrations left the clock where its prior put it, so
+     * every calendar age carries the prior's width. `scale_from_prior` flags
+     * that (contraction < 0.5).
+     */
+    const char *scale_source;
+    double rate_contraction;
+    bool   scale_from_prior;
+    gd_analysis_summary lexical_root; /* rho * root age */
+
     bool   converged;
     size_t n_unconverged;             /* parameters failing any criterion */
     double max_rhat, min_ess_bulk, min_ess_tail;

@@ -58,12 +58,26 @@ age-scaling move is enabled to decorrelate nested ages on deep trees. Absolute
 ages depend on the rate prior and calibrations — the tool says so.
 
 **Outputs** (strict TSV in `DIR/`):
-- `posterior_nodes.tsv` — per free internal node: mean/median/sd, 90% HPD (years
-  BP), R̂, bulk and tail ESS.
+- `posterior_nodes.tsv` — per free node:
+  - **calendar age**: mean, median, sd and 90% HPD in years BP;
+  - R̂, bulk ESS and tail ESS;
+  - **lexical age** (`lexical_*`, `rho · age`): expected replacements per
+    concept since the node, which is what the cognates measure;
+  - **relative age** (`relative_*`): the age as a fraction of the root's,
+    which needs no calendar scale;
+  - the node under the **prior alone** (`prior_*`, from a likelihood-free run;
+    `--compare-prior 0` skips it), and `prior_overlap`, the overlap of prior
+    and posterior on log age (1 means the data said nothing about the node).
+
+  Missing values are written as `.`.
 - `diagnostics.tsv` — every sampled parameter: mean, sd, R̂, bulk and tail ESS,
   MCSE of the mean, acceptance.
 - `run_manifest.tsv` — program/commit, model, sizes, seed, priors, the
-  branch-rate confounding flag, the convergence verdict (`converged`,
+  branch-rate confounding flag, where the calendar scale comes from
+  (`scale_source`: `calibration`, `tip`, both, or `clock_prior`), how far the
+  clock moved off its prior (`rate_contraction`; `scale_from_prior` is 1
+  below 0.5), the lexical root (median and 90% HPD) and its prior, the
+  convergence verdict (`converged`,
   `n_unconverged_params`, `max_rhat`, `min_ess_bulk`, `min_ess_tail`), and the
   scale-dependence note.
 

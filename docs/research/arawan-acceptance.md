@@ -34,3 +34,25 @@ tips, wrong calibration support, and no convergence check. It was not
 meant to fix the dating. The two root runs show the missing tree prior
 exactly as `arawan-lessons.md` items 1–3 describe it, and they are E1's
 acceptance targets.
+
+## Gate E1 (in progress) — 2026-10-10
+
+The proper age prior (lexical root plus uniform ages below it), the new
+moves, and the three-ages report. Same command, without
+`--allow-unconverged`.
+
+| run | root BP, median (90% HPD) | lexical root (90% HPD) | converged | scale source | rate contraction |
+|---|---|---|---|---|---|
+| tips only | 3,702 (953–8,389) | 0.539 (0.485–0.591) | yes (R-hat 1.001, ESS 3,355) | tip | 0.43, flagged prior-driven |
+| tips + soft U(300, 3000) root | 2,214 (1,372–3,038) | 0.538 (0.486–0.593) | yes (R-hat 1.002, ESS 2,588) | calibration+tip | 0.88 |
+
+**Reading.** Both of E0's failures are gone. The root is finite and
+converged without any window. With the window it sits inside the window
+rather than on its top edge.
+
+The lexical root is identical in the two runs, about ±10%. Relative ages
+agree between them to about 0.01 (e.g. n5 at 0.554 in both). The cognates
+determine everything except the calendar scale, and that is now visible in
+the output. The calendar difference between the runs is entirely the root
+window. Without it, the scale comes from two dated tips 131 and 167 years
+old plus the clock prior, and the run says so (`scale_from_prior`).

@@ -34,6 +34,18 @@ columns and example numbers are expected throughout 0.x and are listed here.
 
 ### Added
 
+- **Three kinds of age, the scale source and the prior beside the posterior**
+  (E1.6).
+  - `posterior_nodes.tsv` reports every node's lexical age (`rho · age`,
+    replacements per concept) and relative age (age / root age) next to the
+    calendar age.
+  - It also reports the node under a likelihood-free prior run, which is on
+    by default (`--compare-prior`), with the prior–posterior overlap.
+  - `run_manifest.tsv` gains `scale_source`, `rate_contraction`,
+    `scale_from_prior` and the lexical root.
+  - On Arawan the lexical root is the same, 0.54 ± 0.05, with or without a
+    root window. Only the calendar ages move, and the manifest says why.
+  - Missing numbers in output tables are `.`, not `nan`.
 - **Taxon-set targets** (E0.11). A calibration may target `mrca:A,B,...`, the
   most recent common ancestor of the listed tips. Unlabelled internal nodes
   are reported as `mrca:X,Y` instead of `(node)`, and those names resolve

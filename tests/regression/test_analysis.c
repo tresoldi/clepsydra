@@ -1071,6 +1071,44 @@ TEST(test_analysis_mrca_targets_and_generated_names)
     CHECK(strstr(err.message, "Castilian") != NULL);
 }
 
+/* E1.6: every node reports lexical, relative and calendar age; the result
+ * says where the calendar scale comes from and whether the clock moved off
+ * its prior; and a prior-only run is reported beside each node. */
+TEST(test_analysis_three_ages_and_scale_source)
+{
+    gd_analysis_tree_input in; tree_input(&in);
+    gd_analysis_tree_config cfg; quick_config(&cfg);
+    cfg.n_warmup = 800; cfg.n_samples = 1500;
+    gd_error err = GD_ERROR_INIT;
+
+    /* Latin is dated (2050 BP): the scale has a tip anchor. */
+    gd_analysis_tree_result *a = NULL;
+    CHECK(gd_analysis_tree_run(&in, &cfg, &a, &err) == 0);
+    const gd_analysis_node_age *root = gd_analysis_result_node(a, a->tree->root);
+    CHECK(root != NULL);
+    CHECK_STREQ(a->scale_source, "tip");
+    CHECK_APPROX(root->relative.median, 1.0, 1e-12);
+    CHECK(root->lexical.median > 0.0 && root->lexical.median < 10.0);
+    CHECK(!isnan(root->prior_overlap));
+    CHECK(root->prior_overlap >= 0.0 && root->prior_overlap <= 1.0);
+    CHECK(root->prior.hpd_hi > root->prior.hpd_lo);
+    CHECK(a->lexical_root.median > 0.0);
+    gd_analysis_tree_result_destroy(a);
+
+    /* Every tip modern and no node calibrated: the calendar scale is the
+     * clock prior, and the clock posterior is its prior (contraction ~ 0). */
+    in.calibrations_tsv = "calibration_id\ttarget_id\ttype\tp1\tp2\tp3\tis_hard\tsource_key\n";
+    gd_analysis_tree_result *b = NULL;
+    CHECK(gd_analysis_tree_run(&in, &cfg, &b, &err) == 0);
+    bool flagged = b->scale_from_prior;
+    double rc = b->rate_contraction;
+    const char *src = b->scale_source;
+    gd_analysis_tree_result_destroy(b);
+    CHECK_STREQ(src, "clock_prior");
+    CHECK(flagged);
+    CHECK(fabs(rc) < 0.25);
+}
+
 static void run_tests(void)
 {
     RUN(test_analysis_prepare_reports_dataset_size);
@@ -1086,6 +1124,7 @@ static void run_tests(void)
     RUN(test_analysis_progress_can_cancel);
     RUN(test_analysis_counts_unreadable_weights);
     RUN(test_analysis_convergence_verdict);
+    RUN(test_analysis_three_ages_and_scale_source);
     RUN(test_analysis_reads_calibrations);
     RUN(test_analysis_mrca_targets_and_generated_names);
     RUN(test_analysis_drops_a_calibration);

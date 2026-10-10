@@ -536,6 +536,12 @@ int cmd_date_tree(int argc, char **argv)
     if (res->n_unreadable_weights > 0)
         fprintf(fp, "unreadable_primary_weights\t%zu\n", res->n_unreadable_weights);
     fprintf(fp, "missing_cognate_rows\t%zu\n", res->n_missing_cognates);
+    fprintf(fp, "scale_source\t%s\n", res->scale_source);
+    fprintf(fp, "rate_contraction\t%.3f\n", res->rate_contraction);
+    fprintf(fp, "scale_from_prior\t%d\n", res->scale_from_prior ? 1 : 0);
+    fprintf(fp, "lexical_root_median\t%.4f\n", res->lexical_root.median);
+    fprintf(fp, "lexical_root_hpd90\t%.4f-%.4f\n", res->lexical_root.hpd_lo, res->lexical_root.hpd_hi);
+    fprintf(fp, "root_lex_prior\tlognormal(%.3f, %.3f)\n", cfg.root_lex_logmean, cfg.root_lex_logsd);
     fprintf(fp, "converged\t%d\n", res->converged ? 1 : 0);
     fprintf(fp, "n_unconverged_params\t%zu\n", res->n_unconverged);
     fprintf(fp, "max_rhat\t%.4f\n", res->max_rhat);

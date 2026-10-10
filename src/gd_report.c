@@ -178,7 +178,11 @@ int gd_table_write_tsv(const gd_table *t, const gd_sink *sink, gd_error *err)
                 if ((rc = emit_str(sink, cl->text ? cl->text : "")) != GD_E_OK) return rc;
                 break;
             case CELL_NUM:
-                if (t->cols[c].tsv_style == GD_NUM_GENERAL) {
+                /* Not a number: the TSV missing value, as in every input
+                 * table, rather than a platform's spelling of "nan". */
+                if (!isfinite(cl->num)) {
+                    buf[0] = '.'; buf[1] = '\0';
+                } else if (t->cols[c].tsv_style == GD_NUM_GENERAL) {
                     snprintf(buf, sizeof buf, "%.*g", t->cols[c].tsv_precision, cl->num);
                 } else {
                     snprintf(buf, sizeof buf, "%.*f", t->cols[c].tsv_precision, cl->num);
@@ -298,6 +302,19 @@ static const gd_column NODE_COLS[] = {
     { "rhat",         "rhat",    3, GD_NUM_FIXED },
     { "ess_bulk",     "ess",     0, GD_NUM_FIXED },
     { "ess_tail",     "ess_tail", 0, GD_NUM_FIXED },
+    /* Lexical age: expected replacements per concept since the node. */
+    { "lexical_median",    "lexical_median",  4, GD_NUM_GENERAL },
+    { "lexical_hpd90_lo",  "lexical_hpd_lo",  4, GD_NUM_GENERAL },
+    { "lexical_hpd90_hi",  "lexical_hpd_hi",  4, GD_NUM_GENERAL },
+    /* Relative age: the node's age as a fraction of the root's. */
+    { "relative_median",   "relative_median", 3, GD_NUM_FIXED },
+    { "relative_hpd90_lo", "relative_hpd_lo", 3, GD_NUM_FIXED },
+    { "relative_hpd90_hi", "relative_hpd_hi", 3, GD_NUM_FIXED },
+    /* The same node under the prior alone, and how much the two overlap. */
+    { "prior_median_bp",   "prior_median",    1, GD_NUM_FIXED },
+    { "prior_hpd90_lo_bp", "prior_hpd_lo",    1, GD_NUM_FIXED },
+    { "prior_hpd90_hi_bp", "prior_hpd_hi",    1, GD_NUM_FIXED },
+    { "prior_overlap",     "prior_overlap",   3, GD_NUM_FIXED },
 };
 
 int gd_report_nodes(const gd_analysis_tree_result *res,
@@ -324,6 +341,17 @@ int gd_report_nodes(const gd_analysis_tree_result *res,
         if ((rc = gd_table_set_num(t, 7, a->rhat, err)) != GD_E_OK) goto fail;
         if ((rc = gd_table_set_num(t, 8, a->ess, err)) != GD_E_OK) goto fail;
         if ((rc = gd_table_set_num(t, 9, a->ess_tail, err)) != GD_E_OK) goto fail;
+        if ((rc = gd_table_set_num(t, 10, a->lexical.median, err)) != GD_E_OK) goto fail;
+        if ((rc = gd_table_set_num(t, 11, a->lexical.hpd_lo, err)) != GD_E_OK) goto fail;
+        if ((rc = gd_table_set_num(t, 12, a->lexical.hpd_hi, err)) != GD_E_OK) goto fail;
+        if ((rc = gd_table_set_num(t, 13, a->relative.median, err)) != GD_E_OK) goto fail;
+        if ((rc = gd_table_set_num(t, 14, a->relative.hpd_lo, err)) != GD_E_OK) goto fail;
+        if ((rc = gd_table_set_num(t, 15, a->relative.hpd_hi, err)) != GD_E_OK) goto fail;
+        bool have_prior = !isnan(a->prior_overlap);
+        if ((rc = gd_table_set_num(t, 16, have_prior ? a->prior.median : NAN, err)) != GD_E_OK) goto fail;
+        if ((rc = gd_table_set_num(t, 17, have_prior ? a->prior.hpd_lo : NAN, err)) != GD_E_OK) goto fail;
+        if ((rc = gd_table_set_num(t, 18, have_prior ? a->prior.hpd_hi : NAN, err)) != GD_E_OK) goto fail;
+        if ((rc = gd_table_set_num(t, 19, a->prior_overlap, err)) != GD_E_OK) goto fail;
     }
     *out = t;
     return GD_E_OK;

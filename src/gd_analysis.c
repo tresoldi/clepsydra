@@ -221,6 +221,35 @@ static gd_analysis_summary summarize(const double *x, size_t n, double level)
     return s;
 }
 
+/* Overlap coefficient of two samples' densities, on a shared histogram of
+ * log values: sum over bins of min(p, q). 1 when indistinguishable, 0 when
+ * disjoint. */
+static double overlap_log(const double *a, size_t na, const double *b, size_t nb)
+{
+    enum { NB = 48 };
+    double lo = HUGE_VAL, hi = -HUGE_VAL;
+    for (size_t i = 0; i < na; i++) if (a[i] > 0) { double l = log(a[i]); if (l < lo) lo = l; if (l > hi) hi = l; }
+    for (size_t i = 0; i < nb; i++) if (b[i] > 0) { double l = log(b[i]); if (l < lo) lo = l; if (l > hi) hi = l; }
+    if (!(hi > lo)) return 1.0;
+    double ha[NB] = {0}, hb[NB] = {0}, w = (hi - lo) / NB;
+    for (size_t i = 0; i < na; i++) if (a[i] > 0) { size_t k = (size_t)((log(a[i]) - lo) / w); ha[k < NB ? k : NB - 1] += 1.0 / (double)na; }
+    for (size_t i = 0; i < nb; i++) if (b[i] > 0) { size_t k = (size_t)((log(b[i]) - lo) / w); hb[k < NB ? k : NB - 1] += 1.0 / (double)nb; }
+    double s = 0.0;
+    for (int k = 0; k < NB; k++) s += (ha[k] < hb[k]) ? ha[k] : hb[k];
+    return s;
+}
+
+static double var_log(const double *x, size_t n)
+{
+    double m = 0.0, v = 0.0;
+    size_t k = 0;
+    for (size_t i = 0; i < n; i++) if (x[i] > 0) { m += log(x[i]); k++; }
+    if (k < 2) return NAN;
+    m /= (double)k;
+    for (size_t i = 0; i < n; i++) if (x[i] > 0) { double d = log(x[i]) - m; v += d * d; }
+    return v / (double)(k - 1);
+}
+
 /* ------------------------------------------------- calibration variation */
 
 /* Loosen a soft window about its centre. A fixed tip or a hard bound has no
@@ -401,6 +430,7 @@ void gd_analysis_tree_config_default(gd_analysis_tree_config *cfg)
     cfg->root_lex_logmean = -1.2;   /* exp(-1.2) = 0.30 replacements per concept */
     cfg->root_lex_logsd = 1.5;
     cfg->prior_only = false;
+    cfg->compare_prior = true;
     cfg->hpd_level = 0.90;
     cfg->calibrations.drop_index = GD_ANALYSIS_KEEP_ALL;
     cfg->calibrations.widen = 1.0;
@@ -749,8 +779,8 @@ int gd_analysis_tree_job_run(gd_analysis_tree_job *job,
         return gd_error_set(err, GD_E_INVALID_ARG, "this analysis job has already run");
     }
 
-    gd_mcmc_result *res = NULL;
-    double *col = NULL;
+    gd_mcmc_result *res = NULL, *prior_res = NULL;
+    double *col = NULL, *pcol = NULL, *rate_col = NULL, *root_col = NULL;
     gd_analysis_tree_result *r = NULL;
     int rc = GD_E_INTERNAL;
 
@@ -776,13 +806,44 @@ int gd_analysis_tree_job_run(gd_analysis_tree_job *job,
     res = gd_mcmc_run(&model, job->tree, job->cs, &mc, job->cfg.n_chains, err);
     if (res == NULL) goto done;
 
+    /* The prior alone, for the effective-prior report (E1.6). The likelihood
+     * is switched off, so this costs a small fraction of the posterior run.
+     * Not reported to the progress callback: it is part of this run. */
+    if (job->cfg.compare_prior && !job->cfg.prior_only) {
+        gd_mcmc_config pc = mc;
+        pc.prior_only = true;
+        pc.seed = mc.seed ^ 0x9e3779b97f4a7c15ULL;
+        pc.on_progress = NULL;
+        prior_res = gd_mcmc_run(&model, job->tree, job->cs, &pc, job->cfg.n_chains, err);
+        if (prior_res == NULL) goto done;
+    }
+
     size_t n = job->tree->nnodes;
     /* res->n_chains * res->n_draws was already checked when the sampler
      * allocated its sample matrix from the same two numbers. */
     size_t total = res->n_chains * res->n_draws, np = res->n_param;
     col = (double *)gd_malloc_array_checked(total ? total : 1, sizeof(double), err);
+    pcol = (double *)gd_malloc_array_checked(total ? total : 1, sizeof(double), err);
+    rate_col = (double *)gd_malloc_array_checked(total ? total : 1, sizeof(double), err);
+    root_col = (double *)gd_malloc_array_checked(total ? total : 1, sizeof(double), err);
     r = (gd_analysis_tree_result *)gd_calloc_checked(1, sizeof *r, err);
-    if (col == NULL || r == NULL) { gd_error_set(err, GD_E_NOMEM, "out of memory"); goto done; }
+    if (col == NULL || pcol == NULL || rate_col == NULL || root_col == NULL || r == NULL) {
+        gd_error_set(err, GD_E_NOMEM, "out of memory"); goto done;
+    }
+
+    /* Per-draw rate and root age, for the lexical and relative ages. */
+    {
+        size_t p_rate = SIZE_MAX, p_root = SIZE_MAX;
+        for (size_t p = 0; p < np; p++) {
+            if (res->param_type[p] == GD_MCMC_P_LOGRATE) p_rate = p;
+            if (res->param_type[p] == GD_MCMC_P_AGE && res->param_node[p] == job->tree->root) p_root = p;
+        }
+        double fixed_root = job->cs->node_lo[job->tree->root];
+        for (size_t i = 0; i < total; i++) {
+            rate_col[i] = (p_rate != SIZE_MAX) ? exp(gd_mcmc_result_at(res, p_rate, i)) : NAN;
+            root_col[i] = (p_root != SIZE_MAX) ? gd_mcmc_result_at(res, p_root, i) : fixed_root;
+        }
+    }
 
     /* Thinned trace, when asked for: evenly spaced draws, chains kept apart. */
     size_t td = job->cfg.trace_draws;
@@ -847,6 +908,22 @@ int gd_analysis_tree_job_run(gd_analysis_tree_job *job,
             na->ess = res->ess[p];
             na->ess_tail = res->ess_tail[p];
             na->mcse = res->mcse[p];
+            for (size_t i = 0; i < total; i++) pcol[i] = rate_col[i] * col[i];
+            na->lexical = summarize(pcol, total, level);
+            for (size_t i = 0; i < total; i++) pcol[i] = col[i] / root_col[i];
+            na->relative = summarize(pcol, total, level);
+            na->prior_overlap = NAN;
+            na->contraction = NAN;
+            memset(&na->prior, 0, sizeof na->prior);
+            if (prior_res != NULL) {
+                size_t ptotal = prior_res->n_chains * prior_res->n_draws;
+                if (ptotal <= total) {
+                    (void)gd_mcmc_result_column(prior_res, p, pcol, ptotal);
+                    na->prior = summarize(pcol, ptotal, level);
+                    na->prior_overlap = overlap_log(col, total, pcol, ptotal);
+                    na->contraction = 1.0 - var_log(col, total) / var_log(pcol, ptotal);
+                }
+            }
         }
     }
 
@@ -890,6 +967,31 @@ int gd_analysis_tree_job_run(gd_analysis_tree_job *job,
     }
     r->min_branch_duration_corr = res->min_branch_duration_corr;
 
+    /* Where the calendar scale comes from (E1.6). */
+    {
+        bool node_cal = false, tip_cal = false;
+        for (size_t c = 0; c < job->cs->ncals; c++) {
+            const gd_calibration *cl = &job->cs->cals[c];
+            if (!cl->resolved) continue;
+            if (job->tree->nodes[cl->node_index].is_leaf) {
+                if (!(cl->type == GD_CAL_FIXED_TIP && cl->p1 <= 0.0)) tip_cal = true;
+            } else {
+                node_cal = true;
+            }
+        }
+        r->scale_source = (node_cal && tip_cal) ? "calibration+tip"
+                        : node_cal ? "calibration" : tip_cal ? "tip" : "clock_prior";
+        r->rate_contraction = NAN;
+        for (size_t p = 0; p < np; p++) {
+            if (res->param_type[p] != GD_MCMC_P_LOGRATE) continue;
+            double sd = r->params[p].stat.sd;
+            r->rate_contraction = 1.0 - (sd * sd) / (job->cfg.rate_logsd * job->cfg.rate_logsd);
+        }
+        r->scale_from_prior = !(r->rate_contraction >= 0.5);
+        for (size_t i = 0; i < total; i++) pcol[i] = rate_col[i] * root_col[i];
+        r->lexical_root = summarize(pcol, total, level);
+    }
+
     /* The tree moves into the result; tear down what still points at it first,
      * so the job and the result can be destroyed in either order. */
     job_release_tree_users(job);
@@ -901,7 +1003,8 @@ int gd_analysis_tree_job_run(gd_analysis_tree_job *job,
 
 done:
     if (rc != GD_E_OK) rc = fail_code(err);
-    free(col);
+    free(col); free(pcol); free(rate_col); free(root_col);
+    gd_mcmc_result_destroy(prior_res);
     if (r != NULL) { free(r->trace); free(r->ages); free(r->params); free(r); }
     if (res != NULL) gd_mcmc_result_destroy(res);
     return rc;
