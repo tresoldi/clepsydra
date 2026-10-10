@@ -90,22 +90,23 @@ Four things follow from the research and shape everything below.
   - The 95% width at 2 ka is ×/÷ 5.8.
   - Leave one family out, the clock beats the trivial baselines on point
     estimate, but every skill interval includes zero.
-- **E2: in progress.**
+- **E2: done apart from its gate.**
   - Done:
-    - E2.1: integrated concept rates, 24-point rule, pattern compression.
-    - E2.2: sampled ε, a per-concept table, incompatible concepts
-      excluded and counted.
-    - E2.3: synonyms marginalised exactly in `date-pair`.
-    - E2.4: `analysis_id` selection, loan rows as missing.
-    - E2.6: outlier-prone calibrations with posterior outlier probabilities.
+    - E2.1: concept rates, with an empirical prior on their spread
+      (`concept-rate-prior.md`).
+    - E2.2: sampled ε and the concept table.
+    - E2.3 and E2.5: synonyms and cognacy confidence in `date-pair`.
+    - E2.4: codings and loans.
+    - E2.6: outlier calibrations.
     - E2.7: `ancestor_tip`.
-    - E2.10: adequacy panel. These posterior predictive checks cover class
-      counts, singletons, the incompatible share and pairwise sharing.
-  - Open:
-    - E2.5: `cognacy_confidence` is not yet read.
-    - E2.8: the sensitivity variants.
-    - E2.9: source-level error (needs D1.3).
-    - The E2 gate's misspecification simulator (D3).
+    - E2.8: gamma mixing. Lomax and strict/relaxed spike-and-slab remain open.
+    - E2.9: `tip_error`, with the empirical prior from D1.3.
+    - E2.10: the adequacy panel.
+  - The gate's simulator (D3, `tools/simworld`) is running.
+- **E3:** done: E3.0 (subtree move), E3.2 (draws and pointwise output), E3.4
+  (`date-trees`). Open: E3.1 (likelihood caching), E3.3 (checkpoint binding).
+- **D1:** done: D1.2 (`reference/calibrations/curated_nodes.tsv`) and D1.3
+  (`error-prior.md`).
 - **D2, the σ_f pilot: done, and a no-go on its pre-registered rule**
   (`docs/research/clock-pilot.md`).
   - Over 15 nodes in 6 families, σ_tot = 0.77 (95% 0.50–1.40). Most of it
