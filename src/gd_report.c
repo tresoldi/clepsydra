@@ -481,7 +481,120 @@ int gd_report_pair(const gd_analysis_pair_result *res,
     if ((rc = kv_num(t, "separation_et90_hi_y", res->sep_et_hi_90, 1, err)) != GD_E_OK) goto fail;
     if ((rc = kv_uint(t, "absolute_anchored", res->absolute_anchored ? 1u : 0u, err)) != GD_E_OK) goto fail;
     if ((rc = kv_num(t, "prior_dominance", res->prior_dominance, 3, err)) != GD_E_OK) goto fail;
+    if ((rc = kv_uint(t, "n_synonym_concepts", (uint64_t)res->n_synonym_concepts, err)) != GD_E_OK) goto fail;
 
+    *out = t;
+    return GD_E_OK;
+fail:
+    gd_table_destroy(t);
+    return rc;
+}
+
+/* posterior_concepts.tsv (E2.2): which concepts the model treats as noise,
+ * and how fast each is replaced relative to the mean. */
+static const gd_column CONCEPT_COLS[] = {
+    { "concept",          "concept",        0, GD_NUM_FIXED },
+    { "n_observed",       "n_observed",     0, GD_NUM_FIXED },
+    { "incompatible",     "incompatible",   0, GD_NUM_FIXED },
+    { "p_contaminated",   "p_contaminated", 3, GD_NUM_FIXED },
+    { "relative_rate",    "relative_rate",  3, GD_NUM_FIXED },
+    { "mean_loglik",      "mean_loglik",    3, GD_NUM_FIXED },
+};
+
+int gd_report_concepts(const gd_analysis_tree_result *res,
+                       gd_table **out, gd_error *err)
+{
+    if (res == NULL || out == NULL) {
+        return gd_error_set(err, GD_E_INVALID_ARG, "report: null argument");
+    }
+    gd_table *t = NULL;
+    int rc = gd_table_create(CONCEPT_COLS, sizeof CONCEPT_COLS / sizeof CONCEPT_COLS[0],
+                             &t, err);
+    if (rc != GD_E_OK) return rc;
+    if (res->concepts != NULL) {
+        for (size_t c = 0; c < res->n_concepts; c++) {
+            const gd_analysis_concept *k = &res->concepts[c];
+            if ((rc = gd_table_add_row(t, err)) != GD_E_OK) goto fail;
+            if ((rc = gd_table_set_text(t, 0, k->name, err)) != GD_E_OK) goto fail;
+            if ((rc = gd_table_set_uint(t, 1, (uint64_t)k->n_observed, err)) != GD_E_OK) goto fail;
+            if ((rc = gd_table_set_uint(t, 2, k->incompatible ? 1u : 0u, err)) != GD_E_OK) goto fail;
+            if ((rc = gd_table_set_num(t, 3, k->p_contaminated, err)) != GD_E_OK) goto fail;
+            if ((rc = gd_table_set_num(t, 4, k->rate_mult, err)) != GD_E_OK) goto fail;
+            if ((rc = gd_table_set_num(t, 5, k->mean_loglik, err)) != GD_E_OK) goto fail;
+        }
+    }
+    *out = t;
+    return GD_E_OK;
+fail:
+    gd_table_destroy(t);
+    return rc;
+}
+
+static const gd_column CALCHK_COLS[] = {
+    { "calibration_id",     "id",            0, GD_NUM_FIXED },
+    { "target",             "target",        0, GD_NUM_FIXED },
+    { "target_median_bp",   "median",        1, GD_NUM_FIXED },
+    { "target_hpd90_lo_bp", "hpd_lo",        1, GD_NUM_FIXED },
+    { "target_hpd90_hi_bp", "hpd_hi",        1, GD_NUM_FIXED },
+    { "outlier_prior",      "outlier_prior", 3, GD_NUM_FIXED },
+    { "outlier_posterior",  "outlier_post",  3, GD_NUM_FIXED },
+};
+
+int gd_report_calibrations(const gd_analysis_tree_result *res,
+                           gd_table **out, gd_error *err)
+{
+    if (res == NULL || out == NULL) {
+        return gd_error_set(err, GD_E_INVALID_ARG, "report: null argument");
+    }
+    gd_table *t = NULL;
+    int rc = gd_table_create(CALCHK_COLS, sizeof CALCHK_COLS / sizeof CALCHK_COLS[0], &t, err);
+    if (rc != GD_E_OK) return rc;
+    for (size_t i = 0; i < res->n_cal_checks; i++) {
+        const struct gd_analysis_cal_check *k = &res->cal_checks[i];
+        if ((rc = gd_table_add_row(t, err)) != GD_E_OK) goto fail;
+        if ((rc = gd_table_set_text(t, 0, k->id, err)) != GD_E_OK) goto fail;
+        if ((rc = gd_table_set_text(t, 1, k->target ? k->target : "(node)", err)) != GD_E_OK) goto fail;
+        if ((rc = gd_table_set_num(t, 2, k->target_age.median, err)) != GD_E_OK) goto fail;
+        if ((rc = gd_table_set_num(t, 3, k->target_age.hpd_lo, err)) != GD_E_OK) goto fail;
+        if ((rc = gd_table_set_num(t, 4, k->target_age.hpd_hi, err)) != GD_E_OK) goto fail;
+        if ((rc = gd_table_set_num(t, 5, k->outlier_prior, err)) != GD_E_OK) goto fail;
+        if ((rc = gd_table_set_num(t, 6, k->outlier_post, err)) != GD_E_OK) goto fail;
+    }
+    *out = t;
+    return GD_E_OK;
+fail:
+    gd_table_destroy(t);
+    return rc;
+}
+
+static const gd_column ADEQ_COLS[] = {
+    { "statistic",   "statistic", 0, GD_NUM_FIXED },
+    { "observed",    "observed",  4, GD_NUM_GENERAL },
+    { "rep_mean",    "rep_mean",  4, GD_NUM_GENERAL },
+    { "rep_lo90",    "rep_lo90",  4, GD_NUM_GENERAL },
+    { "rep_hi90",    "rep_hi90",  4, GD_NUM_GENERAL },
+    { "ppp",         "ppp",       3, GD_NUM_FIXED },
+};
+
+int gd_report_adequacy(const gd_analysis_tree_result *res,
+                       gd_table **out, gd_error *err)
+{
+    if (res == NULL || out == NULL) {
+        return gd_error_set(err, GD_E_INVALID_ARG, "report: null argument");
+    }
+    gd_table *t = NULL;
+    int rc = gd_table_create(ADEQ_COLS, sizeof ADEQ_COLS / sizeof ADEQ_COLS[0], &t, err);
+    if (rc != GD_E_OK) return rc;
+    for (size_t i = 0; i < res->n_checks; i++) {
+        const gd_analysis_check *k = &res->checks[i];
+        if ((rc = gd_table_add_row(t, err)) != GD_E_OK) goto fail;
+        if ((rc = gd_table_set_text(t, 0, k->name, err)) != GD_E_OK) goto fail;
+        if ((rc = gd_table_set_num(t, 1, k->observed, err)) != GD_E_OK) goto fail;
+        if ((rc = gd_table_set_num(t, 2, k->rep_mean, err)) != GD_E_OK) goto fail;
+        if ((rc = gd_table_set_num(t, 3, k->rep_lo90, err)) != GD_E_OK) goto fail;
+        if ((rc = gd_table_set_num(t, 4, k->rep_hi90, err)) != GD_E_OK) goto fail;
+        if ((rc = gd_table_set_num(t, 5, k->ppp, err)) != GD_E_OK) goto fail;
+    }
     *out = t;
     return GD_E_OK;
 fail:

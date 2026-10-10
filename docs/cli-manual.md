@@ -84,11 +84,29 @@ ages depend on the rate prior and calibrations — the tool says so.
   `n_unconverged_params`, `max_rhat`, `min_ess_bulk`, `min_ess_tail`), and the
   scale-dependence note.
 
+**Concepts** (`posterior_concepts.tsv`). One row per concept. `incompatible`
+marks a concept whose pattern no single-state T1 history on the given
+topology can produce: typically an ancestral synonym pair kept by different
+daughters, sometimes a loan. Such concepts are excluded. Their share,
+reported in the manifest, measures how much of the data the model cannot
+use; on Romance it is 17%. For the rest, `p_contaminated` is the posterior
+probability that the concept came from the noise component, ε, which is
+sampled with a Beta(1, 19) prior. `relative_rate` is the concept's posterior
+rate relative to the mean, under the concept-rate mixture.
+
 **Among-concept rates** (`--concept-rates 1`, the default). Basic meanings
 are replaced at very different rates. A single rate makes slow meanings look
 young and fast ones look old, and it biases deep nodes. Each concept's rate is
 integrated over a log-normal with mean 1 and a sampled spread `sigma_c`.
 `--concept-rates 0` gives the homogeneous model.
+
+**Adequacy** (`adequacy.tsv`). Posterior predictive checks compare
+statistics of the observed data with data replicated from 200 posterior
+draws. The statistics are the classes per concept, the singleton share, the
+share of incompatible concepts, and the cognate sharing for every pair of
+tips. A `ppp` near 0 or 1 marks a feature the model does not reproduce. A
+pair of tips sharing more than predicted suggests borrowing between them, or
+a misplaced tip.
 
 **Power-scaling sensitivity.** `sensitivity_root_age` and
 `sensitivity_lexical_root` measure, for each component (the clock prior, the

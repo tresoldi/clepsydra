@@ -349,8 +349,53 @@ TEST(test_forms_skips_unobserved_rows)
     CHECK(c2_null);
 }
 
+/* E2.4: two codings in one file must not be mixed; a selected one is read
+ * alone; loans become missing. */
+TEST(test_forms_analysis_and_loans)
+{
+    static const char *F =
+        "analysis_id\tlanguage_id\tconcept_id\tcognate_id\tloan_probability\n"
+        "strict\tA\tc1\tk1\t0.0\n"
+        "strict\tB\tc1\tk1\t0.9\n"
+        "loose\tA\tc1\tk7\t.\n"
+        "loose\tB\tc1\tk7\t.\n";
+    gd_forms *f = NULL;
+    gd_error err = GD_ERROR_INIT;
+    int rc = gd_forms_read(F, strlen(F), &f, &err);
+    gd_forms_destroy(f); f = NULL;
+    CHECK(rc != GD_E_OK);
+    CHECK(strstr(err.message, "strict") != NULL && strstr(err.message, "loose") != NULL);
+
+    gd_forms_options o; gd_forms_options_default(&o);
+    o.analysis_id = "strict";
+    gd_error_clear(&err);
+    rc = gd_forms_read_opts(F, strlen(F), &o, &f, &err);
+    size_t loans = 0, other = 0; int b_missing = 0, a_k1 = 0;
+    if (rc == GD_E_OK) {
+        loans = f->n_loans; other = f->n_other_analysis;
+        size_t la = gd_forms_language_index(f, "A"), lb = gd_forms_language_index(f, "B");
+        a_k1 = (la != SIZE_MAX && gd_forms_primary(f, 0, la) != NULL &&
+                strcmp(gd_forms_primary(f, 0, la), "k1") == 0);
+        b_missing = (lb != SIZE_MAX && gd_forms_primary(f, 0, lb) == NULL);
+        gd_forms_destroy(f); f = NULL;
+    }
+    CHECK(rc == GD_E_OK);
+    CHECK(loans == 1);
+    CHECK(other == 2);
+    CHECK(a_k1);
+    CHECK(b_missing);
+
+    /* A threshold above 1 keeps the loan. */
+    o.loan_threshold = 1.5;
+    rc = gd_forms_read_opts(F, strlen(F), &o, &f, &err);
+    loans = (rc == GD_E_OK) ? f->n_loans : 99;
+    gd_forms_destroy(f);
+    CHECK(loans == 0);
+}
+
 static void run_tests(void)
 {
+    RUN(test_forms_analysis_and_loans);
     RUN(test_forms_rejects_non_weights_and_empty_ids);
     RUN(test_forms_skips_unobserved_rows);
     RUN(test_forms_first_seen_order);

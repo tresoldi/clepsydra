@@ -93,6 +93,10 @@ typedef struct gd_t1_concept_result {
     double log_lik_tree;     /* tree component; -HUGE_VAL if incompatible */
     double log_lik_noise;    /* noise component */
     double p_contaminated;   /* posterior P(concept came from the noise part) */
+    /* Under a rate mixture: E[lambda | data, tree component], the concept's
+     * posterior rate relative to the mean rate. 1 without a mixture or when
+     * the tree component is impossible. */
+    double rate_mult_mean;
     bool   compatible;       /* 1 if the data is extendable */
     bool   excluded;         /* 1 if dropped under GD_INCOMPATIBLE_EXCLUDE */
     /* Work counters, for the scaling acceptance test. `ops_recursion` is
@@ -133,6 +137,16 @@ typedef struct gd_t1_ws gd_t1_ws;
  */
 gd_t1_ws *gd_t1_ws_create(gd_tree *tree, gd_error *err);
 void      gd_t1_ws_destroy(gd_t1_ws *ws);
+
+/*
+ * Observation error on tips (docs/roadmap.md E2.9): hazard[v] = -log(1 - e_v)
+ * is added to the edge above tip v, as if the list had replaced its form "in
+ * error" with probability e_v, independently of the concept's rate. Under T1
+ * this is indistinguishable from extra time on that branch, so e_v is
+ * identified only by its prior. `hazard` has one entry per original node and
+ * is borrowed until reset; NULL removes it.
+ */
+void gd_t1_ws_set_tip_error(gd_t1_ws *ws, const double *hazard);
 
 /* Number of nodes in the internal binary working tree (>= tree->nnodes; the
  * difference is the number of nodes inserted to resolve polytomies). */

@@ -73,6 +73,11 @@ struct gd_t1_ws {
     t1_key  *keys;           /* n; observed (label, node) sorted by label */
     size_t   nkeys;          /* number of observed nodes in `keys` */
     int     *det_pub;        /* n; extension mapped back to original nodes */
+
+    /* Extra hazard on the edge above original node w (E2.9): -log(1 - e_w)
+     * for a tip whose list replaces a form "in error" with probability e_w.
+     * Borrowed; NULL = none. */
+    const double *hazard;
 };
 
 /* ------------------------------------------------------------------ helpers */
@@ -110,6 +115,7 @@ static void result_init(gd_t1_concept_result *res)
     res->log_lik_tree      = -HUGE_VAL;
     res->log_lik_noise     = -HUGE_VAL;
     res->p_contaminated    = 0.0;
+    res->rate_mult_mean    = 1.0;
     res->compatible        = true;
     res->excluded          = false;
     res->ops_extension     = 0;
@@ -401,6 +407,7 @@ static bool branch_logs(const gd_t1_ws *ws, size_t w, double rate,
         dt = 0.0;
     }
     double x = -rate * dt;                   /* = log ret, exactly */
+    if (ws->hazard != NULL && w < ws->n) x -= ws->hazard[w];
     *log_ret = x;
     *log_ch  = (x < 0.0) ? gd_log1mexp(x) : -HUGE_VAL;
     return true;
@@ -683,7 +690,7 @@ static int t1_concept_mix_impl(gd_t1_ws *ws, double rate, const double *mult,
     } else {
         /* The recursion only reads the extension, so it can run once per
          * multiplier on the same workspace. */
-        double acc = -HUGE_VAL;
+        double acc = -HUGE_VAL, macc = -HUGE_VAL;
         for (size_t k = 0; k < K; k++) {
             double lk;
             bool warn = false;
@@ -692,8 +699,10 @@ static int t1_concept_mix_impl(gd_t1_ws *ws, double rate, const double *mult,
             if (rc != 0) return rc;
             if (warn) res->stability_warning = true;
             acc = gd_logaddexp(acc, logw[k] + lk);
+            macc = gd_logaddexp(macc, logw[k] + lk + log(mult[k]));
         }
         res->log_lik_tree = acc;
+        if (acc > -HUGE_VAL) res->rate_mult_mean = exp(macc - acc);
     }
 
     if (opt->epsilon <= 0.0) {
@@ -801,6 +810,11 @@ int gd_t1_simulate(gd_rng *rng, const gd_tree *tree, double rate,
                      : next_class++;
     }
     return 0;
+}
+
+void gd_t1_ws_set_tip_error(gd_t1_ws *ws, const double *hazard)
+{
+    if (ws != NULL) ws->hazard = hazard;
 }
 
 /* --------------------------------------------------- MCMC adapter ----------
@@ -966,6 +980,7 @@ static int t1_model_loglik(void *vctx, gd_tree *tree, const gd_mcmc_state *st,
     }
     gd_t1_options opt = m->opt;
     opt.epsilon = st->epsilon;
+    gd_t1_ws_set_tip_error(m->ws, st->tip_hazard);
     gd_t1_concept_result *per = (pw != NULL) ? m->per : NULL;
     double tot = 0.0;
     int rc;

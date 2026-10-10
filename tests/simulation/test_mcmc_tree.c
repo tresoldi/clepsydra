@@ -1075,6 +1075,61 @@ TEST(test_mcmc_yule_prior_ratios)
     CHECK(strstr(err.message, "uniform") != NULL);
 }
 
+/* The subtree-scaling move keeps the prior: on the caterpillar
+ * (((a,b)x,c)y,d)root under the uniform prior, x/root ~ Beta(1,2) (mean 1/3)
+ * and y/root ~ Beta(2,1) (mean 2/3). The mover y scales y and x together, so
+ * a wrong Jacobian shows up here. Run with and without the move. */
+TEST(test_mcmc_subtree_move_keeps_prior)
+{
+    for (int with = 0; with < 2; with++) {
+        gd_error err = GD_ERROR_INIT;
+        const char *nwk = "(((a,b)x,c)y,d)root;";
+        gd_tree *t = NULL;
+        CHECK(gd_newick_parse(nwk, strlen(nwk), &t, &err) == 0);
+        size_t n = t->nnodes;
+        /* A dummy concept: prior-only never evaluates it. */
+        int *lab = (int *)malloc(n * sizeof(int));
+        for (size_t i = 0; i < n; i++) lab[i] = t->nodes[i].is_leaf ? 0 : -1;
+        gd_cognate_data d = { lab, n };
+        gd_t1_ws *ws = gd_t1_ws_create(t, &err);
+        gd_t1_options opt; gd_t1_options_default(&opt);
+        gd_mcmc_t1 *m = gd_mcmc_t1_create(ws, &d, 1, &opt, &err);
+        gd_mcmc_model model; gd_mcmc_t1_model(m, &model);
+        gd_calibration_set *cs = make_free_bounds(t, &err);
+        gd_mcmc_config cfg; gd_mcmc_config_default(&cfg);
+        cfg.prior_only = true;
+        cfg.subtree_move = with ? true : false;
+        cfg.n_warmup = 2000; cfg.n_samples = 30000; cfg.seed = 21u;
+        gd_mcmc_chain *ch = gd_mcmc_chain_create(&model, t, cs, &cfg, 0u, &err);
+        CHECK(ch != NULL);
+        CHECK(gd_mcmc_chain_run(ch, &err) == 0);
+        size_t px = (size_t)-1, py = (size_t)-1, pr = (size_t)-1;
+        size_t x = gd_tree_find_label(t, "x"), y = gd_tree_find_label(t, "y");
+        for (size_t p = 0; p < gd_mcmc_chain_param_count(ch); p++) {
+            size_t node = gd_mcmc_chain_param_node(ch, p);
+            if (node == x) px = p; else if (node == y) py = p; else if (node == t->root) pr = p;
+        }
+        double mx = 0, my = 0;
+        size_t N = gd_mcmc_chain_nsamples(ch);
+        for (size_t k = 0; k < N; k++) {
+            double R = gd_mcmc_chain_sample(ch, k, pr);
+            mx += gd_mcmc_chain_sample(ch, k, px) / R;
+            my += gd_mcmc_chain_sample(ch, k, py) / R;
+        }
+        mx /= (double)N; my /= (double)N;
+        gd_mcmc_chain_destroy(ch);
+        gd_calset_destroy(cs);
+        gd_mcmc_t1_destroy(m);
+        gd_t1_ws_destroy(ws);
+        free(lab);
+        gd_tree_destroy(t);
+        printf("    subtree move %s: E[x/R] = %.4f (1/3), E[y/R] = %.4f (2/3)\n",
+               with ? "on " : "off", mx, my);
+        CHECK_APPROX(mx, 1.0 / 3.0, 0.015);
+        CHECK_APPROX(my, 2.0 / 3.0, 0.015);
+    }
+}
+
 static void run_tests(void)
 {
     RUN(test_mcmc_reproducible);
@@ -1091,6 +1146,7 @@ static void run_tests(void)
     RUN(test_mcmc_sbc_strict_clock_tree);
     RUN(test_mcmc_prior_only_matches_analytic_prior);
     RUN(test_mcmc_yule_prior_ratios);
+    RUN(test_mcmc_subtree_move_keeps_prior);
     RUN(test_mcmc_sbc_proper_prior_scenarios);
 }
 

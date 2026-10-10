@@ -80,6 +80,22 @@ Four things follow from the research and shape everything below.
   - the lexical root is 0.54 ± 0.05 either way;
   - the clock sets ~100% of the calendar width, and the report says so.
 
+- **E2: in progress.**
+  - Done:
+    - E2.1: integrated concept rates, 24-point rule, pattern compression.
+    - E2.2: sampled ε, a per-concept table, incompatible concepts
+      excluded and counted.
+    - E2.3: synonyms marginalised exactly in `date-pair`.
+    - E2.4: `analysis_id` selection, loan rows as missing.
+    - E2.6: outlier-prone calibrations with posterior outlier probabilities.
+    - E2.7: `ancestor_tip`.
+    - E2.10: adequacy panel. These posterior predictive checks cover class
+      counts, singletons, the incompatible share and pairwise sharing.
+  - Open:
+    - E2.5: `cognacy_confidence` is not yet read.
+    - E2.8: the sensitivity variants.
+    - E2.9: source-level error (needs D1.3).
+    - The E2 gate's misspecification simulator (D3).
 - **D2, the σ_f pilot: done, and a no-go on its pre-registered rule**
   (`docs/research/clock-pilot.md`).
   - Over 15 nodes in 6 families, σ_tot = 0.77 (95% 0.50–1.40). Most of it

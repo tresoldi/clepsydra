@@ -230,7 +230,7 @@ TEST(test_cal_sample_prior_order)
 
 TEST(test_cal_logprior_normal)
 {
-    gd_calibration cal = {NULL, NULL, GD_CAL_NORMAL_NODE, 3000, 500, 0, 0, NULL, 0, 0};
+    gd_calibration cal = {NULL, NULL, GD_CAL_NORMAL_NODE, 3000, 500, 0, 0, NULL, 0, 0, 0.0};
     /* At the mean, logprior = -log(500 * sqrt(2pi)). */
     double expected = -log(500 * sqrt(2 * 3.14159265358979));
     CHECK_APPROX(gd_cal_logprior(&cal, 3000), expected, 1e-6);
@@ -240,7 +240,7 @@ TEST(test_cal_logprior_normal)
 
 TEST(test_cal_logprior_uniform)
 {
-    gd_calibration cal = {NULL, NULL, GD_CAL_UNIFORM_NODE, 2000, 5000, 0, 1, NULL, 0, 0};
+    gd_calibration cal = {NULL, NULL, GD_CAL_UNIFORM_NODE, 2000, 5000, 0, 1, NULL, 0, 0, 0.0};
     /* Inside: -log(3000). */
     CHECK_APPROX(gd_cal_logprior(&cal, 3000), -log(3000), 1e-12);
     /* Outside: -inf. */
@@ -252,7 +252,7 @@ TEST(test_cal_logprior_uniform)
  * integrates to one with 2.5% of its mass beyond each end. */
 TEST(test_cal_logprior_soft_uniform)
 {
-    gd_calibration cal = {NULL, NULL, GD_CAL_UNIFORM_NODE, 2000, 5000, 0, 0, NULL, 0, 0};
+    gd_calibration cal = {NULL, NULL, GD_CAL_UNIFORM_NODE, 2000, 5000, 0, 0, NULL, 0, 0, 0.0};
     CHECK_APPROX(gd_cal_logprior(&cal, 3000), log(0.95 / 3000.0), 1e-12);
     CHECK_APPROX(gd_cal_logprior(&cal, 2000), gd_cal_logprior(&cal, 4999), 1e-12);
     CHECK(gd_is_finite(gd_cal_logprior(&cal, 1900)));
@@ -318,7 +318,7 @@ TEST(test_cal_untargeted_tips_are_extant)
 
 TEST(test_cal_logprior_fixed_tip)
 {
-    gd_calibration cal = {NULL, NULL, GD_CAL_FIXED_TIP, 1900, 0, 0, 1, NULL, 0, 0};
+    gd_calibration cal = {NULL, NULL, GD_CAL_FIXED_TIP, 1900, 0, 0, 1, NULL, 0, 0, 0.0};
     CHECK(gd_cal_logprior(&cal, 1900) == 0.0);
     CHECK(gd_cal_logprior(&cal, 1901) == -HUGE_VAL);
 }
@@ -339,6 +339,61 @@ TEST(test_cal_mrca_extraction)
     gd_tree_destroy(t);
 }
 
+/* E2.6: an outlier-prone calibration is a mixture of itself and a copy ten
+ * times as wide. It still integrates to one, it barely changes the density
+ * near its centre, it keeps far-off ages possible, and the posterior outlier
+ * probability rises from ~q at the centre to ~1 far away. */
+TEST(test_cal_outlier_mixture)
+{
+    gd_calibration cal = {NULL, NULL, GD_CAL_NORMAL_NODE, 2000, 100, 0, 0, NULL, 0, 0, 0.1};
+    double h = 1.0, mass = 0.0;
+    for (double x = -20000.0; x < 25000.0; x += h) mass += exp(gd_cal_logprior(&cal, x)) * h;
+    CHECK_APPROX(mass, 1.0, 1e-6);
+    gd_calibration trusted = cal; trusted.outlier = 0.0;
+    CHECK(fabs(gd_cal_logprior(&cal, 2000) - gd_cal_logprior(&trusted, 2000)) < 0.11);
+    /* 10 sd away: the trusted density is negligible, the mixture is not. */
+    CHECK(gd_cal_logprior(&trusted, 3000) < -50.0);
+    CHECK(gd_cal_logprior(&cal, 3000) > -15.0);
+    CHECK(gd_cal_outlier_posterior(&cal, 2000) < 0.02);
+    CHECK(gd_cal_outlier_posterior(&cal, 3000) > 0.999);
+    CHECK(gd_cal_outlier_posterior(&trusted, 3000) == 0.0);
+
+    /* A fixed tip or hard bound cannot be an outlier. */
+    gd_error err = GD_ERROR_INIT;
+    gd_tree *t = make_romance_tree(&err);
+    gd_calibration_set *cs = gd_calset_create(1, &err);
+    cs->cals[0].target_id = dup_str("italian");
+    cs->cals[0].type = GD_CAL_FIXED_TIP;
+    cs->cals[0].p1 = 0;
+    cs->cals[0].outlier = 0.05;
+    CHECK(gd_calibrations_resolve(cs, t, &err) == 0);
+    int rc = gd_calibrations_propagate(cs, t, &err);
+    gd_calset_destroy(cs);
+    gd_tree_destroy(t);
+    CHECK(rc == GD_E_CALIBRATION);
+}
+
+/* An outlier-prone calibration sets no sampler window, so the outlier can be
+ * reached wherever it is. */
+TEST(test_cal_outlier_window)
+{
+    gd_error err = GD_ERROR_INIT;
+    gd_tree *t = make_romance_tree(&err);
+    gd_calibration_set *cs = gd_calset_create(1, &err);
+    cs->cals[0].target_id = dup_str("romance_root");
+    cs->cals[0].type = GD_CAL_NORMAL_NODE;
+    cs->cals[0].p1 = 2000;
+    cs->cals[0].p2 = 100;
+    cs->cals[0].outlier = 0.05;
+    CHECK(gd_calibrations_resolve(cs, t, &err) == 0);
+    CHECK(gd_calibrations_propagate(cs, t, &err) == 0);
+    size_t root = gd_tree_find_label(t, "romance_root");
+    double hi = cs->node_hi[root];
+    gd_calset_destroy(cs);
+    gd_tree_destroy(t);
+    CHECK(isinf(hi));
+}
+
 static void run_tests(void)
 {
     RUN(test_cal_type_from_string);
@@ -354,6 +409,8 @@ static void run_tests(void)
     RUN(test_cal_logprior_soft_uniform);
     RUN(test_cal_normal_node_window);
     RUN(test_cal_untargeted_tips_are_extant);
+    RUN(test_cal_outlier_mixture);
+    RUN(test_cal_outlier_window);
     RUN(test_cal_logprior_fixed_tip);
     RUN(test_cal_mrca_extraction);
 }

@@ -28,6 +28,8 @@ value that contradicts it is an error. Exact parameter meanings:
 | `hard_maximum` | max | . | . | age ≤ max (hard) |
 | `soft_minimum` | min | sd | . | age ≥ min with soft Normal(sd) penalty |
 | `soft_maximum` | max | sd | . | age ≤ max with soft Normal(sd) penalty |
+| `tip_error` | mean e | concentration k | . | not an age: a Beta(e·k, (1−e)·k) prior on the tip's observation-error probability (see below) |
+| `ancestor_tip` | age (years BP) | . | . | a dated tip that samples its sister lineage's own ancestor: the tip is fixed at `age` and its parent is pinned to the same age (zero-length branch) |
 
 Example:
 ```
@@ -43,6 +45,29 @@ Unlabelled internal nodes are reported under generated names of the same
 form (`mrca:X,Y`, where X and Y are the alphabetically first tips under the
 node's first two children), so every name in an output can be pasted back
 into a calibration table.
+
+**Calibrations that can be wrong.** An optional `outlier_prob` column gives
+the prior probability q that a calibration is wrong, after OxCal's outlier
+model. The calibration's density becomes `(1 − q)·cal(a) + q·wide(a)`, where
+`wide` is the same distribution with its spread multiplied by 10. Its
+location is unchanged, and a uniform window becomes soft. An outlier-prone
+calibration sets no sampler window, so the target can go wherever the data
+put it. `posterior_calibrations.tsv` then reports the posterior outlier
+probability next to the target's posterior age. Fixed tips and hard bounds
+cannot be outliers; a value of 0.05–0.10 suits a calibration whose node
+assignment or date is contested.
+
+**Lists that may be noisy** (`tip_error`). An old, sparse or non-specialist
+list may contain forms that are wrong, not replaced: misheard, misglossed
+or miscoded. A `tip_error` row gives that tip an error probability e, which
+is sampled with the stated Beta prior. In each concept the list's form is
+then "replaced in error" with probability e, independently of the concept's
+rate. Under T1 this cannot be told apart from extra time on the tip's
+branch, so **e is identified only by its prior**. Use it as a sensitivity
+analysis, with a prior from independent evidence such as duplicate lists of
+one language by different collectors. Never tune it to the result. The
+adequacy panel (`adequacy.tsv`) shows whether a list needs it: a tip that
+shares less with every other tip than the model predicts.
 
 **Tips.** A tip that no calibration names is an extant language, fixed at age
 0. A tip with an uncertain age (an ancient or historical language) needs its

@@ -35,7 +35,7 @@
 #define GD_MCMC_ADAPT_T0      10.0
 #define GD_MCMC_FIX_TOL       1e-9
 #define GD_MCMC_CKPT_MAGIC    0x394d4447u    /* "GDM9" */
-#define GD_MCMC_CKPT_VERSION  4u
+#define GD_MCMC_CKPT_VERSION  5u
 #define GD_MCMC_CONFOUND_THRESH 0.6          /* |corr| beyond this => confounded */
 
 /* ------------------------------------------------------------- parameters */
@@ -63,6 +63,7 @@ struct gd_mcmc_chain {
     double logr;
     double sigma_b;
     double sigma_c;           /* among-concept spread; 0 when not sampled */
+    double *tip_hazard;       /* nnodes, or NULL: -log(1 - e_v) per tip */
     double epsilon;
     double *branch_logmult;   /* nnodes, or NULL */
     double *concept_dev;      /* nconcepts, or NULL */
@@ -83,6 +84,13 @@ struct gd_mcmc_chain {
     /* Clock-preserving move state. */
     int     have_clock;
     double  clock_step, clock_adapt_count, clock_acc, clock_prop;
+
+    /* Subtree-scaling move: sub_start[k]..sub_start[k+1] index sub_nodes,
+     * the free internal nodes under the k-th mover sub_root[k]. */
+    size_t  n_sub;
+    size_t *sub_root, *sub_start, *sub_nodes;
+    double *sub_scratch;
+    double  sub_step, sub_adapt_count, sub_acc, sub_prop;
 
     /* Proper prior on the ages (NULL under GD_TREE_PRIOR_NONE), and its
      * current value, kept as part of cur_logprior. */
@@ -142,6 +150,8 @@ void gd_mcmc_config_default(gd_mcmc_config *cfg)
     cfg->age_step0_frac = 0.3;
     cfg->clock_move = true;
     cfg->clock_step0 = 0.10;
+    cfg->subtree_move = true;
+    cfg->subtree_step0 = 0.10;
     cfg->block_age_scaling = false;
     cfg->block_step0 = 0.10;
     cfg->sample_branch = false;
@@ -184,6 +194,7 @@ static void fill_state(const gd_mcmc_chain *ch, gd_mcmc_state *st)
     st->branch_logmult = ch->have_branch ? ch->branch_logmult : NULL;
     st->epsilon = ch->epsilon;
     st->rate_mix_sd = ch->sigma_c;
+    st->tip_hazard = ch->tip_hazard;
 }
 
 static int chain_eval_loglik(const gd_mcmc_chain *ch, double *pw, double *out,
@@ -211,6 +222,8 @@ static void rebuild_assembled(gd_mcmc_chain *ch)
             case GD_MCMC_P_LOG_SIGMA_B:  ch->sigma_b = exp(pp->value); break;
             case GD_MCMC_P_LOGIT_EPS:    ch->epsilon = sigmoid(pp->value); break;
             case GD_MCMC_P_LOG_SIGMA_C:  ch->sigma_c = exp(pp->value); break;
+            case GD_MCMC_P_LOGIT_TIPERR:
+                ch->tip_hazard[pp->node] = -log1p(-sigmoid(pp->value)); break;
             case GD_MCMC_P_BRANCH_LOGMULT:
                 ch->branch_logmult[pp->node] = pp->value; break;
             case GD_MCMC_P_CONCEPT_DEV:
@@ -240,6 +253,14 @@ static double node_logprior(const gd_calibration_set *cal, size_t v, double age)
         }
     }
     return s;
+}
+
+/* Beta(m k, (1 - m) k) on a tip's error probability, on the logit scale. */
+static double tiperr_logprior(const gd_mcmc_chain *ch, size_t v, double z)
+{
+    double m = ch->cfg.tip_err_mean[v], k = ch->cfg.tip_err_conc[v];
+    double e = sigmoid(z);
+    return beta_logpdf(e, m * k, (1.0 - m) * k) + log(e) + log1p(-e);
 }
 
 /* The proper age prior at the chain's current root age and rate. */
@@ -286,6 +307,8 @@ static double param_logprior(const gd_mcmc_chain *ch, const gd_param *pp)
             return norm_logpdf(pp->value, 0.0, ch->cfg.concept_rate_sd);
         case GD_MCMC_P_LOG_SIGMA_C:
             return halfnormal_logpdf(exp(pp->value), ch->cfg.rate_mix_prior_sd) + pp->value;
+        case GD_MCMC_P_LOGIT_TIPERR:
+            return tiperr_logprior(ch, pp->node, pp->value);
     }
     return 0.0;
 }
@@ -308,6 +331,8 @@ void gd_mcmc_chain_destroy(gd_mcmc_chain *ch)
     free(ch->params);
     free(ch->age_params);
     free(ch->scaled);
+    free(ch->sub_root); free(ch->sub_start); free(ch->sub_nodes); free(ch->sub_scratch);
+    free(ch->tip_hazard);
     free(ch->age_scratch);
     free(ch->branch_logmult);
     free(ch->concept_dev);
@@ -329,6 +354,9 @@ static size_t count_params(const gd_mcmc_chain *ch, size_t *nfree_out)
     if (ch->cfg.sample_contamination) np += 1;
     if (ch->cfg.sample_concept_rates) np += ch->nconcepts;
     if (ch->cfg.sample_rate_mix) np += 1;
+    if (ch->cfg.tip_err_mean != NULL)
+        for (size_t v = 0; v < ch->tree->nnodes; v++)
+            if (ch->cfg.tip_err_mean[v] > 0.0) np += 1;
     return np;
 }
 
@@ -525,6 +553,26 @@ gd_mcmc_chain *gd_mcmc_chain_create(const gd_mcmc_model *model, gd_tree *tree,
             p++;
         }
     }
+    if (cfg->tip_err_mean != NULL) {
+        ch->tip_hazard = (double *)gd_calloc_checked(tree->nnodes, sizeof(double), err);
+        if (ch->tip_hazard == NULL) { gd_error_set(err, GD_E_NOMEM, "mcmc: tip error"); gd_mcmc_chain_destroy(ch); return NULL; }
+        for (size_t v = 0; v < tree->nnodes; v++) {
+            double m = cfg->tip_err_mean[v];
+            if (!(m > 0.0)) continue;
+            double k = (cfg->tip_err_conc != NULL) ? cfg->tip_err_conc[v] : 0.0;
+            if (!(m < 1.0) || !(k > 0.0) || !tree->nodes[v].is_leaf) {
+                gd_error_set(err, GD_E_RANGE,
+                             "mcmc: a tip error prior needs a tip, a mean in (0, 1) and a concentration > 0");
+                gd_mcmc_chain_destroy(ch); return NULL;
+            }
+            ch->params[p].type = GD_MCMC_P_LOGIT_TIPERR;
+            ch->params[p].node = v;
+            ch->params[p].value = logit(m);
+            ch->params[p].step = 0.5;
+            ch->tip_hazard[v] = -log1p(-m);
+            p++;
+        }
+    }
     if (cfg->sample_rate_mix) {
         ch->sigma_c = cfg->rate_mix_init;
         ch->params[p].type = GD_MCMC_P_LOG_SIGMA_C;
@@ -579,6 +627,40 @@ gd_mcmc_chain *gd_mcmc_chain_create(const gd_mcmc_model *model, gd_tree *tree,
     ch->block_step = cfg->block_step0;
     ch->have_clock = (cfg->clock_move && cfg->sample_rate && ch->n_age >= 1) ? 1 : 0;
     ch->clock_step = cfg->clock_step0;
+
+    /* Subtree movers: free internal non-root nodes with at least one free
+     * internal descendant (a lone node gains nothing over its own move). */
+    ch->sub_step = cfg->subtree_step0;
+    if (cfg->subtree_move) {
+        size_t n = tree->nnodes;
+        ch->sub_root = (size_t *)gd_malloc_array_checked(n, sizeof(size_t), err);
+        ch->sub_start = (size_t *)gd_malloc_array_checked(n + 1, sizeof(size_t), err);
+        ch->sub_nodes = (size_t *)gd_malloc_array_checked(n * n, sizeof(size_t), err);
+        ch->sub_scratch = (double *)gd_malloc_array_checked(n, sizeof(double), err);
+        if (ch->sub_root == NULL || ch->sub_start == NULL || ch->sub_nodes == NULL ||
+            ch->sub_scratch == NULL) {
+            gd_error_set(err, GD_E_NOMEM, "mcmc: subtree move"); gd_mcmc_chain_destroy(ch); return NULL;
+        }
+        size_t used = 0;
+        ch->sub_start[0] = 0;
+        for (size_t v = 0; v < n; v++) {
+            if (v == tree->root || !ch->scaled[v]) continue;
+            size_t begin = used;
+            /* Descendants of v (v included) that the scale moves act on. */
+            for (size_t u = 0; u < n; u++) {
+                if (!ch->scaled[u]) continue;
+                size_t w = u;
+                while (w != GD_NODE_NONE && w != v) w = tree->nodes[w].parent;
+                if (w == v) ch->sub_nodes[used++] = u;
+            }
+            if (used - begin >= 2) {
+                ch->sub_root[ch->n_sub] = v;
+                ch->sub_start[++ch->n_sub] = used;
+            } else {
+                used = begin;
+            }
+        }
+    }
     if (ch->n_age > 0) {
         ch->age_params = (size_t *)gd_malloc_array_checked(ch->n_age, sizeof(size_t), err);
         ch->age_scratch = (double *)gd_malloc_array_checked(ch->n_age, sizeof(double), err);
@@ -720,6 +802,76 @@ static int scale_move(gd_mcmc_chain *ch, int adapting, int clock, gd_error *err)
     return 0;
 }
 
+/* Scale the free internal ages under one mover by exp(delta); see
+ * gd_mcmc_config.subtree_move. Jacobian s^k for k scaled ages. */
+static int subtree_move(gd_mcmc_chain *ch, size_t k, int adapting, gd_error *err)
+{
+    size_t a0 = ch->sub_start[k], a1 = ch->sub_start[k + 1];
+    double delta = gd_rng_normal(ch->rng, 0.0, ch->sub_step);
+    double s = exp(delta);
+    bool feasible = true;
+    for (size_t i = a0; i < a1; i++) ch->sub_scratch[i - a0] = ch->tree->nodes[ch->sub_nodes[i]].age;
+    /* Membership test for "is this node scaled in this move". */
+    for (size_t i = a0; i < a1 && feasible; i++) {
+        size_t v = ch->sub_nodes[i];
+        gd_node *node = &ch->tree->nodes[v];
+        double na = node->age * s;
+        double lo = ch->cal->node_lo[v], hi = ch->cal->node_hi[v];
+        for (size_t c = 0; c < node->nchildren; c++) {
+            size_t ch_i = node->children[c];
+            bool in = false;
+            for (size_t j = a0; j < a1; j++) if (ch->sub_nodes[j] == ch_i) { in = true; break; }
+            double cage = in ? ch->tree->nodes[ch_i].age * s : ch->tree->nodes[ch_i].age;
+            if (cage > lo) lo = cage;
+        }
+        if (v == ch->sub_root[k]) {
+            double pa = ch->tree->nodes[node->parent].age;
+            if (pa < hi) hi = pa;
+        }
+        if (!(na > lo && na < hi)) feasible = false;
+    }
+    int accepted = 0;
+    if (feasible) {
+        double dprior = 0.0;
+        for (size_t i = a0; i < a1; i++) {
+            size_t v = ch->sub_nodes[i];
+            double old = ch->sub_scratch[i - a0];
+            dprior += node_logprior(ch->cal, v, old * s) - node_logprior(ch->cal, v, old);
+            ch->tree->nodes[v].age = old * s;
+        }
+        double new_tp = tree_lp(ch);
+        dprior += new_tp - ch->cur_tp;
+        double new_ll;
+        if (chain_eval_loglik(ch, NULL, &new_ll, err) != 0) {
+            for (size_t i = a0; i < a1; i++) ch->tree->nodes[ch->sub_nodes[i]].age = ch->sub_scratch[i - a0];
+            return GD_E_INTERNAL;
+        }
+        double log_alpha = (new_ll - ch->cur_loglik) + dprior + (double)(a1 - a0) * delta;
+        if (accept_move(ch, log_alpha)) {
+            for (size_t p = 0; p < ch->nparam; p++)
+                if (ch->params[p].type == GD_MCMC_P_AGE)
+                    ch->params[p].value = ch->tree->nodes[ch->params[p].node].age;
+            ch->cur_loglik = new_ll;
+            ch->cur_logprior += dprior;
+            ch->cur_tp = new_tp;
+            accepted = 1;
+        } else {
+            for (size_t i = a0; i < a1; i++) ch->tree->nodes[ch->sub_nodes[i]].age = ch->sub_scratch[i - a0];
+        }
+    }
+    ch->sub_prop += 1.0;
+    ch->sub_acc += (double)accepted;
+    if (adapting) {
+        ch->sub_adapt_count += 1.0;
+        double gamma = 1.0 / pow(ch->sub_adapt_count + GD_MCMC_ADAPT_T0, 0.6);
+        double logs = log(ch->sub_step) + gamma * ((double)accepted - GD_MCMC_TARGET_ACCEPT);
+        if (logs < -30.0) logs = -30.0;
+        if (logs > 30.0) logs = 30.0;
+        ch->sub_step = exp(logs);
+    }
+    return 0;
+}
+
 static int chain_sweep(gd_mcmc_chain *ch, int adapting, gd_error *err)
 {
     for (size_t p = 0; p < ch->nparam; p++) {
@@ -820,6 +972,10 @@ static int chain_sweep(gd_mcmc_chain *ch, int adapting, gd_error *err)
                     dprior = norm_logpdf(prop, 0.0, ch->cfg.concept_rate_sd)
                            - norm_logpdf(old_v, 0.0, ch->cfg.concept_rate_sd);
                     break;
+                case GD_MCMC_P_LOGIT_TIPERR:
+                    ch->tip_hazard[pp->node] = -log1p(-sigmoid(prop));
+                    dprior = tiperr_logprior(ch, pp->node, prop) - tiperr_logprior(ch, pp->node, old_v);
+                    break;
                 case GD_MCMC_P_LOG_SIGMA_C:
                     ch->sigma_c = exp(prop);
                     dprior = (halfnormal_logpdf(exp(prop), ch->cfg.rate_mix_prior_sd) + prop)
@@ -839,6 +995,8 @@ static int chain_sweep(gd_mcmc_chain *ch, int adapting, gd_error *err)
                     case GD_MCMC_P_BRANCH_LOGMULT: ch->branch_logmult[pp->node] = old_v; break;
                     case GD_MCMC_P_CONCEPT_DEV:    ch->concept_dev[pp->concept] = old_v; break;
                     case GD_MCMC_P_LOG_SIGMA_C:    ch->sigma_c = exp(old_v); break;
+                    case GD_MCMC_P_LOGIT_TIPERR:
+                        ch->tip_hazard[pp->node] = -log1p(-sigmoid(old_v)); break;
                     default: break;
                 }
             }
@@ -857,6 +1015,11 @@ static int chain_sweep(gd_mcmc_chain *ch, int adapting, gd_error *err)
     /* --- clock-preserving move --- */
     if (ch->have_clock) {
         int rc = scale_move(ch, adapting, 1, err);
+        if (rc != 0) return rc;
+    }
+    /* --- subtree-scaling moves --- */
+    for (size_t k = 0; k < ch->n_sub; k++) {
+        int rc = subtree_move(ch, k, adapting, err);
         if (rc != 0) return rc;
     }
     return 0;
@@ -978,7 +1141,8 @@ static size_t ckpt_body_size(const gd_mcmc_chain *ch)
     return 4 + 4 + 4 + 8 + 16                 /* magic, ver, nparam, iter, rng */
          + ch->nparam * (8 + 8 + 8 + 8)       /* value, step, adapt, acc */
          + 8 + 8                              /* block_step, block_adapt_count */
-         + 8 + 8;                             /* clock_step, clock_adapt_count */
+         + 8 + 8                              /* clock_step, clock_adapt_count */
+         + 8 + 8;                             /* sub_step, sub_adapt_count */
 }
 
 int gd_mcmc_chain_serialize(const gd_mcmc_chain *ch, unsigned char **buf,
@@ -1019,6 +1183,8 @@ int gd_mcmc_chain_serialize(const gd_mcmc_chain *ch, unsigned char **buf,
     d = ch->block_adapt_count; memcpy(q, &d, 8); q += 8;
     d = ch->clock_step;        memcpy(q, &d, 8); q += 8;
     d = ch->clock_adapt_count; memcpy(q, &d, 8); q += 8;
+    d = ch->sub_step;          memcpy(q, &d, 8); q += 8;
+    d = ch->sub_adapt_count;   memcpy(q, &d, 8); q += 8;
     u64 = fnv1a(out, body); memcpy(q, &u64, 8);
     *buf = out; *len = total;
     return 0;
@@ -1059,6 +1225,8 @@ int gd_mcmc_chain_restore(gd_mcmc_chain *ch, const unsigned char *buf,
     memcpy(&d, q, 8); q += 8; ch->block_adapt_count = d;
     memcpy(&d, q, 8); q += 8; ch->clock_step = d;
     memcpy(&d, q, 8); q += 8; ch->clock_adapt_count = d;
+    memcpy(&d, q, 8); q += 8; ch->sub_step = d;
+    memcpy(&d, q, 8); q += 8; ch->sub_adapt_count = d;
     /* Programmer invariant, and the reason the last q += 8 is not dead: the
      * cursor must land exactly on the end of the body that ckpt_body_size
      * predicted. A serializer and a deserializer that disagree about the

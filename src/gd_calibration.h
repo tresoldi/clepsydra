@@ -27,7 +27,14 @@ typedef struct gd_calibration {
     /* Resolved node index (set by gd_calibrations_resolve). */
     size_t node_index;
     bool   resolved;
+    /* Prior probability that this calibration is wrong (docs/roadmap.md
+     * E2.6). With q > 0 its density is (1 - q) cal(a) + q wide(a), where
+     * wide is the same calibration with its spread multiplied by
+     * GD_CAL_OUTLIER_WIDEN (after OxCal's outlier model). 0 = trusted. */
+    double outlier;
 } gd_calibration;
+
+#define GD_CAL_OUTLIER_WIDEN 10.0
 
 typedef struct gd_calibration_set {
     gd_calibration *cals;
@@ -80,6 +87,16 @@ double gd_cal_logprior(const gd_calibration *cal, double age);
  */
 int gd_cal_sample_prior(gd_rng *rng, gd_calibration_set *cs,
                         const gd_tree *tree, double *ages, gd_error *err);
+
+/* Loosen a calibration's spread by factor f >= 1: the half-width of a
+ * uniform window about its centre, the sd of a normal or soft bound, the
+ * log-sd of a lognormal or offset lognormal. Fixed tips and hard bounds are
+ * left as they are. */
+void gd_cal_widen(gd_calibration *cal, double f);
+
+/* Posterior probability, at age `age`, that an outlier-prone calibration is
+ * the outlier: q wide(a) / ((1 - q) cal(a) + q wide(a)). 0 when q = 0. */
+double gd_cal_outlier_posterior(const gd_calibration *cal, double age);
 
 /* Do the ages satisfy parent > child on every edge? A predicate: true when
  * the ordering holds. */

@@ -90,6 +90,13 @@ typedef struct gd_mcmc_config {
     bool     clock_move;
     double   clock_step0;       /* default 0.10 (log scale) */
 
+    /* Subtree-scaling move: for each free internal non-root node, scale the
+     * free internal ages of its subtree by one factor. Nested nodes with
+     * close ages, which single-site updates move only one at a time, then
+     * move together. */
+    bool     subtree_move;
+    double   subtree_step0;     /* default 0.10 (log scale) */
+
     /* Block age-scaling move (docs/inference.md §2.2): once per sweep, scale
      * every free node age by a shared factor exp(N(0, block_step0)), which
      * decorrelates nested ages that single-site moves mix through slowly. Off
@@ -120,6 +127,12 @@ typedef struct gd_mcmc_config {
     double   rate_mix_prior_sd; /* default 1.0 */
     double   rate_mix_init;     /* default 0.5 */
     double   rate_mix_step0;    /* default 0.30 (log scale) */
+
+    /* Observation error on tips (E2.9): for a tip v with tip_err_mean[v] > 0,
+     * e_v ~ Beta(m k, (1 - m) k) with m = tip_err_mean[v], k = tip_err_conc[v],
+     * sampled on the logit scale. Arrays of nnodes, borrowed; NULL = none. */
+    const double *tip_err_mean;
+    const double *tip_err_conc;
 
     /* Per-concept rate deviations (M9): mu_c ~ N(0, concept_rate_sd^2). */
     bool     sample_concept_rates;

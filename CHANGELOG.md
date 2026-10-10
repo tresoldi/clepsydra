@@ -52,6 +52,56 @@ columns and example numbers are expected throughout 0.x and are listed here.
 
 ### Added
 
+- **Adequacy panel** (E2.10; `adequacy.tsv`). Posterior predictive checks
+  on data replicated from 200 posterior draws. The replicates use each
+  concept's rate multiplier, CRP contamination with probability ε, and the
+  observed missing cells. The checks are classes per concept, the singleton
+  share, the incompatible share, and cognate sharing for every pair of tips.
+  Each gives the observed value, the replicated mean and 90% range, and the
+  posterior predictive p-value.
+- **Subtree-scaling move** (E3.0). For each free internal non-root node, the
+  free internal ages beneath it are scaled together, so nested nodes with
+  close ages mix. On Romance the bulk ESS of those nodes rose from about 530
+  to about 3,750 at 1.4× the cost. The Sino-Tibetan and Polynesian examples
+  are back to 5,000 samples per chain. A prior-only test on a caterpillar
+  checks the move's Jacobian.
+- **Codings, loans and synonyms** (E2.3, E2.4).
+  - **Codings.** A forms file with several `analysis_id` codings must be
+    given `--analysis` (they used to be mixed).
+  - **Loans.** Rows at or above `--loan-threshold` (default 0.5) in
+    `loan_probability` are read as missing and counted.
+  - **Synonyms in `date-pair`** are marginalised exactly, as the soft match
+    `y = Σ w_i w_j [same class]`; `n_synonym_concepts` is reported.
+    `gd_forms_candidates` and `gd_forms_read_opts` are new.
+- **Tip observation error** (E2.9; `tip_error` calibration rows). A tip's
+  list may replace forms "in error" with a sampled probability e, which has
+  a Beta prior. Under T1, e is identified only by that prior, so the docs
+  present it as a sensitivity analysis. `logit_tip_error` appears in
+  `diagnostics.tsv`, and the adequacy replicates include the error process.
+- **`ancestor_tip` calibration** (E2.7): a dated tip on a zero-length branch,
+  for an old list that samples an ancestor (e.g. Paumari 1833).
+- **Calibrations that can be wrong** (E2.6). An optional `outlier_prob`
+  column makes a calibration a mixture with a copy ten times as wide. The
+  copy sets no sampler window, so a wrong calibration cannot force an
+  impossible chronology. `posterior_calibrations.tsv` reports every
+  calibrated sampled node's posterior age and, for outlier-prone rows, the
+  posterior probability that the calibration is wrong.
+  `gd_cal_widen` and `gd_cal_outlier_posterior` are new.
+- **Sampled contamination and a per-concept table** (E2.2).
+  - **ε is sampled** with a Beta(1, 19) prior (`--sample-epsilon`, default
+    on; `--epsilon` is used with `--sample-epsilon 0`).
+  - **`posterior_concepts.tsv`** gives, for every concept, the posterior
+    probability that it came from the noise component and its posterior
+    rate relative to the mean (from the concept-rate mixture).
+  - **Incompatible concepts are excluded.** These are concepts no T1 history
+    on the topology can produce. They were charged to the noise component
+    before, which changed no date (their term does not depend on ages), but
+    inflated the sampled ε. They are now counted (`incompatible_concepts` in
+    the manifest) and flagged.
+  - **On Romance:** 29 of 170 concepts are incompatible, mostly Latin
+    synonyms sorted differently in the daughters. ε falls from 0.29 to about
+    0.007 once they are excluded.
+
 - **SBC of the proper prior** (Gate E1). It covers five scenarios: free
   root, normal root calibration, offset-lognormal root calibration, dated
   tip, and Yule. Truths are drawn by exact rejection without the sampler,

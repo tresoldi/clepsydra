@@ -42,6 +42,8 @@ static double soft_uniform_scale(double p1, double p2)
  */
 #define GD_CAL_SUPPORT_SD 6.0
 
+static gd_calibration outlier_component(const gd_calibration *cal);
+
 gd_calibration_set *gd_calset_create(size_t ncals, gd_error *err)
 {
     gd_calibration_set *cs = (gd_calibration_set *)gd_calloc_checked(1, sizeof(*cs), err);
@@ -90,6 +92,8 @@ bool gd_cal_type_from_string(const char *s, size_t len, gd_cal_type *out)
         { "hard_maximum",          GD_CAL_HARD_MAXIMUM          },
         { "soft_minimum",          GD_CAL_SOFT_MINIMUM          },
         { "soft_maximum",          GD_CAL_SOFT_MAXIMUM          },
+        { "ancestor_tip",          GD_CAL_ANCESTOR_TIP          },
+        { "tip_error",             GD_CAL_TIP_ERROR             },
     };
     if (out == NULL) return false;
     for (size_t i = 0; i < sizeof TYPES / sizeof TYPES[0]; i++) {
@@ -128,8 +132,28 @@ int gd_calibrations_resolve(gd_calibration_set *cs, const gd_tree *tree,
 static int validate_cal_params(const gd_calibration *cal, gd_error *err)
 {
     double p1 = cal->p1, p2 = cal->p2, p3 = cal->p3;
+    if (!(cal->outlier >= 0.0 && cal->outlier < 1.0)) {
+        gd_error_set(err, GD_E_CALIBRATION, "calibration: outlier probability must be in [0, 1)");
+        return GD_E_CALIBRATION;
+    }
+    if (cal->outlier > 0.0 && (cal->type == GD_CAL_FIXED_TIP || cal->type == GD_CAL_ANCESTOR_TIP ||
+        cal->type == GD_CAL_TIP_ERROR ||
+        cal->type == GD_CAL_HARD_MINIMUM || cal->type == GD_CAL_HARD_MAXIMUM)) {
+        gd_error_set(err, GD_E_CALIBRATION,
+                     "calibration: a fixed tip or hard bound cannot be an outlier; "
+                     "use a soft or distributional type");
+        return GD_E_CALIBRATION;
+    }
     switch (cal->type) {
+        case GD_CAL_TIP_ERROR:
+            if (!(p1 > 0.0 && p1 < 1.0) || !(p2 > 0.0) || !isfinite(p2)) {
+                gd_error_set(err, GD_E_CALIBRATION,
+                             "calibration: tip_error needs a mean in (0, 1) and a concentration > 0");
+                return GD_E_CALIBRATION;
+            }
+            break;
         case GD_CAL_FIXED_TIP:
+        case GD_CAL_ANCESTOR_TIP:
             if (!isfinite(p1) || p1 < 0.0) {
                 gd_error_set(err, GD_E_CALIBRATION,
                              "calibration: fixed_tip age must be finite and >= 0");
@@ -232,23 +256,40 @@ int gd_calibrations_propagate(gd_calibration_set *cs, const gd_tree *tree,
         if (!tree->nodes[i].is_leaf) continue;
         bool targeted = false;
         for (size_t c = 0; c < cs->ncals && !targeted; c++)
-            targeted = cs->cals[c].resolved && cs->cals[c].node_index == i;
+            targeted = cs->cals[c].resolved && cs->cals[c].node_index == i &&
+                       cs->cals[c].type != GD_CAL_TIP_ERROR;
         if (!targeted) cs->node_hi[i] = 0.0;
     }
 
-    /* Apply calibrations. */
+    /* Apply calibrations. An outlier-prone calibration imposes no window at
+     * all: being wrong means its age can be anywhere, so the sampler must be
+     * free to go there. Its density (gd_cal_logprior) is positive everywhere
+     * on its support. */
     for (size_t i = 0; i < cs->ncals; i++) {
         if (!cs->cals[i].resolved) continue;
-        size_t idx = cs->cals[i].node_index;
-        double p1 = cs->cals[i].p1;
-        double p2 = cs->cals[i].p2;
-        switch (cs->cals[i].type) {
+        if (cs->cals[i].outlier > 0.0) continue;
+        if (cs->cals[i].type == GD_CAL_TIP_ERROR) continue;   /* not an age */
+        gd_calibration eff = cs->cals[i];
+        size_t idx = eff.node_index;
+        double p1 = eff.p1;
+        double p2 = eff.p2;
+        switch (eff.type) {
             case GD_CAL_FIXED_TIP:
                 cs->node_lo[idx] = p1;
                 cs->node_hi[idx] = p1;
                 break;
+            case GD_CAL_ANCESTOR_TIP: {
+                size_t par = tree->nodes[idx].parent;
+                if (!tree->nodes[idx].is_leaf || par == GD_NODE_NONE) {
+                    return gd_error_set(err, GD_E_CALIBRATION,
+                        "calibration: ancestor_tip must target a tip that has a parent");
+                }
+                cs->node_lo[idx] = cs->node_hi[idx] = p1;
+                cs->node_lo[par] = cs->node_hi[par] = p1;
+                break;
+            }
             case GD_CAL_UNIFORM_NODE:
-                if (cs->cals[i].is_hard) {
+                if (eff.is_hard) {
                     if (p1 > cs->node_lo[idx]) cs->node_lo[idx] = p1;
                     if (p2 < cs->node_hi[idx]) cs->node_hi[idx] = p2;
                 } else {
@@ -273,9 +314,9 @@ int gd_calibrations_propagate(gd_calibration_set *cs, const gd_tree *tree,
             case GD_CAL_LOGNORMAL_NODE:
             case GD_CAL_OFFSET_LOGNORMAL_NODE:
                 {
-                    double offset = (cs->cals[i].type == GD_CAL_OFFSET_LOGNORMAL_NODE) ? p1 : 0.0;
-                    double lm = (cs->cals[i].type == GD_CAL_OFFSET_LOGNORMAL_NODE) ? p2 : p1;
-                    double ls = (cs->cals[i].type == GD_CAL_OFFSET_LOGNORMAL_NODE) ? cs->cals[i].p3 : p2;
+                    double offset = (eff.type == GD_CAL_OFFSET_LOGNORMAL_NODE) ? p1 : 0.0;
+                    double lm = (eff.type == GD_CAL_OFFSET_LOGNORMAL_NODE) ? p2 : p1;
+                    double ls = (eff.type == GD_CAL_OFFSET_LOGNORMAL_NODE) ? eff.p3 : p2;
                     double lo = offset;
                     double hi = offset + exp(lm + GD_CAL_SUPPORT_SD * ls);
                     if (lo > cs->node_lo[idx]) cs->node_lo[idx] = lo;
@@ -292,6 +333,8 @@ int gd_calibrations_propagate(gd_calibration_set *cs, const gd_tree *tree,
             case GD_CAL_SOFT_MAXIMUM:
                 /* Soft bounds: don't change feasible range. */
                 break;
+            case GD_CAL_TIP_ERROR:
+                break;   /* not an age; skipped above */
         }
     }
 
@@ -355,11 +398,13 @@ int gd_calibrations_propagate(gd_calibration_set *cs, const gd_tree *tree,
     return 0;
 }
 
-double gd_cal_logprior(const gd_calibration *cal, double age)
+static double cal_logprior_inner(const gd_calibration *cal, double age)
 {
     if (cal == NULL) return 0.0;
     double p1 = cal->p1, p2 = cal->p2, p3 = cal->p3;
+    if (cal->type == GD_CAL_TIP_ERROR) return 0.0;   /* not an age */
     switch (cal->type) {
+        case GD_CAL_ANCESTOR_TIP:
         case GD_CAL_FIXED_TIP:
             return (fabs(age - p1) < 1e-10) ? 0.0 : -HUGE_VAL;
         case GD_CAL_UNIFORM_NODE:
@@ -418,8 +463,69 @@ double gd_cal_logprior(const gd_calibration *cal, double age)
                 double z = (age - p1) / p2;
                 return -0.5 * z * z;
             }
+        case GD_CAL_TIP_ERROR:
+            return 0.0;
     }
     return 0.0;
+}
+
+void gd_cal_widen(gd_calibration *cal, double f)
+{
+    if (cal == NULL || !(f > 1.0)) return;
+    switch (cal->type) {
+    case GD_CAL_UNIFORM_NODE: {
+        double c = 0.5 * (cal->p1 + cal->p2);
+        double h = 0.5 * (cal->p2 - cal->p1) * f;
+        double lo = c - h;
+        cal->p1 = (lo < 0.0) ? 0.0 : lo;
+        cal->p2 = c + h;
+        break;
+    }
+    case GD_CAL_NORMAL_NODE:
+    case GD_CAL_LOGNORMAL_NODE:
+    case GD_CAL_SOFT_MINIMUM:
+    case GD_CAL_SOFT_MAXIMUM:
+        cal->p2 *= f;   /* the sd (log-sd for the lognormal) */
+        break;
+    case GD_CAL_OFFSET_LOGNORMAL_NODE:
+        cal->p3 *= f;   /* p1 is the hard offset, p2 the log-mean */
+        break;
+    default:
+        break;
+    }
+}
+
+/* The outlier component: the calibration widened, and soft. */
+static gd_calibration outlier_component(const gd_calibration *cal)
+{
+    gd_calibration w = *cal;
+    w.outlier = 0.0;
+    w.is_hard = false;
+    gd_cal_widen(&w, GD_CAL_OUTLIER_WIDEN);
+    return w;
+}
+
+double gd_cal_logprior(const gd_calibration *cal, double age)
+{
+    if (cal == NULL) return 0.0;
+    if (!(cal->outlier > 0.0)) return cal_logprior_inner(cal, age);
+    gd_calibration w = outlier_component(cal);
+    double a = log1p(-cal->outlier) + cal_logprior_inner(cal, age);
+    double b = log(cal->outlier) + cal_logprior_inner(&w, age);
+    double m = (a > b) ? a : b;
+    if (m == -HUGE_VAL) return -HUGE_VAL;
+    return m + log(exp(a - m) + exp(b - m));
+}
+
+double gd_cal_outlier_posterior(const gd_calibration *cal, double age)
+{
+    if (cal == NULL || !(cal->outlier > 0.0)) return 0.0;
+    gd_calibration w = outlier_component(cal);
+    double a = log1p(-cal->outlier) + cal_logprior_inner(cal, age);
+    double b = log(cal->outlier) + cal_logprior_inner(&w, age);
+    if (b == -HUGE_VAL) return 0.0;
+    if (a == -HUGE_VAL) return 1.0;
+    return 1.0 / (1.0 + exp(a - b));
 }
 
 int gd_cal_sample_prior(gd_rng *rng, gd_calibration_set *cs,
@@ -477,6 +583,7 @@ int gd_cal_sample_prior(gd_rng *rng, gd_calibration_set *cs,
             if (cal != NULL) {
                 switch (cal->type) {
                     case GD_CAL_FIXED_TIP:
+                    case GD_CAL_ANCESTOR_TIP:
                         age = cal->p1;
                         break;
                     case GD_CAL_UNIFORM_NODE:

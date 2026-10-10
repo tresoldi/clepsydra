@@ -60,6 +60,7 @@ typedef struct gd_analysis_calibration {
     gd_cal_type type;
     double p1, p2, p3;
     bool   is_hard;
+    double outlier;        /* outlier_prob column; 0 when absent or '.' */
     /* The table's source_key column, or "." when it has none. Provenance for
      * the calibration, carried through so the chronology intake does not have
      * to decode this table a second time to reach it. */
@@ -117,6 +118,9 @@ typedef struct gd_analysis_tree_input {
     const char *forms_tsv;        size_t forms_len;
     const char *calibrations_tsv; size_t cal_len;
     const char *newick_name, *forms_name, *cal_name;
+    /* Which coding to read when the forms hold several (analysis_id column);
+     * NULL is an error in that case. */
+    const char *analysis_id;
 } gd_analysis_tree_input;
 
 typedef struct gd_analysis_tree_config {
@@ -126,7 +130,9 @@ typedef struct gd_analysis_tree_config {
     uint64_t seed;              /* 42 */
     double   rate_logmean;      /* -8.80 = Swadesh/year */
     double   rate_logsd;        /* 0.80 */
-    double   epsilon;           /* 0.05 contamination weight */
+    double   epsilon;           /* 0.05: contamination weight when not sampled */
+    /* Sample epsilon ~ Beta(1, 19) instead of fixing it (E2.2). Default 1. */
+    bool     sample_epsilon;
     bool     relaxed;           /* relaxed branch clock (M9); 0 = strict */
     bool     block_age_scaling; /* 1: decorrelate nested ages (deep trees) */
     /* Prior on the lexical root L = rho * a_root, in expected replacements
@@ -142,6 +148,9 @@ typedef struct gd_analysis_tree_config {
      * multipliers with mean 1 and a sampled spread sigma_c ~ HalfNormal(sd).
      * On by default; 0 is the homogeneous model. */
     bool     concept_rates;     /* 1 */
+    /* Forms rows at or above this loan probability are read as missing
+     * (E2.4); above 1 keeps them all. */
+    double   loan_threshold;    /* 0.5 */
     double   concept_rate_prior_sd; /* 1.0 */
     double   yule_kappa;        /* 0 */
     bool     compare_prior;     /* 1: also run the prior alone and report it */
@@ -222,6 +231,28 @@ enum { GD_SENS_CLOCK = 0, GD_SENS_LEXROOT = 1, GD_SENS_CALIBRATIONS = 2, GD_SENS
 #define GD_CONV_RHAT_MAX      1.01
 #define GD_CONV_ESS_PER_CHAIN 100.0
 
+/* One concept after the run (E2.2): averaged over thinned posterior draws.
+ * `p_contaminated` is the posterior probability that the concept came from
+ * the noise (contamination) component rather than the tree. `rate_mult` is
+ * its posterior rate relative to the mean rate under the concept-rate
+ * mixture (1 when the mixture is off). `n_observed` counts the tips with a
+ * form. `name` is owned by the result. */
+typedef struct gd_analysis_concept {
+    char   *name;
+    size_t  n_observed;
+    bool    incompatible;   /* no T1 history on this topology fits; excluded */
+    double  p_contaminated, rate_mult, mean_loglik;
+} gd_analysis_concept;
+
+/* One posterior predictive check (E2.10): a statistic of the observed data,
+ * its distribution over data replicated from posterior draws, and the
+ * posterior predictive p-value P(replicated >= observed). A p-value near 0
+ * or 1 means the model does not reproduce that feature of the data. */
+typedef struct gd_analysis_check {
+    char   name[96];
+    double observed, rep_mean, rep_lo90, rep_hi90, ppp;
+} gd_analysis_check;
+
 typedef struct gd_analysis_tree_result {
     gd_tree *tree;                    /* owned by the result */
 
@@ -240,6 +271,7 @@ typedef struct gd_analysis_tree_result {
     /* Form rows that carried no observation ('.', '?', empty, or status
      * missing/excluded/absent). Skipped, not read as a cognate class. */
     size_t n_missing_cognates;
+    size_t n_loans;                   /* form rows dropped as loans (E2.4) */
     bool   relaxed;
 
     /* Convergence verdict over every sampled parameter (Vehtari et al. 2021):
@@ -259,6 +291,23 @@ typedef struct gd_analysis_tree_result {
      * every calendar age carries the prior's width. `scale_from_prior` flags
      * that (contraction < 0.5).
      */
+    gd_analysis_concept *concepts;    /* n_concepts entries, or NULL */
+    gd_analysis_check   *checks;      /* posterior predictive checks */
+    size_t               n_checks;
+
+    /* One row per calibration applied to a sampled node (E2.6): the target's
+     * posterior median and HPD, and for an outlier-prone calibration its
+     * prior and posterior outlier probability. Strings borrowed from the
+     * tree or owned by the result (id). */
+    struct gd_analysis_cal_check {
+        char       *id;
+        const char *target;
+        double      outlier_prior, outlier_post;
+        gd_analysis_summary target_age;
+    } *cal_checks;
+    size_t n_cal_checks;
+    size_t n_incompatible;            /* concepts excluded as incompatible */
+
     const char *scale_source;
     double rate_contraction;
     bool   scale_from_prior;
@@ -363,6 +412,7 @@ void gd_analysis_tree_result_destroy(gd_analysis_tree_result *res);
 typedef struct gd_analysis_pair_input {
     const char *forms_tsv; size_t forms_len; const char *forms_name;
     const char *lang_a, *lang_b;
+    const char *analysis_id;      /* as in gd_analysis_tree_input */
 } gd_analysis_pair_input;
 
 /*
@@ -390,6 +440,7 @@ typedef struct gd_analysis_pair_config {
     double        rate_logsd;    /* 0.6 */
     double        age_a;         /* 0, years BP */
     double        age_b;         /* 0, years BP */
+    double        loan_threshold; /* 0.5, as for date-tree */
     gd_pair_model model;         /* GD_PAIR_P1 */
 } gd_analysis_pair_config;
 
@@ -423,6 +474,7 @@ typedef struct gd_analysis_pair_result {
     size_t n_shared, n_cognate;
     double retention;
     size_t n_missing_cognates;   /* rows skipped as unobserved, whole file */
+    size_t n_synonym_concepts;   /* shared concepts with more than one form on a side */
 
     /* Years BP. */
     double mean, median, sd, et_lo_90, et_hi_90;

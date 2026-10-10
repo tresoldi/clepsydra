@@ -86,7 +86,41 @@ typedef struct gd_forms {
      * status missing/excluded/absent). They are not cognate classes and are
      * not counted in rows_per_lang. */
     size_t n_missing_cognates;
+
+    /* Rows dropped as loans (loan_probability >= threshold, or
+     * inheritance_probability <= 1 - threshold): a borrowed form says nothing
+     * about inheritance in the family, so its cell is missing. */
+    size_t n_loans;
+
+    /* Every candidate of every cell (synonyms), with weights normalised to
+     * sum to 1 within the cell (equal when all are zero). Cell s = concept *
+     * nlang + lang holds candidates [cell_start[s], cell_start[s + 1]). */
+    size_t  *cell_start;          /* ncell + 1 */
+    char   **cand_cognate;        /* owned */
+    double  *cand_weight;
+    size_t   ncand;
+    /* Rows of other codings, skipped because an analysis_id was selected. */
+    size_t n_other_analysis;
 } gd_forms;
+
+/*
+ * Reading options (docs/roadmap.md E2.4).
+ *   analysis_id     — with an analysis_id column holding more than one
+ *                     coding, the coding to read; NULL is an error then
+ *                     (two codings must never be mixed silently).
+ *   loan_threshold  — rows at or above this loan probability are dropped as
+ *                     loans; > 1 keeps every row. Default 0.5.
+ */
+typedef struct gd_forms_options {
+    const char *analysis_id;
+    double      loan_threshold;
+} gd_forms_options;
+
+void gd_forms_options_default(gd_forms_options *opt);
+
+/* As gd_forms_read, with options; NULL options are the defaults. */
+int gd_forms_read_opts(const char *tsv, size_t len, const gd_forms_options *opt,
+                       gd_forms **out, gd_error *err);
 
 /*
  * Read a forms TSV. `len` is a byte count; 0 means an empty buffer.
@@ -105,6 +139,11 @@ void gd_forms_destroy(gd_forms *f);
 
 /* Index of a language by name, or SIZE_MAX if the file never mentioned it. */
 size_t gd_forms_language_index(const gd_forms *f, const char *name);
+
+/* A cell's candidates: returns their number and points *cog / *w at them
+ * (borrowed). 0 for an empty cell. */
+size_t gd_forms_candidates(const gd_forms *f, size_t concept, size_t lang,
+                           char *const **cog, const double **w);
 
 /* The winning cognate id for a cell, or NULL. Borrowed from `f`. */
 const char *gd_forms_primary(const gd_forms *f, size_t concept, size_t lang);

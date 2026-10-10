@@ -84,6 +84,16 @@ int gd_report_nodes(const gd_analysis_tree_result *res,
                     gd_table **out, gd_error *err);
 int gd_report_diagnostics(const gd_analysis_tree_result *res,
                           gd_table **out, gd_error *err);
+/* posterior_calibrations.tsv: each calibration on a sampled node, with the
+ * target's posterior and, for an outlier-prone one, its outlier probability. */
+int gd_report_calibrations(const gd_analysis_tree_result *res,
+                           gd_table **out, gd_error *err);
+/* adequacy.tsv: the posterior predictive checks. */
+int gd_report_adequacy(const gd_analysis_tree_result *res,
+                       gd_table **out, gd_error *err);
+/* posterior_concepts.tsv: one row per concept (empty for a prior-only run). */
+int gd_report_concepts(const gd_analysis_tree_result *res,
+                       gd_table **out, gd_error *err);
 int gd_report_pair(const gd_analysis_pair_result *res,
                    const char *lang_a, const char *lang_b,
                    gd_table **out, gd_error *err);

@@ -20,6 +20,7 @@
 #include "gd_calibration.h"
 #include "gd_model_novel_state.h"
 #include "gd_mcmc.h"
+#include "gd_rng.h"
 #include "gd_pairwise.h"
 #include "gd_decay.h"
 
@@ -272,6 +273,108 @@ static double var_log(const double *x, size_t n)
     return v / (double)(k - 1);
 }
 
+/* --------------------------------------------- posterior predictive checks */
+
+/* Summary statistics of a dataset (labels: nconcept x n, -1 = missing):
+ * out[0] mean number of classes per concept (concepts with >= 2 observed
+ * tips), out[1] share of classes held by one tip, out[2] share of concepts
+ * incompatible with the tree (T1 extension fails), out[3 + k] the share of
+ * shared concepts for tip pair k. */
+static int dataset_stats(gd_t1_ws *ws, const gd_tree *t, const int *labels,
+                         size_t nconcept, const size_t *tips, size_t ntip,
+                         double *out, gd_error *err)
+{
+    size_t n = t->nnodes;
+    double ksum = 0.0, kcnt = 0.0, single = 0.0, classes = 0.0, incompat = 0.0, used = 0.0;
+    size_t npair = ntip * (ntip - 1) / 2;
+    for (size_t k = 0; k < npair; k++) out[3 + k] = 0.0;
+    double *pden = (double *)gd_calloc_checked(npair ? npair : 1, sizeof(double), err);
+    if (pden == NULL) return GD_E_NOMEM;
+    gd_t1_options o; gd_t1_options_default(&o);
+    o.epsilon = 0.0;
+    o.incompatible = GD_INCOMPATIBLE_EXCLUDE;
+    for (size_t c = 0; c < nconcept; c++) {
+        const int *row = labels + c * n;
+        size_t nobs = 0;
+        for (size_t a = 0; a < ntip; a++) if (row[tips[a]] >= 0) nobs++;
+        if (nobs < 2) continue;
+        used += 1.0;
+        /* classes and singletons, by brute force over the few tips */
+        size_t kc = 0;
+        for (size_t a = 0; a < ntip; a++) {
+            int la = row[tips[a]];
+            if (la < 0) continue;
+            bool first = true; size_t size = 0;
+            for (size_t b = 0; b < ntip; b++) {
+                if (row[tips[b]] != la) continue;
+                if (b < a) first = false;
+                size++;
+            }
+            if (first) { kc++; classes += 1.0; if (size == 1) single += 1.0; }
+        }
+        ksum += (double)kc; kcnt += 1.0;
+        gd_cognate_data d = { (int *)row, n };
+        gd_t1_concept_result cr;
+        if (gd_t1_loglik_concept(ws, 1e-4, &d, &o, &cr, err) != 0) { free(pden); return GD_E_INTERNAL; }
+        if (cr.excluded) incompat += 1.0;
+        size_t k = 0;
+        for (size_t a = 0; a < ntip; a++)
+            for (size_t b = a + 1; b < ntip; b++, k++) {
+                int la = row[tips[a]], lb = row[tips[b]];
+                if (la < 0 || lb < 0) continue;
+                pden[k] += 1.0;
+                if (la == lb) out[3 + k] += 1.0;
+            }
+    }
+    out[0] = (kcnt > 0.0) ? ksum / kcnt : NAN;
+    out[1] = (classes > 0.0) ? single / classes : NAN;
+    out[2] = (used > 0.0) ? incompat / used : NAN;
+    for (size_t k = 0; k < npair; k++) out[3 + k] = (pden[k] > 0.0) ? out[3 + k] / pden[k] : NAN;
+    free(pden);
+    return 0;
+}
+
+/* Simulate one concept: T1 with per-branch rates, or with probability eps a
+ * CRP partition of the observed tips. Missing tips stay missing. */
+static void simulate_concept(gd_rng *rng, const gd_tree *t, double rate, const double *bm,
+                             double eps, double alpha, const int *mask, int *out)
+{
+    size_t n = t->nnodes;
+    if (gd_rng_uniform_open(rng) < eps) {
+        int next = 0;
+        size_t seen = 0;
+        int *sizes = (int *)calloc(n + 1, sizeof(int));
+        for (size_t v = 0; v < n; v++) {
+            out[v] = -1;
+            if (mask[v] < 0) continue;
+            double u = gd_rng_uniform_open(rng) * ((double)seen + alpha);
+            int cls = next;
+            double acc = 0.0;
+            for (int k = 0; k < next && sizes != NULL; k++) {
+                acc += (double)sizes[k];
+                if (u < acc) { cls = k; break; }
+            }
+            if (cls == next) next++;
+            if (sizes != NULL) sizes[cls]++;
+            out[v] = cls;
+            seen++;
+        }
+        free(sizes);
+        return;
+    }
+    int next = 1;
+    for (size_t i = 0; i < n; i++) {
+        size_t v = t->preorder[i];
+        if (v == t->root) { out[v] = 0; continue; }
+        size_t p = t->nodes[v].parent;
+        double dt = t->nodes[p].age - t->nodes[v].age;
+        if (dt < 0.0) dt = 0.0;
+        double r = rate * ((bm != NULL) ? bm[v] : 1.0);
+        out[v] = (gd_rng_uniform_open(rng) < exp(-r * dt)) ? out[p] : next++;
+    }
+    for (size_t v = 0; v < n; v++) if (mask[v] < 0) out[v] = -1;
+}
+
 /* ------------------------------------------------- calibration variation */
 
 /* Loosen a soft window about its centre. A fixed tip or a hard bound has no
@@ -279,30 +382,7 @@ static double var_log(const double *x, size_t n)
  * would be inventing doubt rather than measuring it. */
 static void widen_window(gd_calibration *cal, double f)
 {
-    switch (cal->type) {
-    case GD_CAL_UNIFORM_NODE: {
-        double c = 0.5 * (cal->p1 + cal->p2);
-        double h = 0.5 * (cal->p2 - cal->p1) * f;
-        double lo = c - h;
-        cal->p1 = (lo < 0.0) ? 0.0 : lo;
-        cal->p2 = c + h;
-        break;
-    }
-    case GD_CAL_NORMAL_NODE:
-    case GD_CAL_LOGNORMAL_NODE:
-    case GD_CAL_SOFT_MINIMUM:
-    case GD_CAL_SOFT_MAXIMUM:
-        cal->p2 *= f;   /* the sd (log-sd for the lognormal) */
-        break;
-    case GD_CAL_OFFSET_LOGNORMAL_NODE:
-        /* p1 is the hard offset and p2 the log-mean: the spread is p3.
-         * Multiplying p2 used to move the distribution instead of widening
-         * it (by a factor exp(p2 (f - 1)) in its median). */
-        cal->p3 *= f;
-        break;
-    default:
-        break;
-    }
+    gd_cal_widen(cal, f);
 }
 
 void gd_analysis_calibrations_free(gd_analysis_calibration *cals, size_t n)
@@ -335,6 +415,7 @@ int gd_analysis_calibrations_read(const char *calibrations_tsv, size_t len,
     size_t cc_ty = table_col(&ct, "type"), cc_p1 = table_col(&ct, "p1");
     size_t cc_p2 = table_col(&ct, "p2"), cc_p3 = table_col(&ct, "p3");
     size_t cc_h = table_col(&ct, "is_hard"), cc_s = table_col(&ct, "source_key");
+    size_t cc_o = table_col(&ct, "outlier_prob");
     if (cc_t == SIZE_MAX || cc_ty == SIZE_MAX) {
         gd_error_set(err, GD_E_UNKNOWN_COLUMN,
                      "calibrations need the columns target_id and type");
@@ -380,7 +461,7 @@ int gd_analysis_calibrations_read(const char *calibrations_tsv, size_t len,
                 }
                 given = 1;
             }
-            bool intrinsic_hard = (c->type == GD_CAL_FIXED_TIP ||
+            bool intrinsic_hard = (c->type == GD_CAL_FIXED_TIP || c->type == GD_CAL_ANCESTOR_TIP ||
                                    c->type == GD_CAL_HARD_MINIMUM ||
                                    c->type == GD_CAL_HARD_MAXIMUM);
             if (c->type == GD_CAL_UNIFORM_NODE) {
@@ -394,6 +475,13 @@ int gd_analysis_calibrations_read(const char *calibrations_tsv, size_t len,
                 }
                 c->is_hard = intrinsic_hard;
             }
+        }
+        c->outlier = 0.0;
+        if (cell_double(&ct, cc_o, r, 0.0, &c->outlier) != 0 ||
+            !(c->outlier >= 0.0 && c->outlier < 1.0)) {
+            gd_error_setf(err, GD_E_BAD_NUMERIC,
+                          "outlier_prob must be a number in [0, 1) for calibration '%s'", c->id);
+            goto done;
         }
         c->source_key = dupstr(cc_s != SIZE_MAX ? ct.rows[r][cc_s] : ".");
         if (c->source_key == NULL) {
@@ -447,6 +535,7 @@ void gd_analysis_tree_config_default(gd_analysis_tree_config *cfg)
     cfg->rate_logmean = -8.80;
     cfg->rate_logsd = 0.80;
     cfg->epsilon = 0.05;
+    cfg->sample_epsilon = true;
     cfg->relaxed = false;
     cfg->block_age_scaling = true;
     cfg->root_lex_logmean = -1.2;   /* exp(-1.2) = 0.30 replacements per concept */
@@ -454,6 +543,7 @@ void gd_analysis_tree_config_default(gd_analysis_tree_config *cfg)
     cfg->prior_only = false;
     cfg->compare_prior = true;
     cfg->concept_rates = true;
+    cfg->loan_threshold = 0.5;
     cfg->concept_rate_prior_sd = 1.0;
     cfg->hpd_level = 0.90;
     cfg->calibrations.drop_index = GD_ANALYSIS_KEEP_ALL;
@@ -466,11 +556,12 @@ typedef struct {
     size_t  nconcept;
     int    *labels;        /* nconcept * nnodes; class int or -1 */
     size_t  nnodes;
+    char  **names;         /* nconcept concept ids, owned */
 } cognate_build;
 
 static const char *const TYPE_NAMES[] = {
     "log_rate", "age", "log_sigma_b", "logit_eps", "branch_logmult",
-    "concept_dev", "log_sigma_c"
+    "concept_dev", "log_sigma_c", "logit_tip_error"
 };
 
 struct gd_analysis_tree_job {
@@ -485,6 +576,7 @@ struct gd_analysis_tree_job {
     size_t                  n_skipped_rows;
     size_t                  n_unreadable_weights;
     size_t                  n_missing_cognates;
+    size_t                  n_loans;
     int                     ran;
 };
 
@@ -501,6 +593,9 @@ void gd_analysis_tree_job_destroy(gd_analysis_tree_job *job)
     if (job == NULL) return;
     job_release_tree_users(job);
     free(job->cb.labels);
+    if (job->cb.names != NULL)
+        for (size_t c = 0; c < job->cb.nconcept; c++) free(job->cb.names[c]);
+    free(job->cb.names);
     free(job->concepts);
     gd_tree_destroy(job->tree);       /* NULL once a result took it */
     free(job);
@@ -578,7 +673,10 @@ int gd_analysis_tree_prepare(const gd_analysis_tree_input *in,
         size_t flen = (in->forms_tsv == NULL) ? 0
                     : ((in->forms_len == GD_LEN_NUL_TERMINATED)
                         ? strlen(in->forms_tsv) : in->forms_len);
-        if (gd_forms_read(in->forms_tsv, flen, &forms, err) != GD_E_OK) {
+        gd_forms_options fo; gd_forms_options_default(&fo);
+        fo.analysis_id = in->analysis_id;
+        fo.loan_threshold = job->cfg.loan_threshold;
+        if (gd_forms_read_opts(in->forms_tsv, flen, &fo, &forms, err) != GD_E_OK) {
             label_error(err, in->forms_name);
             goto done;
         }
@@ -588,8 +686,15 @@ int gd_analysis_tree_prepare(const gd_analysis_tree_input *in,
         goto done;
     }
     job->cb.nconcept = forms->nconcept;
+    job->cb.names = (char **)gd_calloc_checked(forms->nconcept, sizeof(char *), err);
+    if (job->cb.names == NULL) { gd_error_set(err, GD_E_NOMEM, "out of memory"); goto done; }
+    for (size_t c = 0; c < forms->nconcept; c++) {
+        job->cb.names[c] = dupstr(forms->concepts[c]);
+        if (job->cb.names[c] == NULL) { gd_error_set(err, GD_E_NOMEM, "out of memory"); goto done; }
+    }
     job->n_unreadable_weights = forms->n_unreadable_weights;
     job->n_missing_cognates = forms->n_missing_cognates;
+    job->n_loans = forms->n_loans;
 
     /* Rows whose language the tree never mentions are not data for this run.
      * Counted per row, not per language, because that is what the dataset
@@ -703,7 +808,8 @@ int gd_analysis_tree_prepare(const gd_analysis_tree_input *in,
         gd_error ignore = GD_ERROR_INIT;   /* an unresolvable target fails later, with its name */
         (void)gd_tree_resolve_target(job->tree, cals[job->cfg.calibrations.drop_index].target,
                                      &tv, &ignore);
-        drop_tip = (tv != GD_NODE_NONE && gd_tree_is_leaf(job->tree, tv));
+        drop_tip = (tv != GD_NODE_NONE && gd_tree_is_leaf(job->tree, tv) &&
+                    cals[job->cfg.calibrations.drop_index].type != GD_CAL_TIP_ERROR);
     }
     job->cs = gd_calset_create(ncal - drop + (drop_tip ? 1 : 0), err);
     if (job->cs == NULL) goto done;
@@ -738,6 +844,7 @@ int gd_analysis_tree_prepare(const gd_analysis_tree_input *in,
         cal->p2      = src->p2;
         cal->p3      = src->p3;
         cal->is_hard = src->is_hard;
+        cal->outlier = src->outlier;
         if (widen > 1.0) widen_window(cal, widen);
     }
     if (gd_calibrations_resolve(job->cs, job->tree, err) != 0 ||
@@ -749,7 +856,14 @@ int gd_analysis_tree_prepare(const gd_analysis_tree_input *in,
     if (job->ws == NULL) goto done;
     gd_t1_options_default(&job->opt);
     job->opt.epsilon = job->cfg.epsilon;
-    job->opt.incompatible = GD_INCOMPATIBLE_CONTAMINATION;   /* absorb homoplasy */
+    /* A concept whose pattern no T1 history on this topology can produce
+     * (usually ancestral polymorphism sorted differently in the daughters,
+     * sometimes borrowing) has an age-independent likelihood term, so dropping
+     * it changes no date. It is dropped rather than charged to the noise
+     * component, because counting it as noise inflates the sampled epsilon,
+     * which then pulls fast but compatible concepts into the noise too. The
+     * count is reported (n_incompatible). */
+    job->opt.incompatible = GD_INCOMPATIBLE_EXCLUDE;
     job->model = gd_mcmc_t1_create(job->ws, job->concepts, job->cb.nconcept,
                                    &job->opt, err);
     if (job->model == NULL) goto done;
@@ -782,9 +896,21 @@ done:
     return rc;
 }
 
+static void free_concepts(gd_analysis_concept *c, size_t n)
+{
+    if (c == NULL) return;
+    for (size_t i = 0; i < n; i++) free(c[i].name);
+    free(c);
+}
+
 void gd_analysis_tree_result_destroy(gd_analysis_tree_result *res)
 {
     if (res == NULL) return;
+    free_concepts(res->concepts, res->n_concepts);
+    free(res->checks);
+    if (res->cal_checks != NULL)
+        for (size_t i = 0; i < res->n_cal_checks; i++) free(res->cal_checks[i].id);
+    free(res->cal_checks);
     free(res->trace);
     free(res->ages);
     free(res->params);
@@ -804,6 +930,7 @@ int gd_analysis_tree_job_run(gd_analysis_tree_job *job,
     }
 
     gd_mcmc_result *res = NULL, *prior_res = NULL;
+    double *hz = NULL;
     double *col = NULL, *pcol = NULL, *rate_col = NULL, *root_col = NULL;
     gd_analysis_tree_result *r = NULL;
     int rc = GD_E_INTERNAL;
@@ -818,12 +945,31 @@ int gd_analysis_tree_job_run(gd_analysis_tree_job *job,
     mc.rate_logsd = job->cfg.rate_logsd;
     mc.sample_branch = job->cfg.relaxed ? 1 : 0;
     mc.fixed_epsilon = job->cfg.epsilon;
+    mc.sample_contamination = job->cfg.sample_epsilon;
     mc.block_age_scaling = job->cfg.block_age_scaling;
     mc.root_lex_logmean = job->cfg.root_lex_logmean;
     mc.root_lex_logsd = job->cfg.root_lex_logsd;
     mc.prior_only = job->cfg.prior_only;
     mc.tree_prior = job->cfg.yule ? GD_TREE_PRIOR_YULE : GD_TREE_PRIOR_UNIFORM;
     mc.sample_rate_mix = job->cfg.concept_rates;
+    /* Tip observation-error priors (E2.9), from tip_error rows. */
+    double *te_mean = NULL, *te_conc = NULL;
+    for (size_t c = 0; c < job->cs->ncals; c++) {
+        const gd_calibration *cl = &job->cs->cals[c];
+        if (!cl->resolved || cl->type != GD_CAL_TIP_ERROR) continue;
+        if (te_mean == NULL) {
+            te_mean = (double *)gd_calloc_checked(job->tree->nnodes, sizeof(double), err);
+            te_conc = (double *)gd_calloc_checked(job->tree->nnodes, sizeof(double), err);
+            if (te_mean == NULL || te_conc == NULL) {
+                free(te_mean); free(te_conc);
+                gd_error_set(err, GD_E_NOMEM, "out of memory"); return fail_code(err);
+            }
+        }
+        te_mean[cl->node_index] = cl->p1;
+        te_conc[cl->node_index] = cl->p2;
+    }
+    mc.tip_err_mean = te_mean;
+    mc.tip_err_conc = te_conc;
     mc.rate_mix_prior_sd = job->cfg.concept_rate_prior_sd;
     mc.yule_kappa = job->cfg.yule_kappa;
     mc.on_progress = job->cfg.on_progress;
@@ -832,7 +978,7 @@ int gd_analysis_tree_job_run(gd_analysis_tree_job *job,
 
     job->ran = 1;
     res = gd_mcmc_run(&model, job->tree, job->cs, &mc, job->cfg.n_chains, err);
-    if (res == NULL) goto done;
+    if (res == NULL) { free(te_mean); free(te_conc); goto done; }
 
     /* The prior alone, for the effective-prior report (E1.6). The likelihood
      * is switched off, so this costs a small fraction of the posterior run.
@@ -843,8 +989,14 @@ int gd_analysis_tree_job_run(gd_analysis_tree_job *job,
         pc.seed = mc.seed ^ 0x9e3779b97f4a7c15ULL;
         pc.on_progress = NULL;
         prior_res = gd_mcmc_run(&model, job->tree, job->cs, &pc, job->cfg.n_chains, err);
-        if (prior_res == NULL) goto done;
+        if (prior_res == NULL) { free(te_mean); free(te_conc); goto done; }
     }
+    free(te_mean); free(te_conc);
+    /* The chains are gone, and the workspace still points at the last
+     * chain's tip-error hazards; the summaries below set their own. */
+    gd_t1_ws_set_tip_error(job->ws, NULL);
+    hz = (double *)gd_calloc_checked(job->tree->nnodes, sizeof(double), err);
+    if (hz == NULL) { gd_error_set(err, GD_E_NOMEM, "out of memory"); goto done; }
 
     size_t n = job->tree->nnodes;
     /* res->n_chains * res->n_draws was already checked when the sampler
@@ -967,6 +1119,7 @@ int gd_analysis_tree_job_run(gd_analysis_tree_job *job,
     r->n_skipped_rows = job->n_skipped_rows;
     r->n_unreadable_weights = job->n_unreadable_weights;
     r->n_missing_cognates = job->n_missing_cognates;
+    r->n_loans = job->n_loans;
     r->relaxed = job->cfg.relaxed;
     r->branch_rate_confounded = res->branch_rate_confounded;
 
@@ -1001,6 +1154,7 @@ int gd_analysis_tree_job_run(gd_analysis_tree_job *job,
         for (size_t c = 0; c < job->cs->ncals; c++) {
             const gd_calibration *cl = &job->cs->cals[c];
             if (!cl->resolved) continue;
+            if (cl->type == GD_CAL_TIP_ERROR) continue;   /* not an age */
             if (job->tree->nodes[cl->node_index].is_leaf) {
                 if (!(cl->type == GD_CAL_FIXED_TIP && cl->p1 <= 0.0)) tip_cal = true;
             } else {
@@ -1086,6 +1240,195 @@ int gd_analysis_tree_job_run(gd_analysis_tree_job *job,
         free(g_root); free(g_lex); free(lp); free(lr);
     }
 
+    /* Per-concept summary (E2.2), over at most 200 evenly spaced draws. Each
+     * draw's ages and parameters are written back into the tree and the
+     * concept likelihoods recomputed: the sampler keeps only totals. */
+    if (!job->cfg.prior_only && total > 0) {
+        size_t nc = job->cb.nconcept;
+        r->concepts = (gd_analysis_concept *)gd_calloc_checked(nc ? nc : 1, sizeof *r->concepts, err);
+        double *bm = (double *)gd_malloc_array_checked(n, sizeof(double), err);
+        if (r->concepts == NULL || bm == NULL) { free(bm); gd_error_set(err, GD_E_NOMEM, "out of memory"); goto done; }
+        size_t p_rate = SIZE_MAX, p_eps = SIZE_MAX, p_sc = SIZE_MAX;
+        for (size_t p = 0; p < np; p++) {
+            if (res->param_type[p] == GD_MCMC_P_LOGRATE) p_rate = p;
+            if (res->param_type[p] == GD_MCMC_P_LOGIT_EPS) p_eps = p;
+            if (res->param_type[p] == GD_MCMC_P_LOG_SIGMA_C) p_sc = p;
+        }
+        size_t ndraw = (total < 200) ? total : 200;
+        gd_t1_options opt = job->opt;
+        bool ok = true;
+        for (size_t k = 0; k < ndraw && ok; k++) {
+            size_t i = (ndraw == 1) ? 0 : k * (total - 1) / (ndraw - 1);
+            for (size_t v = 0; v < n; v++) {
+                job->tree->nodes[v].age = job->cs->node_lo[v];
+                bm[v] = 1.0;
+            }
+            for (size_t p = 0; p < np; p++) {
+                if (res->param_type[p] == GD_MCMC_P_AGE)
+                    job->tree->nodes[res->param_node[p]].age = gd_mcmc_result_at(res, p, i);
+                else if (res->param_type[p] == GD_MCMC_P_BRANCH_LOGMULT)
+                    bm[res->param_node[p]] = exp(gd_mcmc_result_at(res, p, i));
+            }
+            double rate = (p_rate != SIZE_MAX) ? exp(gd_mcmc_result_at(res, p_rate, i)) : exp(job->cfg.rate_logmean);
+            opt.epsilon = (p_eps != SIZE_MAX) ? 1.0 / (1.0 + exp(-gd_mcmc_result_at(res, p_eps, i)))
+                                              : job->cfg.epsilon;
+            double sc = (p_sc != SIZE_MAX) ? exp(gd_mcmc_result_at(res, p_sc, i)) : 0.0;
+            for (size_t v = 0; v < n; v++) hz[v] = 0.0;
+            for (size_t p = 0; p < np; p++)
+                if (res->param_type[p] == GD_MCMC_P_LOGIT_TIPERR)
+                    hz[res->param_node[p]] = log1p(exp(gd_mcmc_result_at(res, p, i)));
+            gd_t1_ws_set_tip_error(job->ws, hz);
+            for (size_t c = 0; c < nc; c++) {
+                gd_t1_concept_result cr;
+                if (gd_t1_loglik_concept_mixed(job->ws, rate, sc, job->cfg.relaxed ? bm : NULL,
+                                               &job->concepts[c], &opt, &cr, err) != 0) { ok = false; break; }
+                if (cr.excluded) { r->concepts[c].incompatible = true; continue; }
+                r->concepts[c].p_contaminated += cr.p_contaminated / (double)ndraw;
+                r->concepts[c].rate_mult += cr.rate_mult_mean / (double)ndraw;
+                r->concepts[c].mean_loglik += cr.log_lik / (double)ndraw;
+            }
+        }
+        free(bm);
+        if (!ok) goto done;
+        for (size_t c = 0; c < nc; c++) {
+            if (r->concepts[c].incompatible) {
+                r->n_incompatible++;
+                r->concepts[c].p_contaminated = NAN;
+                r->concepts[c].rate_mult = NAN;
+                r->concepts[c].mean_loglik = NAN;
+            }
+            r->concepts[c].name = dupstr(job->cb.names[c]);
+            if (r->concepts[c].name == NULL) { gd_error_set(err, GD_E_NOMEM, "out of memory"); goto done; }
+            for (size_t v = 0; v < n; v++)
+                if (job->tree->nodes[v].is_leaf && job->concepts[c].labels[v] >= 0) r->concepts[c].n_observed++;
+        }
+    }
+
+    /* Posterior predictive checks (E2.10). */
+    if (!job->cfg.prior_only && total > 0) {
+        size_t nc = job->cb.nconcept, ntip = 0;
+        size_t *tips = (size_t *)gd_malloc_array_checked(n, sizeof(size_t), err);
+        if (tips == NULL) { gd_error_set(err, GD_E_NOMEM, "out of memory"); goto done; }
+        for (size_t v = 0; v < n; v++) if (job->tree->nodes[v].is_leaf) tips[ntip++] = v;
+        size_t npair = ntip * (ntip - 1) / 2, nstat = 3 + npair;
+        size_t R = (total < 200) ? total : 200;
+        double *obs = (double *)gd_malloc_array_checked(nstat, sizeof(double), err);
+        double *rep = (double *)gd_malloc_array_checked(R * nstat, sizeof(double), err);
+        int *sim = (int *)gd_malloc_array_checked(nc * n, sizeof(int), err);
+        double *bm = (double *)gd_malloc_array_checked(n, sizeof(double), err);
+        gd_rng *rng = gd_rng_create(job->cfg.seed ^ 0x51ed270b27f3a7c5ULL, 7u, err);
+        r->checks = (gd_analysis_check *)gd_calloc_checked(nstat, sizeof *r->checks, err);
+        bool ok = (obs && rep && sim && bm && rng && r->checks);
+        if (ok && dataset_stats(job->ws, job->tree, job->cb.labels, nc, tips, ntip, obs, err) != 0) ok = false;
+        size_t p_rate = SIZE_MAX, p_eps = SIZE_MAX, p_sc = SIZE_MAX;
+        for (size_t p = 0; p < np; p++) {
+            if (res->param_type[p] == GD_MCMC_P_LOGRATE) p_rate = p;
+            if (res->param_type[p] == GD_MCMC_P_LOGIT_EPS) p_eps = p;
+            if (res->param_type[p] == GD_MCMC_P_LOG_SIGMA_C) p_sc = p;
+        }
+        for (size_t k = 0; k < R && ok; k++) {
+            size_t i = (R == 1) ? 0 : k * (total - 1) / (R - 1);
+            for (size_t v = 0; v < n; v++) { job->tree->nodes[v].age = job->cs->node_lo[v]; bm[v] = 1.0; }
+            for (size_t p = 0; p < np; p++) {
+                if (res->param_type[p] == GD_MCMC_P_AGE)
+                    job->tree->nodes[res->param_node[p]].age = gd_mcmc_result_at(res, p, i);
+                else if (res->param_type[p] == GD_MCMC_P_BRANCH_LOGMULT)
+                    bm[res->param_node[p]] = exp(gd_mcmc_result_at(res, p, i));
+            }
+            double rate = (p_rate != SIZE_MAX) ? exp(gd_mcmc_result_at(res, p_rate, i)) : exp(job->cfg.rate_logmean);
+            double eps = (p_eps != SIZE_MAX) ? 1.0 / (1.0 + exp(-gd_mcmc_result_at(res, p_eps, i)))
+                                             : job->cfg.epsilon;
+            double sc = (p_sc != SIZE_MAX) ? exp(gd_mcmc_result_at(res, p_sc, i)) : 0.0;
+            for (size_t v = 0; v < n; v++) hz[v] = 0.0;
+            for (size_t p = 0; p < np; p++)
+                if (res->param_type[p] == GD_MCMC_P_LOGIT_TIPERR)
+                    hz[res->param_node[p]] = log1p(exp(gd_mcmc_result_at(res, p, i)));
+            for (size_t c = 0; c < nc; c++) {
+                double lam = (sc > 0.0) ? exp(sc * gd_rng_normal(rng, 0.0, 1.0) - 0.5 * sc * sc) : 1.0;
+                simulate_concept(rng, job->tree, rate * lam, job->cfg.relaxed ? bm : NULL, eps,
+                                 job->opt.noise_alpha, job->concepts[c].labels, sim + c * n);
+                /* Observation error: a tip's form is replaced by a new class
+                 * with probability e = 1 - exp(-hazard). */
+                for (size_t v = 0; v < n; v++)
+                    if (hz[v] > 0.0 && sim[c * n + v] >= 0 &&
+                        gd_rng_uniform_open(rng) < -expm1(-hz[v]))
+                        sim[c * n + v] = 1000000 + (int)v;
+            }
+            if (dataset_stats(job->ws, job->tree, sim, nc, tips, ntip, rep + k * nstat, err) != 0) ok = false;
+        }
+        if (ok) {
+            double *col_r = (double *)gd_malloc_array_checked(R, sizeof(double), err);
+            if (col_r == NULL) ok = false;
+            for (size_t s = 0; s < nstat && ok; s++) {
+                gd_analysis_check *ck = &r->checks[s];
+                if (s == 0) snprintf(ck->name, sizeof ck->name, "classes_per_concept");
+                else if (s == 1) snprintf(ck->name, sizeof ck->name, "singleton_share");
+                else if (s == 2) snprintf(ck->name, sizeof ck->name, "incompatible_share");
+                else {
+                    size_t k = s - 3, a = 0, b = 1;
+                    for (size_t q = 0; q < k; q++) { if (++b == ntip) { a++; b = a + 1; } }
+                    const char *la = job->tree->nodes[tips[a]].label, *lb = job->tree->nodes[tips[b]].label;
+                    snprintf(ck->name, sizeof ck->name, "sharing:%s|%s", la ? la : "?", lb ? lb : "?");
+                }
+                ck->observed = obs[s];
+                size_t m = 0; double ge = 0.0, mean = 0.0;
+                for (size_t k = 0; k < R; k++) {
+                    double x = rep[k * nstat + s];
+                    if (isnan(x)) continue;
+                    col_r[m++] = x; mean += x;
+                    if (x > obs[s]) ge += 1.0; else if (x == obs[s]) ge += 0.5;
+                }
+                if (m == 0 || isnan(obs[s])) {
+                    ck->rep_mean = ck->rep_lo90 = ck->rep_hi90 = ck->ppp = NAN;
+                    continue;
+                }
+                qsort(col_r, m, sizeof(double), cmp_double);
+                ck->rep_mean = mean / (double)m;
+                ck->rep_lo90 = col_r[(size_t)(0.05 * (double)(m - 1))];
+                ck->rep_hi90 = col_r[(size_t)(0.95 * (double)(m - 1))];
+                ck->ppp = ge / (double)m;
+            }
+            free(col_r);
+            r->n_checks = nstat;
+        }
+        free(tips); free(obs); free(rep); free(sim); free(bm);
+        gd_rng_destroy(rng);
+        if (!ok) { gd_error_set(err, GD_E_INTERNAL, "posterior predictive checks failed"); goto done; }
+    }
+
+    /* Calibration check (E2.6): each calibration on a sampled node. */
+    {
+        size_t nck = 0;
+        for (size_t c = 0; c < job->cs->ncals; c++) {
+            const gd_calibration *cl = &job->cs->cals[c];
+            for (size_t p = 0; p < np; p++)
+                if (cl->resolved && res->param_type[p] == GD_MCMC_P_AGE &&
+                    res->param_node[p] == cl->node_index) { nck++; break; }
+        }
+        if (nck > 0) {
+            r->cal_checks = (struct gd_analysis_cal_check *)gd_calloc_checked(nck, sizeof *r->cal_checks, err);
+            if (r->cal_checks == NULL) { gd_error_set(err, GD_E_NOMEM, "out of memory"); goto done; }
+            for (size_t c = 0; c < job->cs->ncals; c++) {
+                const gd_calibration *cl = &job->cs->cals[c];
+                size_t pv = SIZE_MAX;
+                for (size_t p = 0; p < np; p++)
+                    if (cl->resolved && res->param_type[p] == GD_MCMC_P_AGE &&
+                        res->param_node[p] == cl->node_index) pv = p;
+                if (pv == SIZE_MAX) continue;
+                struct gd_analysis_cal_check *ck = &r->cal_checks[r->n_cal_checks++];
+                ck->id = dupstr(cl->calibration_id);
+                if (ck->id == NULL) { gd_error_set(err, GD_E_NOMEM, "out of memory"); goto done; }
+                ck->target = job->tree->nodes[cl->node_index].label;
+                ck->outlier_prior = cl->outlier;
+                (void)gd_mcmc_result_column(res, pv, col, total);
+                ck->target_age = summarize(col, total, level);
+                double post = 0.0;
+                for (size_t i = 0; i < total; i++) post += gd_cal_outlier_posterior(cl, col[i]);
+                ck->outlier_post = (cl->outlier > 0.0) ? post / (double)total : NAN;
+            }
+        }
+    }
+
     /* The tree moves into the result; tear down what still points at it first,
      * so the job and the result can be destroyed in either order. */
     job_release_tree_users(job);
@@ -1097,9 +1440,18 @@ int gd_analysis_tree_job_run(gd_analysis_tree_job *job,
 
 done:
     if (rc != GD_E_OK) rc = fail_code(err);
+    free(hz);
+    if (job != NULL && job->ws != NULL) gd_t1_ws_set_tip_error(job->ws, NULL);
     free(col); free(pcol); free(rate_col); free(root_col);
     gd_mcmc_result_destroy(prior_res);
-    if (r != NULL) { free(r->trace); free(r->ages); free(r->params); free(r); }
+    if (r != NULL) {
+        free_concepts(r->concepts, job->cb.nconcept);
+        free(r->checks);
+        if (r->cal_checks != NULL)
+            for (size_t i = 0; i < r->n_cal_checks; i++) free(r->cal_checks[i].id);
+        free(r->cal_checks);
+        free(r->trace); free(r->ages); free(r->params); free(r);
+    }
     if (res != NULL) gd_mcmc_result_destroy(res);
     return rc;
 }
@@ -1190,6 +1542,7 @@ void gd_analysis_pair_config_default(gd_analysis_pair_config *cfg)
     cfg->rate_logsd = 0.6;
     cfg->age_a = 0.0;
     cfg->age_b = 0.0;
+    cfg->loan_threshold = 0.5;
     cfg->model = GD_PAIR_P1;
 }
 
@@ -1213,6 +1566,7 @@ int gd_analysis_pair_run(const gd_analysis_pair_input *in,
 
     gd_forms *forms = NULL;
     int *matches = NULL;
+    double *yc = NULL;
     gd_concept_ref *refs = NULL;
     gd_analysis_pair_result *r = NULL;
     int rc = GD_E_INTERNAL;
@@ -1224,7 +1578,10 @@ int gd_analysis_pair_run(const gd_analysis_pair_input *in,
         size_t flen = (in->forms_tsv == NULL) ? 0
                     : ((in->forms_len == GD_LEN_NUL_TERMINATED)
                         ? strlen(in->forms_tsv) : in->forms_len);
-        if (gd_forms_read(in->forms_tsv, flen, &forms, err) != GD_E_OK) {
+        gd_forms_options fo; gd_forms_options_default(&fo);
+        fo.analysis_id = in->analysis_id;
+        fo.loan_threshold = cfg->loan_threshold;
+        if (gd_forms_read_opts(in->forms_tsv, flen, &fo, &forms, err) != GD_E_OK) {
             label_error(err, in->forms_name);
             goto done;
         }
@@ -1248,13 +1605,27 @@ int gd_analysis_pair_run(const gd_analysis_pair_input *in,
     if (matches == NULL || refs == NULL) {
         gd_error_set(err, GD_E_NOMEM, "out of memory"); goto done;
     }
-    size_t m = 0, nmatch = 0;
+    /* Synonyms are marginalised exactly (E2.3): with candidate weights w,
+     * the probability that the two compared forms are cognate is
+     * y = sum_i sum_j w_i w_j [class_i == class_j], entered as a soft match
+     * (P1's y_c). One form per side gives y = 0 or 1, the plain case. */
+    yc = (double *)gd_malloc_array_checked(nc ? nc : 1, sizeof(double), err);
+    if (yc == NULL) { gd_error_set(err, GD_E_NOMEM, "out of memory"); goto done; }
+    size_t m = 0, nmatch = 0, nsyn = 0;
     for (size_t i = 0; i < nc; i++) {
-        const char *ca = (li_a == SIZE_MAX) ? NULL : gd_forms_primary(forms, i, li_a);
-        const char *cb = (li_b == SIZE_MAX) ? NULL : gd_forms_primary(forms, i, li_b);
-        if (ca == NULL || cb == NULL) continue;
-        matches[m] = (strcmp(ca, cb) == 0) ? 1 : 0;
-        nmatch += (size_t)matches[m];
+        char *const *ca; char *const *cb; const double *wa; const double *wb;
+        size_t na = gd_forms_candidates(forms, i, li_a, &ca, &wa);
+        size_t nb = gd_forms_candidates(forms, i, li_b, &cb, &wb);
+        if (na == 0 || nb == 0) continue;
+        double y = 0.0;
+        for (size_t x = 0; x < na; x++)
+            for (size_t z = 0; z < nb; z++)
+                if (strcmp(ca[x], cb[z]) == 0) y += wa[x] * wb[z];
+        if (y > 1.0) y = 1.0;
+        if (na > 1 || nb > 1) nsyn++;
+        matches[m] = 1;
+        yc[m] = y;
+        nmatch += (y >= 1.0 - 1e-12) ? 1u : 0u;
         /* P1 works per kiloyear internally; the config is per year. */
         refs[m].log_rate_mean = cfg->rate_logmean + log(1000.0);
         refs[m].log_rate_sd = cfg->rate_logsd;
@@ -1290,13 +1661,13 @@ int gd_analysis_pair_run(const gd_analysis_pair_input *in,
     }
     if (cfg->model != GD_PAIR_P1) {
         gd_decay_params dp; gd_decay_params_default(&dp);
-        prc = gd_decay_posterior(pair_decay_model(cfg->model), &dp, matches, NULL,
+        prc = gd_decay_posterior(pair_decay_model(cfg->model), &dp, matches, yc,
                                  m, cfg->t_lo, cfg->t_hi, 1024, &result, err);
         unit = 1.0;             /* already in years */
     } else {
         /* d = 2T with T in kyr: P1 works in the rate's time unit, so the bounds
          * go in as kyr and the summaries are rescaled to years below. */
-        prc = gd_p1_posterior(refs, m, matches, NULL,
+        prc = gd_p1_posterior(refs, m, matches, yc,
                               cfg->age_a / 1000.0, cfg->age_b / 1000.0,
                               cfg->t_lo / 1000.0, cfg->t_hi / 1000.0,
                               0.0, 0.3, 0.0, 1.0, 19.0,
@@ -1314,6 +1685,7 @@ int gd_analysis_pair_run(const gd_analysis_pair_input *in,
     r->n_cognate = nmatch;
     r->retention = m ? (double)nmatch / (double)m : 0.0;
     r->n_missing_cognates = forms->n_missing_cognates;
+    r->n_synonym_concepts = nsyn;
     r->mean = result.mean * unit;
     r->median = result.median * unit;
     r->sd = result.sd * unit;
@@ -1356,7 +1728,7 @@ done:
         free((void *)result.grid_T);
         free((void *)result.grid_density);
     }
-    free(matches); free(refs);
+    free(matches); free(refs); free(yc);
     gd_forms_destroy(forms);
     return rc;
 }

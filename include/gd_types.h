@@ -53,7 +53,8 @@ typedef enum gd_mcmc_ptype {
     GD_MCMC_P_LOGIT_EPS,         /* logit of the contamination weight */
     GD_MCMC_P_BRANCH_LOGMULT,    /* log of a branch multiplier m_b */
     GD_MCMC_P_CONCEPT_DEV,       /* a concept log-rate deviation mu_c */
-    GD_MCMC_P_LOG_SIGMA_C        /* log of the among-concept rate spread */
+    GD_MCMC_P_LOG_SIGMA_C,       /* log of the among-concept rate spread */
+    GD_MCMC_P_LOGIT_TIPERR       /* logit of a tip's observation-error probability */
 } gd_mcmc_ptype;
 
 /*
@@ -70,7 +71,15 @@ typedef enum gd_cal_type {
     GD_CAL_HARD_MINIMUM,
     GD_CAL_HARD_MAXIMUM,
     GD_CAL_SOFT_MINIMUM,
-    GD_CAL_SOFT_MAXIMUM
+    GD_CAL_SOFT_MAXIMUM,
+    /* A dated tip that samples its sister lineage's own ancestor: the tip
+     * is fixed at p1 and its parent is pinned to the same age, so the tip
+     * hangs on a zero-length branch (roadmap E2.7). */
+    GD_CAL_ANCESTOR_TIP,
+    /* Not an age: a prior on a tip's observation-error probability (roadmap
+     * E2.9), Beta with mean p1 and concentration p2. The tip's age is
+     * whatever the other rows (or the default, 0) make it. */
+    GD_CAL_TIP_ERROR
 } gd_cal_type;
 
 /*

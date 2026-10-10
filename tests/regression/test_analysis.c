@@ -1117,6 +1117,219 @@ TEST(test_analysis_three_ages_and_scale_source)
     CHECK(fabs(rc) < 0.25);
 }
 
+/* E2.2: epsilon is sampled; a concept no T1 history on the tree can produce
+ * is flagged incompatible and excluded (it does not inflate epsilon); every
+ * other concept gets a contamination probability and a relative rate. */
+TEST(test_analysis_concept_table_and_incompatible)
+{
+    gd_analysis_tree_input in; tree_input(&in);
+    /* c4 pairs Latin with Spanish against Portuguese with Sardinian, which
+     * no single-state history on ((Latin,(Sp,Pt)),Sard) produces. */
+    static const char *F =
+        "language_id\tconcept_id\tcognate_id\n"
+        "Latin\tc1\tk1\n" "Spanish\tc1\tk1\n" "Portuguese\tc1\tk1\n" "Sardinian\tc1\tk1\n"
+        "Latin\tc2\tk2\n" "Spanish\tc2\tk3\n" "Portuguese\tc2\tk3\n" "Sardinian\tc2\tk2\n"
+        "Latin\tc3\tk4\n" "Spanish\tc3\tk5\n" "Portuguese\tc3\tk6\n" "Sardinian\tc3\tk7\n"
+        "Latin\tc4\tk8\n" "Spanish\tc4\tk8\n" "Portuguese\tc4\tk9\n" "Sardinian\tc4\tk9\n";
+    in.forms_tsv = F;
+    gd_analysis_tree_config cfg; quick_config(&cfg);
+    cfg.concept_rates = false;
+    gd_error err = GD_ERROR_INIT;
+    gd_analysis_tree_result *r = NULL;
+    CHECK(gd_analysis_tree_run(&in, &cfg, &r, &err) == 0);
+    CHECK(r->concepts != NULL);
+    size_t ninc = r->n_incompatible;
+    bool c4_inc = false, others_ok = true;
+    for (size_t c = 0; c < r->n_concepts; c++) {
+        const gd_analysis_concept *k = &r->concepts[c];
+        if (strcmp(k->name, "c4") == 0) c4_inc = k->incompatible;
+        else if (k->incompatible || !(k->p_contaminated >= 0.0 && k->p_contaminated <= 1.0) ||
+                 k->n_observed != 4) others_ok = false;
+    }
+    bool eps_sampled = false;
+    for (size_t p = 0; p < r->nparams; p++)
+        if (r->params[p].type == GD_MCMC_P_LOGIT_EPS) eps_sampled = true;
+    size_t nchecks = r->n_checks;
+    double inc_obs = NAN, inc_ppp = NAN;
+    bool ppp_ok = true;
+    for (size_t i = 0; i < r->n_checks; i++) {
+        if (strcmp(r->checks[i].name, "incompatible_share") == 0) {
+            inc_obs = r->checks[i].observed; inc_ppp = r->checks[i].ppp;
+        }
+        if (!(r->checks[i].ppp >= 0.0 && r->checks[i].ppp <= 1.0)) ppp_ok = false;
+    }
+    gd_analysis_tree_result_destroy(r);
+    CHECK(ninc == 1);
+    CHECK(c4_inc);
+    /* E2.10: the adequacy panel. 3 summary statistics + 6 tip pairs. The
+     * observed incompatible share is 1 of 4, which T1 replicates (with a tiny
+     * epsilon) almost never reach: its p-value is near 0. */
+    CHECK(nchecks == 9);
+    CHECK_APPROX(inc_obs, 0.25, 1e-12);
+    CHECK(inc_ppp < 0.05);
+    CHECK(ppp_ok);
+    CHECK(others_ok);
+    CHECK(eps_sampled);
+}
+
+/* E2.6: an outlier-prone calibration that the data contradict is flagged.
+ * The root is calibrated far too young (300 +- 20 BP, below Latin's 2050),
+ * which is impossible as a hard constraint and only possible as an outlier;
+ * a sound calibration on the same node keeps a low outlier probability. */
+TEST(test_analysis_outlier_calibration_is_flagged)
+{
+    gd_analysis_tree_input in; tree_input(&in);
+    in.calibrations_tsv =
+        "calibration_id\ttarget_id\ttype\tp1\tp2\tp3\tis_hard\tsource_key\toutlier_prob\n"
+        "cal1\tLatin\tfixed_tip\t2050\t.\t.\t1\tstandard\t.\n"
+        "bad\tRoot\tnormal_node\t300\t20\t.\t.\tstandard\t0.1\n";
+    gd_analysis_tree_config cfg; quick_config(&cfg);
+    cfg.concept_rates = false;
+    gd_error err = GD_ERROR_INIT;
+    gd_analysis_tree_result *r = NULL;
+    int rc = gd_analysis_tree_run(&in, &cfg, &r, &err);
+    double post = NAN, prior = NAN, med = NAN;
+    if (r != NULL) {
+        for (size_t i = 0; i < r->n_cal_checks; i++)
+            if (strcmp(r->cal_checks[i].id, "bad") == 0) {
+                post = r->cal_checks[i].outlier_post;
+                prior = r->cal_checks[i].outlier_prior;
+                med = r->cal_checks[i].target_age.median;
+            }
+        gd_analysis_tree_result_destroy(r);
+    }
+    CHECK(rc == 0);
+    CHECK_APPROX(prior, 0.1, 1e-12);
+    CHECK(post > 0.99);
+    CHECK(med > 2050.0);
+
+    /* The same row as a trusted calibration cannot be satisfied at all. */
+    in.calibrations_tsv =
+        "calibration_id\ttarget_id\ttype\tp1\tp2\tp3\tis_hard\tsource_key\n"
+        "cal1\tLatin\tfixed_tip\t2050\t.\t.\t1\tstandard\n"
+        "bad\tRoot\tnormal_node\t300\t20\t.\t.\tstandard\n";
+    gd_analysis_tree_job *job = NULL;
+    gd_error_clear(&err);
+    CHECK(gd_analysis_tree_prepare(&in, &cfg, &job, &err) != 0);
+    CHECK(job == NULL);
+}
+
+/* E2.3: synonyms are marginalised exactly in date-pair. A concept where one
+ * language has two equally weighted forms, one shared, counts as a half
+ * match: the date falls between "all shared" and "none shared". */
+TEST(test_analysis_pair_synonyms_marginalised)
+{
+    static const char *BASE =
+        "language_id\tconcept_id\tcognate_id\tprimary_weight\n"
+        "A\tc1\tk1\t1\n" "B\tc1\tk1\t1\n"
+        "A\tc2\tk2\t1\n" "B\tc2\tk2\t1\n"
+        "A\tc3\tk3\t1\n" "B\tc3\tk4\t1\n"
+        "A\tc4\tk5\t1\n" "B\tc4\tk6\t1\n";
+    static const char *SYN =
+        "language_id\tconcept_id\tcognate_id\tprimary_weight\n"
+        "A\tc1\tk1\t1\n" "B\tc1\tk1\t1\n"
+        "A\tc2\tk2\t1\n" "B\tc2\tk2\t1\n"
+        "A\tc3\tk3\t1\n" "B\tc3\tk4\t1\n"
+        "A\tc4\tk5\t0.5\n" "A\tc4\tk7\t0.5\n" "B\tc4\tk5\t1\n";
+    static const char *ALL =
+        "language_id\tconcept_id\tcognate_id\tprimary_weight\n"
+        "A\tc1\tk1\t1\n" "B\tc1\tk1\t1\n"
+        "A\tc2\tk2\t1\n" "B\tc2\tk2\t1\n"
+        "A\tc3\tk3\t1\n" "B\tc3\tk4\t1\n"
+        "A\tc4\tk5\t1\n" "B\tc4\tk5\t1\n";
+    const char *fs[3] = { BASE, SYN, ALL };
+    double med[3]; size_t nsyn[3];
+    for (int k = 0; k < 3; k++) {
+        gd_analysis_pair_input in; memset(&in, 0, sizeof in);
+        in.forms_tsv = fs[k]; in.forms_len = GD_LEN_NUL_TERMINATED;
+        in.lang_a = "A"; in.lang_b = "B";
+        gd_analysis_pair_config cfg; gd_analysis_pair_config_default(&cfg);
+        gd_error err = GD_ERROR_INIT;
+        gd_analysis_pair_result *r = NULL;
+        CHECK(gd_analysis_pair_run(&in, &cfg, &r, &err) == 0);
+        med[k] = r->median; nsyn[k] = r->n_synonym_concepts;
+        gd_analysis_pair_result_destroy(r);
+    }
+    CHECK(nsyn[0] == 0 && nsyn[1] == 1 && nsyn[2] == 0);
+    CHECK(med[2] < med[1] && med[1] < med[0]);
+}
+
+/* E2.7: an ancestor_tip pins its parent to its own age, so the tip hangs on
+ * a zero-length branch: Latin as the ancestor of Western Romance. */
+TEST(test_analysis_ancestor_tip)
+{
+    gd_analysis_tree_input in; tree_input(&in);
+    in.calibrations_tsv =
+        "calibration_id\ttarget_id\ttype\tp1\tp2\tp3\tis_hard\tsource_key\n"
+        "cal1\tLatin\tancestor_tip\t2050\t.\t.\t1\tstandard\n";
+    gd_analysis_tree_config cfg; quick_config(&cfg);
+    cfg.concept_rates = false;
+    gd_error err = GD_ERROR_INIT;
+    gd_analysis_tree_result *r = NULL;
+    int rc = gd_analysis_tree_run(&in, &cfg, &r, &err);
+    size_t west = SIZE_MAX; bool west_sampled = true;
+    if (r != NULL) {
+        west = gd_tree_find_label(r->tree, "WestRom");
+        west_sampled = (gd_analysis_result_node(r, west) != NULL);
+        gd_analysis_tree_result_destroy(r);
+    }
+    CHECK(rc == 0);
+    CHECK(west != SIZE_MAX);
+    CHECK(!west_sampled);   /* pinned at 2050, not estimated */
+
+    /* An ancestor_tip on an internal node is refused. */
+    in.calibrations_tsv =
+        "calibration_id\ttarget_id\ttype\tp1\tp2\tp3\tis_hard\tsource_key\n"
+        "cal1\tIbero\tancestor_tip\t500\t.\t.\t1\tstandard\n";
+    gd_analysis_tree_job *job = NULL;
+    gd_error_clear(&err);
+    CHECK(gd_analysis_tree_prepare(&in, &cfg, &job, &err) != 0);
+}
+
+/* E2.9: a tip_error row gives a tip an observation-error probability with a
+ * Beta prior. It is not an age: Spanish stays extant. A list whose forms
+ * were replaced at random is then explained partly by error rather than by
+ * time: the error's posterior moves well above its prior mean. */
+TEST(test_analysis_tip_error)
+{
+    gd_analysis_tree_input in; tree_input(&in);
+    /* Spanish disagrees with Portuguese in c3 and in four more concepts. */
+    static const char *F =
+        "language_id\tconcept_id\tcognate_id\n"
+        "Latin\tc1\tk1\n" "Spanish\tc1\tk1\n" "Portuguese\tc1\tk1\n" "Sardinian\tc1\tk1\n"
+        "Latin\tc2\tk2\n" "Spanish\tc2\tk3\n" "Portuguese\tc2\tk3\n" "Sardinian\tc2\tk2\n"
+        "Latin\tc5\ta1\n" "Spanish\tc5\ta9\n" "Portuguese\tc5\ta1\n" "Sardinian\tc5\ta1\n"
+        "Latin\tc6\tb1\n" "Spanish\tc6\tb9\n" "Portuguese\tc6\tb1\n" "Sardinian\tc6\tb1\n"
+        "Latin\tc7\td1\n" "Spanish\tc7\td9\n" "Portuguese\tc7\td1\n" "Sardinian\tc7\td1\n"
+        "Latin\tc8\te1\n" "Spanish\tc8\te9\n" "Portuguese\tc8\te1\n" "Sardinian\tc8\te1\n"
+        "Latin\tc9\tf1\n" "Spanish\tc9\tf1\n" "Portuguese\tc9\tf1\n" "Sardinian\tc9\tf1\n";
+    in.forms_tsv = F;
+    in.calibrations_tsv =
+        "calibration_id\ttarget_id\ttype\tp1\tp2\tp3\tis_hard\tsource_key\n"
+        "cal1\tLatin\tfixed_tip\t2050\t.\t.\t1\tstandard\n"
+        "err\tSpanish\ttip_error\t0.1\t4\t.\t.\tstandard\n";
+    gd_analysis_tree_config cfg; quick_config(&cfg);
+    cfg.concept_rates = false;
+    cfg.n_warmup = 800; cfg.n_samples = 1500;
+    gd_error err = GD_ERROR_INIT;
+    gd_analysis_tree_result *r = NULL;
+    int rc = gd_analysis_tree_run(&in, &cfg, &r, &err);
+    double emean = NAN; bool spanish_free = true; const char *src = NULL;
+    if (r != NULL) {
+        for (size_t p = 0; p < r->nparams; p++)
+            if (r->params[p].type == GD_MCMC_P_LOGIT_TIPERR)
+                emean = 1.0 / (1.0 + exp(-r->params[p].stat.mean));
+        spanish_free = (gd_analysis_result_node(r, gd_tree_find_label(r->tree, "Spanish")) != NULL);
+        src = r->scale_source;
+        if (src != NULL && strcmp(src, "tip") != 0) src = "wrong";
+        gd_analysis_tree_result_destroy(r);
+    }
+    CHECK(rc == 0);
+    CHECK(!spanish_free);
+    CHECK(src != NULL && strcmp(src, "tip") == 0);
+    CHECK(emean > 0.2);
+}
+
 static void run_tests(void)
 {
     RUN(test_analysis_prepare_reports_dataset_size);
@@ -1133,6 +1346,10 @@ static void run_tests(void)
     RUN(test_analysis_counts_unreadable_weights);
     RUN(test_analysis_convergence_verdict);
     RUN(test_analysis_three_ages_and_scale_source);
+    RUN(test_analysis_concept_table_and_incompatible);
+    RUN(test_analysis_outlier_calibration_is_flagged);
+    RUN(test_analysis_ancestor_tip);
+    RUN(test_analysis_tip_error);
     RUN(test_analysis_reads_calibrations);
     RUN(test_analysis_mrca_targets_and_generated_names);
     RUN(test_analysis_drops_a_calibration);
@@ -1143,6 +1360,7 @@ static void run_tests(void)
     RUN(test_analysis_empty_buffer_is_empty_not_measured);
     RUN(test_analysis_pair_bad_input);
     RUN(test_analysis_pair_tip_ages);
+    RUN(test_analysis_pair_synonyms_marginalised);
     RUN(test_analysis_pair_rate_is_per_year);
     RUN(test_analysis_pair_missing_is_not_a_match);
     RUN(test_analysis_pair_unknown_or_disjoint_is_an_error);

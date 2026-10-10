@@ -71,6 +71,22 @@ expert_a	english	C_SMALL	f003	little	COG_SMALL_2	0.25	0.90	0.95	0.05	observed
   (`exclude`/`mixture`/`sensitivity`).
 - `status` — `observed`/`missing`/`excluded`/`absent`. Missing means unknown.
 
+How the engine reads these columns (0.3):
+
+- `analysis_id`: with more than one coding in the file, a run must select one
+  (`--analysis`); otherwise it stops and lists them. Codings are never mixed.
+- `loan_probability` / `inheritance_probability`: a row with
+  `loan_probability ≥ --loan-threshold`, or with
+  `inheritance_probability ≤ 1 − threshold`, is a loan. The default
+  threshold is 0.5. A loan says nothing about inheritance within the family,
+  so its cell is missing; the manifest counts such rows. A threshold above 1
+  keeps every row.
+- Synonyms: `date-pair` marginalises them exactly. With candidate weights
+  `w` normalised within each cell, it uses the probability that the two
+  compared forms are cognate, `y = Σ w_i w_j [same class]`, as a soft match.
+  `date-tree` (T1, one state per cell) uses the highest-weight form.
+- `cognacy_confidence`: not yet read by either engine.
+
 Multiple forms per (analysis, language, concept) cell are retained (synonyms
 / polymorphism). A missing cell has no rows (or rows with `status=missing`).
 

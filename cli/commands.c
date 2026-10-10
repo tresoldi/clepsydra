@@ -425,7 +425,7 @@ int cmd_date_tree(int argc, char **argv)
     const gd_option *opts = gd_options_tree(&nopt);
     static const char *const tree_extra[] = {
         "--tree", "--forms", "--calibrations", "--out", "--progress",
-        "--allow-unconverged"
+        "--allow-unconverged", "--analysis"
     };
     if (reject_unknown_opts(argc, argv, opts, nopt,
                             tree_extra, sizeof tree_extra / sizeof tree_extra[0]) != 0) {
@@ -446,6 +446,7 @@ int cmd_date_tree(int argc, char **argv)
     if (load_tree_inputs(&in, tree_path, forms_path, cal_path) != 0) return 1;
     gd_analysis_tree_input ai;
     fill_analysis_input(&in, &ai);
+    ai.analysis_id = opt_arg(argc, argv, "--analysis", NULL);
 
     gd_analysis_tree_job *job = NULL;
     if (gd_analysis_tree_prepare(&ai, &cfg, &job, &err) != 0) {
@@ -503,6 +504,36 @@ int cmd_date_tree(int argc, char **argv)
         gd_table_destroy(tbl);
         if (wrc != 0) goto done;
     }
+    if (res->n_checks > 0) {
+        gd_table *tbl = NULL;
+        if (gd_report_adequacy(res, &tbl, &err) != GD_E_OK) {
+            fprintf(stderr, "error: %s\n", errmsg(&err));
+            goto done;
+        }
+        int wrc = write_table(tbl, out_dir, "adequacy.tsv");
+        gd_table_destroy(tbl);
+        if (wrc != 0) goto done;
+    }
+    if (res->n_cal_checks > 0) {
+        gd_table *tbl = NULL;
+        if (gd_report_calibrations(res, &tbl, &err) != GD_E_OK) {
+            fprintf(stderr, "error: %s\n", errmsg(&err));
+            goto done;
+        }
+        int wrc = write_table(tbl, out_dir, "posterior_calibrations.tsv");
+        gd_table_destroy(tbl);
+        if (wrc != 0) goto done;
+    }
+    if (res->concepts != NULL) {
+        gd_table *tbl = NULL;
+        if (gd_report_concepts(res, &tbl, &err) != GD_E_OK) {
+            fprintf(stderr, "error: %s\n", errmsg(&err));
+            goto done;
+        }
+        int wrc = write_table(tbl, out_dir, "posterior_concepts.tsv");
+        gd_table_destroy(tbl);
+        if (wrc != 0) goto done;
+    }
 
     if (!out_path(path, sizeof path, out_dir, "run_manifest.tsv")) goto done;
     fp = fopen(path, "w");
@@ -528,7 +559,14 @@ int cmd_date_tree(int argc, char **argv)
     fprintf(fp, "seed\t%lu\n", (unsigned long)cfg.seed);
     fprintf(fp, "rate_logmean_per_year\t%.4f\n", cfg.rate_logmean);
     fprintf(fp, "rate_logsd\t%.4f\n", cfg.rate_logsd);
-    fprintf(fp, "contamination_epsilon\t%.4f\n", cfg.epsilon);
+    if (cfg.sample_epsilon) {
+        for (size_t p = 0; p < res->nparams; p++)
+            if (res->params[p].type == GD_MCMC_P_LOGIT_EPS)
+                fprintf(fp, "contamination_epsilon\tsampled, Beta(1, 19); posterior centre %.4f\n",
+                        1.0 / (1.0 + exp(-res->params[p].stat.mean)));
+    } else {
+        fprintf(fp, "contamination_epsilon\t%.4f (fixed)\n", cfg.epsilon);
+    }
     fprintf(fp, "branch_rate_confounded\t%d\n", res->branch_rate_confounded);
     if (!isnan(res->min_branch_duration_corr))
         fprintf(fp, "min_branch_duration_corr\t%.3f\n", res->min_branch_duration_corr);
@@ -536,6 +574,10 @@ int cmd_date_tree(int argc, char **argv)
     if (res->n_unreadable_weights > 0)
         fprintf(fp, "unreadable_primary_weights\t%zu\n", res->n_unreadable_weights);
     fprintf(fp, "missing_cognate_rows\t%zu\n", res->n_missing_cognates);
+    fprintf(fp, "loan_rows_excluded\t%zu (threshold %.2f)\n", res->n_loans, cfg.loan_threshold);
+    if (res->concepts != NULL)
+        fprintf(fp, "incompatible_concepts\t%zu of %zu (excluded: no T1 history on this topology fits)\n",
+                res->n_incompatible, res->n_concepts);
     fprintf(fp, "scale_source\t%s\n", res->scale_source);
     fprintf(fp, "rate_contraction\t%.3f\n", res->rate_contraction);
     fprintf(fp, "scale_from_prior\t%d\n", res->scale_from_prior ? 1 : 0);
@@ -564,7 +606,8 @@ int cmd_date_tree(int argc, char **argv)
     if (fclose(fp) != 0) { fp = NULL; fprintf(stderr, "error: failed to flush %s\n", path); goto done; }
     fp = NULL;
 
-    fprintf(stderr, "wrote posterior_nodes.tsv, diagnostics.tsv, run_manifest.tsv to %s/\n", out_dir);
+    fprintf(stderr, "wrote posterior_nodes.tsv, diagnostics.tsv, %srun_manifest.tsv to %s/\n",
+            res->concepts != NULL ? "posterior_concepts.tsv, " : "", out_dir);
 
     int status = 0;
     if (!res->converged) {
@@ -659,7 +702,7 @@ int cmd_calib_sensitivity(int argc, char **argv)
     const gd_option *opts = gd_options_tree(&nopt);
     static const char *const calib_extra[] = {
         "--tree", "--forms", "--calibrations", "--out",
-        "--mode", "--factor", "--include-extant"
+        "--mode", "--factor", "--include-extant", "--analysis"
     };
     if (reject_unknown_opts(argc, argv, opts, nopt,
                             calib_extra, sizeof calib_extra / sizeof calib_extra[0]) != 0) {
@@ -674,6 +717,7 @@ int cmd_calib_sensitivity(int argc, char **argv)
     if (load_tree_inputs(&in, tree_path, forms_path, cal_path) != 0) return 1;
     gd_analysis_tree_input ai;
     fill_analysis_input(&in, &ai);
+    ai.analysis_id = opt_arg(argc, argv, "--analysis", NULL);
 
     gd_analysis_calibration *cals = NULL;
     size_t ncal = 0;
@@ -720,6 +764,7 @@ int cmd_calib_sensitivity(int argc, char **argv)
                 const gd_analysis_calibration *c = &cals[r];
                 /* A living language's age is not a prediction worth scoring. */
                 if (!include_extant && c->is_extant_tip) continue;
+                if (c->type == GD_CAL_TIP_ERROR) continue;   /* not an age to recover */
 
                 var = run_variant(&ai, &cfg, r, 1.0, c->id);
                 if (var == NULL) goto done;
@@ -834,7 +879,7 @@ int cmd_date_pair(int argc, char **argv)
     size_t nopt;
     const gd_option *opts = gd_options_pair(&nopt);
     static const char *const pair_extra[] = {
-        "--forms", "--lang-a", "--lang-b", "--out", "--decay"
+        "--forms", "--lang-a", "--lang-b", "--out", "--decay", "--analysis"
     };
     if (reject_unknown_opts(argc, argv, opts, nopt,
                             pair_extra, sizeof pair_extra / sizeof pair_extra[0]) != 0) {
@@ -877,6 +922,7 @@ int cmd_date_pair(int argc, char **argv)
     in.forms_name = forms_path;
     in.lang_a = la;
     in.lang_b = lb;
+    in.analysis_id = opt_arg(argc, argv, "--analysis", NULL);
 
     gd_analysis_pair_result *res = NULL;
     int rc = gd_analysis_pair_run(&in, &cfg, &res, &err);

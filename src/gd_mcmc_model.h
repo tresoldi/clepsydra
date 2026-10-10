@@ -44,6 +44,9 @@ typedef struct gd_mcmc_state {
     /* Spread of the integrated-out among-concept rate distribution (log sd);
      * 0 = homogeneous. A likelihood without such a mixture ignores it. */
     double        rate_mix_sd;
+    /* Per-node extra hazard on the edge above a tip with observation error,
+     * -log(1 - e_v); NULL when no tip has one. */
+    const double *tip_hazard;
 } gd_mcmc_state;
 
 /*
