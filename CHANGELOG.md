@@ -60,6 +60,13 @@ columns and example numbers are expected throughout 0.x and are listed here.
 
 ### Added
 
+- **Incremental likelihood evaluation** (E3.1). The T1 adapter caches, per
+  cognate pattern, the data extension (computed once) and every node's p/q
+  for each mixture node. An evaluation recomputes only the nodes whose
+  edges changed, and their ancestors; a change of ε alone recomputes
+  nothing. It agrees exactly with full recomputation over a random walk of
+  400 state changes. The speed-up is modest, 1.2× on Romance: the rate,
+  spread, block and clock moves change every node each sweep.
 - **`--write-draws 1`** and **`--write-pointwise 1`** (E3.2) write every
   retained draw (`draws.tsv`) and the per-draw, per-concept
   log-likelihoods for PSIS-LOO and WAIC (`pointwise.tsv`).

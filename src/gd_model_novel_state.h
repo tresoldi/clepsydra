@@ -300,4 +300,9 @@ gd_mcmc_t1 *gd_mcmc_t1_create(gd_t1_ws *ws, const gd_cognate_data *concepts,
 void gd_mcmc_t1_destroy(gd_mcmc_t1 *m);
 void gd_mcmc_t1_model(gd_mcmc_t1 *m, gd_mcmc_model *out);
 
+/* Incremental evaluation (on by default): only the nodes whose edges changed
+ * since the last call, and their ancestors, are recomputed. Off recomputes
+ * everything every call; the two agree to rounding (tested). */
+void gd_mcmc_t1_set_cache(gd_mcmc_t1 *m, bool on);
+
 #endif /* GD_MODEL_NOVEL_STATE_H */

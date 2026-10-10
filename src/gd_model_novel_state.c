@@ -421,17 +421,13 @@ static bool branch_logs(const gd_t1_ws *ws, size_t w, double rate,
  * A missing second child is treated as a child with p = 1, q = 0 and no
  * determination, which reproduces the correct unary-node formulas.
  */
-static int t1_recursion(gd_t1_ws *ws, double rate, const double *bm,
-                        double *out_logp,
-                        bool *stability, size_t *ops, gd_error *err)
+/* One node of the recursion: p_u and q_u from its children's (already in
+ * ws->logp / ws->logq) and the edges above them. Ages must be current in
+ * ws->age. Shared by the full recursion and the cached partial one. */
+static int t1_node_update(gd_t1_ws *ws, size_t u, double rate, const double *bm,
+                          bool *stability, gd_error *err)
 {
-    /* Ages are re-read every call: an MCMC chain moves them under us. */
-    for (size_t i = 0; i < ws->m; i++) {
-        ws->age[i] = ws->tree->nodes[ws->orig[i]].age;
-    }
-
-    for (size_t i = 0; i < ws->m; i++) {
-        size_t u = ws->post[i];
+    {
         size_t l = ws->left[u];
         size_t r = ws->right[u];
         int det_u = ws->det[u];
@@ -439,7 +435,7 @@ static int t1_recursion(gd_t1_ws *ws, double rate, const double *bm,
         if (l == GD_NODE_NONE) {                       /* leaf */
             ws->logp[u] = 0.0;
             ws->logq[u] = (det_u >= 0) ? 0.0 : -HUGE_VAL;
-            continue;
+            return 0;
         }
 
         /* Relaxed clock: the rate on the edge above child w is scaled by the
@@ -503,7 +499,21 @@ static int t1_recursion(gd_t1_ws *ws, double rate, const double *bm,
         ws->logp[u] = pu;
         ws->logq[u] = qu;
     }
+    return 0;
+}
 
+static int t1_recursion(gd_t1_ws *ws, double rate, const double *bm,
+                        double *out_logp,
+                        bool *stability, size_t *ops, gd_error *err)
+{
+    /* Ages are re-read every call: an MCMC chain moves them under us. */
+    for (size_t i = 0; i < ws->m; i++) {
+        ws->age[i] = ws->tree->nodes[ws->orig[i]].age;
+    }
+    for (size_t i = 0; i < ws->m; i++) {
+        int rc = t1_node_update(ws, ws->post[i], rate, bm, stability, err);
+        if (rc != 0) return rc;
+    }
     *ops += ws->m;
     *out_logp = ws->logp[ws->root];
     return 0;
@@ -1011,7 +1021,169 @@ struct gd_mcmc_t1 {
     double *count;
     size_t *of_concept;
     gd_t1_concept_result *per_uniq;
+
+    /* Incremental-evaluation cache (roadmap E3.1), for the compressed path.
+     * Per pattern: the extension (computed once: it depends only on data and
+     * topology) and the noise term; per (pattern, mixture node): the p/q of
+     * every working node at the last evaluation. Per evaluation, only the
+     * nodes whose edges changed, and their ancestors, are recomputed; when
+     * only epsilon changed nothing is. Disable with gd_mcmc_t1_set_cache. */
+    bool    use_cache, cache_valid;
+    int    *c_det;            /* nuniq * m */
+    bool   *c_compat;         /* nuniq */
+    double *c_noise;          /* nuniq */
+    double *c_logp, *c_logq;  /* nuniq * kcap * m */
+    double *c_lltree;         /* nuniq * kcap: tree log-lik per mixture node */
+    size_t  kcap, c_K;
+    double  c_rate, c_mult[GD_T1_MIX_KMAX];
+    double *c_age;            /* m working ages */
+    double *c_bm, *c_haz;     /* n */
+    bool   *dirty;            /* m */
 };
+
+void gd_mcmc_t1_set_cache(gd_mcmc_t1 *m, bool on)
+{
+    if (m == NULL) return;
+    m->use_cache = on;
+    m->cache_valid = false;
+}
+
+/* The compressed path through the cache. Mirrors t1_concept_mix_impl
+ * exactly in what it computes; only which nodes get recomputed differs. */
+static int t1_cached_patterns(gd_mcmc_t1 *m, double rate, const double *mult,
+                              const double *logw, size_t K, const double *bm,
+                              const double *haz, const gd_t1_options *opt,
+                              double *tot_out, gd_error *err)
+{
+    gd_t1_ws *ws = m->ws;
+    size_t mm = ws->m, n = ws->n;
+    /* (Re)size the per-node store when the mixture grows. */
+    if (K > m->kcap) {
+        size_t cells;
+        if (!gd_size_mul(m->nuniq, K, &cells) || !gd_size_mul(cells, mm, &cells))
+            return gd_error_set(err, GD_E_NOMEM, "t1 cache: size overflows");
+        double *lp = (double *)gd_realloc_array_checked(m->c_logp, cells, sizeof(double), err);
+        if (lp == NULL) return GD_E_NOMEM;
+        m->c_logp = lp;
+        double *lq = (double *)gd_realloc_array_checked(m->c_logq, cells, sizeof(double), err);
+        if (lq == NULL) return GD_E_NOMEM;
+        m->c_logq = lq;
+        double *lt = (double *)gd_realloc_array_checked(m->c_lltree, m->nuniq * K, sizeof(double), err);
+        if (lt == NULL) return GD_E_NOMEM;
+        m->c_lltree = lt;
+        m->kcap = K;
+        m->cache_valid = false;
+    }
+    for (size_t i = 0; i < mm; i++) ws->age[i] = ws->tree->nodes[ws->orig[i]].age;
+
+    bool full = !m->cache_valid || rate != m->c_rate || K != m->c_K;
+    for (size_t k = 0; k < K && !full; k++) if (mult[k] != m->c_mult[k]) full = true;
+    bool any = full;
+    if (!full) {
+        for (size_t i = 0; i < mm; i++) m->dirty[i] = false;
+        for (size_t i = 0; i < mm; i++) {
+            if (ws->age[i] != m->c_age[i]) {
+                m->dirty[i] = true;
+                if (ws->parent[i] != GD_NODE_NONE) m->dirty[ws->parent[i]] = true;
+            }
+        }
+        for (size_t w = 0; w < n; w++) {
+            double b = (bm != NULL) ? bm[w] : 1.0, h = (haz != NULL) ? haz[w] : 0.0;
+            if ((b != m->c_bm[w] || h != m->c_haz[w]) && ws->parent[w] != GD_NODE_NONE)
+                m->dirty[ws->parent[w]] = true;
+        }
+        for (size_t i = 0; i < mm; i++) {          /* children before parents */
+            size_t u = ws->post[i];
+            if (m->dirty[u]) {
+                any = true;
+                if (ws->parent[u] != GD_NODE_NONE) m->dirty[ws->parent[u]] = true;
+            }
+        }
+    }
+
+    double tot = 0.0;
+    for (size_t u = 0; u < m->nuniq; u++) {
+        gd_t1_concept_result *res = &m->per_uniq[u];
+        result_init(res);
+        if (!m->cache_valid) {
+            /* First evaluation: the extension and the noise term, once. */
+            size_t conflict = GD_NODE_NONE; int ca = -1, cb = -1; size_t ops = 0;
+            m->c_compat[u] = t1_extend(ws, &m->concepts[m->uniq[u]], &ops, &conflict, &ca, &cb);
+            m->c_noise[u] = crp_logp_from_keys(ws->keys, ws->nkeys, opt->noise_alpha);
+            memcpy(m->c_det + u * mm, ws->det, mm * sizeof(int));
+        }
+        res->compatible = m->c_compat[u];
+        res->log_lik_noise = m->c_noise[u];
+        if (!res->compatible) {
+            if (opt->incompatible == GD_INCOMPATIBLE_EXCLUDE) {
+                res->excluded = true;
+                res->log_lik = 0.0;
+                continue;
+            }
+            if (opt->incompatible == GD_INCOMPATIBLE_ERROR || opt->epsilon <= 0.0) {
+                /* Let the uncached path produce the exact error. */
+                return t1_concept_mix_impl(ws, rate, mult, logw, K, bm,
+                                           &m->concepts[m->uniq[u]], opt, res, err);
+            }
+            res->log_lik = log(opt->epsilon) + res->log_lik_noise;
+            res->p_contaminated = 1.0;
+            tot += m->count[u] * res->log_lik;
+            continue;
+        }
+        double acc = -HUGE_VAL, macc = -HUGE_VAL;
+        for (size_t k = 0; k < K; k++) {
+            double *lp = m->c_logp + (u * m->kcap + k) * mm;
+            double *lq = m->c_logq + (u * m->kcap + k) * mm;
+            double lk;
+            if (any) {
+                memcpy(ws->det, m->c_det + u * mm, mm * sizeof(int));
+                if (!full) {
+                    memcpy(ws->logp, lp, mm * sizeof(double));
+                    memcpy(ws->logq, lq, mm * sizeof(double));
+                }
+                bool warn = false;
+                for (size_t i = 0; i < mm; i++) {
+                    size_t v = ws->post[i];
+                    if (!full && !m->dirty[v]) continue;
+                    int rc = t1_node_update(ws, v, rate * mult[k], bm, &warn, err);
+                    if (rc != 0) return rc;
+                }
+                if (warn) res->stability_warning = true;
+                memcpy(lp, ws->logp, mm * sizeof(double));
+                memcpy(lq, ws->logq, mm * sizeof(double));
+                lk = ws->logp[ws->root];
+                m->c_lltree[u * m->kcap + k] = lk;
+            } else {
+                lk = m->c_lltree[u * m->kcap + k];
+            }
+            if (K == 1) { acc = lk; break; }
+            acc = gd_logaddexp(acc, logw[k] + lk);
+            macc = gd_logaddexp(macc, logw[k] + lk + log(mult[k]));
+        }
+        res->log_lik_tree = acc;
+        if (K > 1 && acc > -HUGE_VAL) res->rate_mult_mean = exp(macc - acc);
+        if (opt->epsilon <= 0.0) {
+            res->log_lik = res->log_lik_tree;
+        } else {
+            double a = log1p(-opt->epsilon) + res->log_lik_tree;
+            double b = log(opt->epsilon) + res->log_lik_noise;
+            res->log_lik = gd_logaddexp(a, b);
+            res->p_contaminated = (res->log_lik == -HUGE_VAL) ? 0.0 : exp(b - res->log_lik);
+        }
+        tot += m->count[u] * res->log_lik;
+    }
+    /* Remember the inputs this cache now reflects. */
+    m->c_rate = rate; m->c_K = K;
+    for (size_t k = 0; k < K; k++) m->c_mult[k] = mult[k];
+    memcpy(m->c_age, ws->age, mm * sizeof(double));
+    for (size_t w = 0; w < n; w++) {
+        m->c_bm[w] = (bm != NULL) ? bm[w] : 1.0;
+        m->c_haz[w] = (haz != NULL) ? haz[w] : 0.0;
+    }
+    m->cache_valid = true;
+    *tot_out = tot;
+    return 0;
+}
 
 /* Is concept a's partition of the nodes the same as concept b's? Labels are
  * compared up to renaming, and missing (-1) must coincide. */
@@ -1056,11 +1228,16 @@ static int t1_model_loglik(void *vctx, gd_tree *tree, const gd_mcmc_state *st,
         rc = gd_t1_rate_mixture_family(st->rate_mix_family, st->rate_mix_sd, mult, logw, &K);
         if (rc != 0) return gd_error_set(err, rc, "t1: rate mixture rule");
         double rate = exp(st->rates[0]);
-        for (size_t u = 0; u < m->nuniq; u++) {
-            rc = t1_concept_mix_impl(m->ws, rate, mult, logw, K, bm,
-                                     &m->concepts[m->uniq[u]], &opt, &m->per_uniq[u], err);
-            if (rc != 0) return rc;
-            tot += m->count[u] * m->per_uniq[u].log_lik;
+        if (m->use_cache) {
+            rc = t1_cached_patterns(m, rate, mult, logw, K, bm, st->tip_hazard, &opt, &tot, err);
+            if (rc != 0) { m->cache_valid = false; return rc; }
+        } else {
+            for (size_t u = 0; u < m->nuniq; u++) {
+                rc = t1_concept_mix_impl(m->ws, rate, mult, logw, K, bm,
+                                         &m->concepts[m->uniq[u]], &opt, &m->per_uniq[u], err);
+                if (rc != 0) return rc;
+                tot += m->count[u] * m->per_uniq[u].log_lik;
+            }
         }
         if (pw != NULL)
             for (size_t c = 0; c < m->nconcepts; c++) pw[c] = m->per_uniq[m->of_concept[c]].log_lik;
@@ -1147,6 +1324,23 @@ gd_mcmc_t1 *gd_mcmc_t1_create(gd_t1_ws *ws, const gd_cognate_data *concepts,
         }
     }
     free(fwd); free(bwd);
+
+    /* Cache storage (the per-node store grows with the mixture size). */
+    size_t mm = ws->m;
+    m->c_det = (int *)gd_malloc_array_checked(m->nuniq ? m->nuniq * mm : 1, sizeof(int), err);
+    m->c_compat = (bool *)gd_calloc_checked(m->nuniq ? m->nuniq : 1, sizeof(bool), err);
+    m->c_noise = (double *)gd_calloc_checked(m->nuniq ? m->nuniq : 1, sizeof(double), err);
+    m->c_age = (double *)gd_calloc_checked(mm, sizeof(double), err);
+    m->c_bm = (double *)gd_calloc_checked(m->nnodes ? m->nnodes : 1, sizeof(double), err);
+    m->c_haz = (double *)gd_calloc_checked(m->nnodes ? m->nnodes : 1, sizeof(double), err);
+    m->dirty = (bool *)gd_calloc_checked(mm, sizeof(bool), err);
+    if (m->c_det == NULL || m->c_compat == NULL || m->c_noise == NULL || m->c_age == NULL ||
+        m->c_bm == NULL || m->c_haz == NULL || m->dirty == NULL) {
+        gd_error_set(err, GD_E_NOMEM, "mcmc_t1: cache");
+        gd_mcmc_t1_destroy(m);
+        return NULL;
+    }
+    m->use_cache = true;
     return m;
 }
 
@@ -1155,6 +1349,8 @@ void gd_mcmc_t1_destroy(gd_mcmc_t1 *m)
     if (m == NULL) return;
     free(m->rates); free(m->bm); free(m->per);
     free(m->uniq); free(m->count); free(m->of_concept); free(m->per_uniq);
+    free(m->c_det); free(m->c_compat); free(m->c_noise); free(m->c_logp); free(m->c_logq);
+    free(m->c_lltree); free(m->c_age); free(m->c_bm); free(m->c_haz); free(m->dirty);
     free(m);
 }
 

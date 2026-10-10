@@ -1499,8 +1499,82 @@ TEST(test_t1_gamma_mixture_matches_dense_integral)
     CHECK(worst < 0.005);
 }
 
+/* E3.1: the incremental cache must give the same log-likelihood as a full
+ * recomputation, through a random walk of states that changes one thing at
+ * a time (an age, the rate, the mixture spread, epsilon alone, a branch
+ * multiplier, a tip error) and sometimes reverts it, as a rejected MCMC
+ * proposal does. The tree has a polytomy, so ladder nodes are exercised. */
+TEST(test_t1_cache_matches_full_recomputation)
+{
+    gd_error err = GD_ERROR_INIT;
+    const char *nwk = "(((a,b,c)x,d)y,(e,f)z)root;";
+    gd_tree *t = NULL;
+    CHECK(gd_newick_parse(nwk, strlen(nwk), &t, &err) == 0);
+    size_t n = t->nnodes;
+    const char *nm[3] = { "x", "y", "z" };
+    double ages[3] = { 800, 1500, 1200 };
+    for (int k = 0; k < 3; k++) t->nodes[gd_tree_find_label(t, nm[k])].age = ages[k];
+    t->nodes[t->root].age = 2500;
+    gd_rng *rng = gd_rng_create(5u, 2u, &err);
+    size_t NC = 40;
+    int *store = (int *)malloc(NC * n * sizeof(int));
+    gd_cognate_data *cd = (gd_cognate_data *)malloc(NC * sizeof(gd_cognate_data));
+    int *sim = (int *)malloc(n * sizeof(int));
+    for (size_t c = 0; c < NC; c++) {
+        CHECK(gd_t1_simulate(rng, t, 4e-4 * exp(gd_rng_normal(rng, 0, 0.8)), sim, &err) == 0);
+        for (size_t i = 0; i < n; i++) store[c * n + i] = t->nodes[i].is_leaf ? sim[i] : -1;
+        if (c % 7 == 3) store[c * n + gd_tree_find_label(t, "a")] = -1;   /* missing cells */
+        cd[c].labels = store + c * n; cd[c].nnodes = n;
+    }
+    gd_t1_ws *ws1 = gd_t1_ws_create(t, &err), *ws2 = gd_t1_ws_create(t, &err);
+    gd_t1_options opt; gd_t1_options_default(&opt);
+    opt.incompatible = GD_INCOMPATIBLE_EXCLUDE;
+    gd_mcmc_t1 *mc = gd_mcmc_t1_create(ws1, cd, NC, &opt, &err);
+    gd_mcmc_t1 *mf = gd_mcmc_t1_create(ws2, cd, NC, &opt, &err);
+    gd_mcmc_t1_set_cache(mf, false);
+    gd_mcmc_model ma, mb; gd_mcmc_t1_model(mc, &ma); gd_mcmc_t1_model(mf, &mb);
+    double logr = log(4e-4), bml[16] = {0}, haz[16] = {0};
+    gd_mcmc_state st; memset(&st, 0, sizeof st);
+    st.rates = &logr; st.n_rates = 1; st.epsilon = 0.05; st.rate_mix_sd = 0.8;
+    st.branch_logmult = bml; st.tip_hazard = haz;
+    double worst = 0.0;
+    for (int step = 0; step < 400; step++) {
+        int what = (int)gd_rng_bounded(rng, 6);
+        size_t v = gd_rng_bounded(rng, (uint32_t)n);
+        double old_age = t->nodes[v].age, old_logr = logr, old_eps = st.epsilon;
+        double old_sd = st.rate_mix_sd, old_bm = bml[v], old_h = haz[v];
+        if (what == 0 && !t->nodes[v].is_leaf) {
+            double lo = 0; for (size_t k = 0; k < t->nodes[v].nchildren; k++)
+                if (t->nodes[t->nodes[v].children[k]].age > lo) lo = t->nodes[t->nodes[v].children[k]].age;
+            double hi = (v == t->root) ? 4000 : t->nodes[t->nodes[v].parent].age;
+            t->nodes[v].age = lo + (hi - lo) * gd_rng_uniform_open(rng);
+        } else if (what == 1) logr += gd_rng_normal(rng, 0, 0.1);
+        else if (what == 2) st.epsilon = 0.01 + 0.1 * gd_rng_uniform_open(rng);
+        else if (what == 3) st.rate_mix_sd = 0.3 + gd_rng_uniform_open(rng);
+        else if (what == 4) bml[v] = gd_rng_normal(rng, 0, 0.3);
+        else if (t->nodes[v].is_leaf) haz[v] = 0.2 * gd_rng_uniform_open(rng);
+        double a, b;
+        CHECK(ma.loglik(ma.ctx, t, &st, NULL, &a, &err) == 0);
+        CHECK(mb.loglik(mb.ctx, t, &st, NULL, &b, &err) == 0);
+        double d = fabs(a - b) / (1.0 + fabs(b));
+        if (d > worst) worst = d;
+        if (gd_rng_uniform_open(rng) < 0.5) {             /* a rejected proposal */
+            t->nodes[v].age = old_age; logr = old_logr; st.epsilon = old_eps;
+            st.rate_mix_sd = old_sd; bml[v] = old_bm; haz[v] = old_h;
+        }
+    }
+    printf("    cache vs full: worst relative difference %.2e over 400 steps\n", worst);
+    CHECK(worst < 1e-10);
+    gd_mcmc_t1_destroy(mc); gd_mcmc_t1_destroy(mf);
+    gd_t1_ws_destroy(ws1); gd_t1_ws_destroy(ws2);
+    free(store); free(cd); free(sim);
+    gd_rng_destroy(rng);
+    gd_tree_destroy(t);
+}
+
 static void run_tests(void)
 {
+    RUN(test_t1_cache_matches_full_recomputation);
     RUN(test_t1_gamma_mixture_matches_dense_integral);
     RUN(test_t1_pattern_compression_is_exact);
     RUN(test_t1_rate_mixture_matches_dense_integral);
