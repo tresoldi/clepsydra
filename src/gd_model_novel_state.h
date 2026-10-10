@@ -237,6 +237,27 @@ int gd_t1_simulate(gd_rng *rng, const gd_tree *tree, double rate,
  * §Deferred names. The sampler no longer knows which likelihoods exist.
  */
 
+/*
+ * Among-concept rate heterogeneity, integrated out (docs/roadmap.md E2.1).
+ * Each concept's rate is rate * lambda with log lambda ~ N(-sigma^2/2,
+ * sigma^2), so E[lambda] = 1, integrated by a Gauss-Hermite rule (Golub-
+ * Welsch) whose multipliers are rescaled to have mean exactly 1. sigma = 0 is
+ * the homogeneous model.
+ *
+ * gd_t1_rate_mixture fills mult[] and logw[] (capacity GD_T1_MIX_KMAX) and *K;
+ * gd_t1_loglik_concept_mixed is one concept's mixed likelihood.
+ */
+#define GD_T1_MIX_K    24   /* nodes used by the sampler: < 0.5% error up to sigma 1.5 */
+#define GD_T1_MIX_KMAX 64
+int gd_t1_rate_mixture(double sigma, double *mult, double *logw, size_t *K);
+/* The same with an explicit node count (1..GD_T1_MIX_KMAX). */
+int gd_t1_rate_mixture_k(double sigma, size_t nodes, double *mult, double *logw, size_t *K);
+int gd_t1_loglik_concept_mixed(gd_t1_ws *ws, double rate, double sigma,
+                               const double *branch_mult,
+                               const gd_cognate_data *data,
+                               const gd_t1_options *opt,
+                               gd_t1_concept_result *res, gd_error *err);
+
 typedef struct gd_mcmc_t1 gd_mcmc_t1;
 
 /*

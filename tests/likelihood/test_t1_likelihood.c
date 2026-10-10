@@ -25,6 +25,7 @@
 #include "test_runner.h"
 #include "gd_tree_build.h"
 #include "gd_model_novel_state.h"
+#include "gd_mcmc_model.h"
 #include "gd_newick.h"
 #include "gd_tree.h"
 #include "gd_rng.h"
@@ -33,6 +34,10 @@
 
 #include <math.h>
 #include <stdlib.h>
+
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
 #include <string.h>
 
 /* Tolerance for brute-force agreement: the two routes differ only by
@@ -1319,8 +1324,145 @@ TEST(test_t1_relaxed_matches_bruteforce)
     gd_rng_destroy(rng);
 }
 
+/*
+ * E2.1: the integrated among-concept rate mixture. The 8-point rule must
+ * match a dense numerical integral over log lambda ~ N(-s^2/2, s^2), and
+ * must be accurate where deep dates live: long branches and wide spreads,
+ * where the slow tail of the distribution carries the shared classes.
+ */
+TEST(test_t1_rate_mixture_matches_dense_integral)
+{
+    gd_error err = GD_ERROR_INIT;
+    gd_tree *t = tree_quartet();
+    CHECK(t != NULL);
+    gd_t1_ws *ws = gd_t1_ws_create(t, &err);
+    CHECK(ws != NULL);
+    gd_t1_options opt; gd_t1_options_default(&opt);
+    opt.epsilon = 0.0;
+    /* Patterns from all-shared to all-distinct. */
+    int pats[4][7];
+    const char *names[4] = { "a", "b", "c", "d" };
+    const int cls[4][4] = { {1,1,1,1}, {1,1,2,2}, {1,2,1,3}, {1,2,3,4} };
+    for (int q = 0; q < 4; q++) {
+        for (size_t i = 0; i < t->nnodes; i++) pats[q][i] = -1;
+        for (int k = 0; k < 4; k++) pats[q][gd_tree_find_label(t, names[k])] = cls[q][k];
+    }
+    const double rates[3] = { 2e-5, 2e-4, 1e-3 };   /* lexical root 0.08 to 4 */
+    const double sigmas[3] = { 0.3, 0.8, 1.5 };
+    const size_t Ks[4] = { 8, 16, 24, 32 };
+    double worst[4] = { 0, 0, 0, 0 };
+    for (int ri = 0; ri < 3; ri++) for (int si = 0; si < 3; si++) for (int q = 0; q < 4; q++) {
+        gd_cognate_data d = { pats[q], t->nnodes };
+        double s = sigmas[si], acc = 0.0, h = 0.002;
+        for (double z = -9.0; z <= 9.0; z += h) {
+            double lam = exp(s * z - 0.5 * s * s);
+            gd_t1_concept_result r1;
+            CHECK(gd_t1_loglik_concept(ws, rates[ri] * lam, &d, &opt, &r1, &err) == 0);
+            acc += h * exp(-0.5 * z * z) / sqrt(2.0 * M_PI) * exp(r1.log_lik);
+        }
+        for (int kk = 0; kk < 4; kk++) {
+            double mult[GD_T1_MIX_KMAX], logw[GD_T1_MIX_KMAX]; size_t K;
+            CHECK(gd_t1_rate_mixture_k(s, Ks[kk], mult, logw, &K) == 0);
+            double mix = 0.0;
+            for (size_t k = 0; k < K; k++) {
+                gd_t1_concept_result r1;
+                CHECK(gd_t1_loglik_concept(ws, rates[ri] * mult[k], &d, &opt, &r1, &err) == 0);
+                mix += exp(logw[k] + r1.log_lik);
+            }
+            double rel = fabs(mix - acc) / acc;
+            if (rel > worst[kk]) worst[kk] = rel;
+        }
+        /* The sampler's own path agrees with the explicit sum at its K. */
+        gd_t1_concept_result res;
+        CHECK(gd_t1_loglik_concept_mixed(ws, rates[ri], s, NULL, &d, &opt, &res, &err) == 0);
+        double mult[GD_T1_MIX_KMAX], logw[GD_T1_MIX_KMAX]; size_t K;
+        CHECK(gd_t1_rate_mixture(s, mult, logw, &K) == 0);
+        double mix = 0.0;
+        for (size_t k = 0; k < K; k++) {
+            gd_t1_concept_result r1;
+            CHECK(gd_t1_loglik_concept(ws, rates[ri] * mult[k], &d, &opt, &r1, &err) == 0);
+            mix += exp(logw[k] + r1.log_lik);
+        }
+        CHECK_APPROX(res.log_lik, log(mix), 1e-10);
+    }
+    printf("    worst relative error by nodes: K=8 %.1e, 16 %.1e, 24 %.1e, 32 %.1e\n",
+           worst[0], worst[1], worst[2], worst[3]);
+    gd_t1_ws_destroy(ws);
+    gd_tree_destroy(t);
+    CHECK(worst[2] < 0.005);   /* the sampler's K = 24 */
+    CHECK(worst[3] < worst[0]);
+
+    /* The rule itself: K = 8 against numpy's hermegauss. */
+    {
+        double mult[GD_T1_MIX_KMAX], logw[GD_T1_MIX_KMAX]; size_t K;
+        CHECK(gd_t1_rate_mixture_k(1.0, 8, mult, logw, &K) == 0);
+        double wsum = 0.0;
+        for (size_t k = 0; k < K; k++) wsum += exp(logw[k]);
+        CHECK_APPROX(wsum, 1.0, 1e-12);
+        double wmax = 0.0;
+        for (size_t k = 0; k < K; k++) if (exp(logw[k]) > wmax) wmax = exp(logw[k]);
+        CHECK_APPROX(wmax, 0.37301225767907736, 1e-12);
+    }
+
+    /* sigma = 0 is exactly the homogeneous model. */
+    double mult[GD_T1_MIX_KMAX], logw[GD_T1_MIX_KMAX]; size_t K;
+    CHECK(gd_t1_rate_mixture(0.0, mult, logw, &K) == 0);
+    CHECK(K == 1 && mult[0] == 1.0);
+    /* The multipliers have mean exactly 1. */
+    CHECK(gd_t1_rate_mixture(1.2, mult, logw, &K) == 0);
+    double mean = 0.0;
+    for (size_t k = 0; k < K; k++) mean += exp(logw[k]) * mult[k];
+    CHECK_APPROX(mean, 1.0, 1e-12);
+}
+
+/* E2.1 support: concepts with the same partition are evaluated once and
+ * weighted by their count. The compressed path (no per-concept deviations)
+ * must equal the per-concept path (all-zero deviations) exactly, pointwise
+ * values included, with and without the rate mixture. */
+TEST(test_t1_pattern_compression_is_exact)
+{
+    gd_error err = GD_ERROR_INIT;
+    gd_tree *t = tree_quartet();
+    gd_t1_ws *ws = gd_t1_ws_create(t, &err);
+    CHECK(ws != NULL);
+    size_t n = t->nnodes;
+    const char *names[4] = { "a", "b", "c", "d" };
+    /* Eight concepts, four distinct partitions; relabelled duplicates and a
+     * missing tip included. */
+    const int cls[8][4] = { {1,1,1,1}, {5,5,5,5}, {1,1,2,2}, {7,7,3,3},
+                            {1,2,1,3}, {9,4,9,8}, {1,1,2,-1}, {2,2,6,-1} };
+    int *store = (int *)malloc(8 * n * sizeof(int));
+    gd_cognate_data cd[8];
+    for (size_t c = 0; c < 8; c++) {
+        for (size_t i = 0; i < n; i++) store[c * n + i] = -1;
+        for (int k = 0; k < 4; k++) store[c * n + gd_tree_find_label(t, names[k])] = cls[c][k];
+        cd[c].labels = store + c * n; cd[c].nnodes = n;
+    }
+    gd_t1_options opt; gd_t1_options_default(&opt);
+    gd_mcmc_t1 *m = gd_mcmc_t1_create(ws, cd, 8, &opt, &err);
+    CHECK(m != NULL);
+    gd_mcmc_model model; gd_mcmc_t1_model(m, &model);
+    double logr = log(3e-4), zero[8] = {0}, pw1[8], pw2[8], a, b;
+    for (int mix = 0; mix < 2; mix++) {
+        gd_mcmc_state st; memset(&st, 0, sizeof st);
+        st.rates = &logr; st.n_rates = 1; st.epsilon = 0.05;
+        st.rate_mix_sd = mix ? 0.9 : 0.0;
+        CHECK(model.loglik(model.ctx, t, &st, pw1, &a, &err) == 0);
+        st.concept_logdev = zero;
+        CHECK(model.loglik(model.ctx, t, &st, pw2, &b, &err) == 0);
+        CHECK_APPROX(a, b, 1e-10);
+        for (int c = 0; c < 8; c++) CHECK_APPROX(pw1[c], pw2[c], 1e-12);
+    }
+    gd_mcmc_t1_destroy(m);
+    free(store);
+    gd_t1_ws_destroy(ws);
+    gd_tree_destroy(t);
+}
+
 static void run_tests(void)
 {
+    RUN(test_t1_pattern_compression_is_exact);
+    RUN(test_t1_rate_mixture_matches_dense_integral);
     RUN(test_t1_bf_binary_one_class);
     RUN(test_t1_bf_binary_several_classes);
     RUN(test_t1_bf_missing_leaf);

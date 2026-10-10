@@ -453,6 +453,8 @@ void gd_analysis_tree_config_default(gd_analysis_tree_config *cfg)
     cfg->root_lex_logsd = 1.5;
     cfg->prior_only = false;
     cfg->compare_prior = true;
+    cfg->concept_rates = true;
+    cfg->concept_rate_prior_sd = 1.0;
     cfg->hpd_level = 0.90;
     cfg->calibrations.drop_index = GD_ANALYSIS_KEEP_ALL;
     cfg->calibrations.widen = 1.0;
@@ -468,7 +470,7 @@ typedef struct {
 
 static const char *const TYPE_NAMES[] = {
     "log_rate", "age", "log_sigma_b", "logit_eps", "branch_logmult",
-    "concept_dev"
+    "concept_dev", "log_sigma_c"
 };
 
 struct gd_analysis_tree_job {
@@ -821,6 +823,8 @@ int gd_analysis_tree_job_run(gd_analysis_tree_job *job,
     mc.root_lex_logsd = job->cfg.root_lex_logsd;
     mc.prior_only = job->cfg.prior_only;
     mc.tree_prior = job->cfg.yule ? GD_TREE_PRIOR_YULE : GD_TREE_PRIOR_UNIFORM;
+    mc.sample_rate_mix = job->cfg.concept_rates;
+    mc.rate_mix_prior_sd = job->cfg.concept_rate_prior_sd;
     mc.yule_kappa = job->cfg.yule_kappa;
     mc.on_progress = job->cfg.on_progress;
     mc.progress_user = job->cfg.progress_user;

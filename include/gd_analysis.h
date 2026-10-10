@@ -138,6 +138,11 @@ typedef struct gd_analysis_tree_config {
      * complete sampling) conditioned on the root, lambda = kappa / root.
      * Tips must all be modern. kappa 0 means H(n) - 1 for n tips. */
     bool     yule;              /* 0 */
+    /* Among-concept rate heterogeneity, integrated out (E2.1): log-normal
+     * multipliers with mean 1 and a sampled spread sigma_c ~ HalfNormal(sd).
+     * On by default; 0 is the homogeneous model. */
+    bool     concept_rates;     /* 1 */
+    double   concept_rate_prior_sd; /* 1.0 */
     double   yule_kappa;        /* 0 */
     bool     compare_prior;     /* 1: also run the prior alone and report it */
     double   hpd_level;         /* 0.90 */

@@ -41,6 +41,9 @@ typedef struct gd_mcmc_state {
     const double *concept_logdev;   /* mu_c, or NULL (all zero) */
     const double *branch_logmult;   /* log m_b, or NULL (strict clock) */
     double        epsilon;          /* contamination weight in [0,1) */
+    /* Spread of the integrated-out among-concept rate distribution (log sd);
+     * 0 = homogeneous. A likelihood without such a mixture ignores it. */
+    double        rate_mix_sd;
 } gd_mcmc_state;
 
 /*

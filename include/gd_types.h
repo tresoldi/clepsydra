@@ -52,7 +52,8 @@ typedef enum gd_mcmc_ptype {
     GD_MCMC_P_LOG_SIGMA_B,       /* log of the branch-clock SD */
     GD_MCMC_P_LOGIT_EPS,         /* logit of the contamination weight */
     GD_MCMC_P_BRANCH_LOGMULT,    /* log of a branch multiplier m_b */
-    GD_MCMC_P_CONCEPT_DEV        /* a concept log-rate deviation mu_c */
+    GD_MCMC_P_CONCEPT_DEV,       /* a concept log-rate deviation mu_c */
+    GD_MCMC_P_LOG_SIGMA_C        /* log of the among-concept rate spread */
 } gd_mcmc_ptype;
 
 /*

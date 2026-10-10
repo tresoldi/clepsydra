@@ -200,6 +200,7 @@ default model is **frozen and versioned**.
 
 | id | item | evidence |
 |---|---|---|
+| E3.0 | **Subtree-scaling move**: nested deep nodes with close ages (Sino-Tibetan inner_TB / eastern_TB) mix slowly under single-site moves; the example needs 12,000 samples per chain to pass the convergence check with concept rates on | E2.1 runs |
 | E3.1 | Likelihood caching: data extension, sort keys and the noise term computed once per concept; age moves recompute only the path to the root | K-M11 |
 | E3.2 | Full posterior draws, pointwise log-likelihood, rates and hyperparameters, every node (fixed ones too) in the output. *(Needed by M2 scoring, so do it before M1.)* | C18 |
 | E3.3 | Checkpoints bound to input hashes, resumable mid-sampling | C25 |

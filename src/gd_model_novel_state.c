@@ -582,10 +582,33 @@ static int check_options(const gd_t1_options *opt, gd_error *err)
     return 0;
 }
 
+/*
+ * One concept, with its rate either fixed or mixed over K multipliers:
+ * L_tree = sum_k w_k L_tree(rate * mult[k]). The extension and the noise
+ * term do not depend on the rate, so they are computed once; only the
+ * recursion runs K times. K = 1 with mult = {1} is the plain model, and takes
+ * exactly the plain path.
+ */
+static int t1_concept_mix_impl(gd_t1_ws *ws, double rate, const double *mult,
+                               const double *logw, size_t K, const double *bm,
+                               const gd_cognate_data *data,
+                               const gd_t1_options *opt,
+                               gd_t1_concept_result *res, gd_error *err);
+
 static int t1_concept_impl(gd_t1_ws *ws, double rate, const double *bm,
                            const gd_cognate_data *data,
                            const gd_t1_options *opt,
                            gd_t1_concept_result *res, gd_error *err)
+{
+    static const double one = 1.0, zero = 0.0;
+    return t1_concept_mix_impl(ws, rate, &one, &zero, 1, bm, data, opt, res, err);
+}
+
+static int t1_concept_mix_impl(gd_t1_ws *ws, double rate, const double *mult,
+                               const double *logw, size_t K, const double *bm,
+                               const gd_cognate_data *data,
+                               const gd_t1_options *opt,
+                               gd_t1_concept_result *res, gd_error *err)
 {
     gd_t1_options defaults;
     gd_t1_concept_result local;
@@ -653,9 +676,25 @@ static int t1_concept_impl(gd_t1_ws *ws, double rate, const double *bm,
         return 0;
     }
 
-    int rc = t1_recursion(ws, rate, bm, &res->log_lik_tree,
-                          &res->stability_warning, &res->ops_recursion, err);
-    if (rc != 0) return rc;
+    if (K == 1) {
+        int rc = t1_recursion(ws, rate * mult[0], bm, &res->log_lik_tree,
+                              &res->stability_warning, &res->ops_recursion, err);
+        if (rc != 0) return rc;
+    } else {
+        /* The recursion only reads the extension, so it can run once per
+         * multiplier on the same workspace. */
+        double acc = -HUGE_VAL;
+        for (size_t k = 0; k < K; k++) {
+            double lk;
+            bool warn = false;
+            int rc = t1_recursion(ws, rate * mult[k], bm, &lk, &warn,
+                                  &res->ops_recursion, err);
+            if (rc != 0) return rc;
+            if (warn) res->stability_warning = true;
+            acc = gd_logaddexp(acc, logw[k] + lk);
+        }
+        res->log_lik_tree = acc;
+    }
 
     if (opt->epsilon <= 0.0) {
         res->log_lik = res->log_lik_tree;
@@ -772,6 +811,106 @@ int gd_t1_simulate(gd_rng *rng, const gd_tree *tree, double rate,
  * sampler knows nothing about which likelihoods exist.
  */
 
+/*
+ * Probabilists' Gauss-Hermite rules, integrating f(z) N(z; 0, 1), computed by
+ * Golub-Welsch: the nodes are the eigenvalues of the symmetric tridiagonal
+ * Jacobi matrix with off-diagonal sqrt(k), the weights the squared first
+ * components of its eigenvectors. Implicit QL with Wilkinson shifts
+ * (Numerical Recipes tqli), carrying only the first eigenvector row.
+ */
+static int gauss_hermite_rule(size_t K, double *z, double *w)
+{
+    double d[GD_T1_MIX_KMAX], e[GD_T1_MIX_KMAX], v[GD_T1_MIX_KMAX];
+    if (K < 1 || K > GD_T1_MIX_KMAX) return GD_E_RANGE;
+    for (size_t i = 0; i < K; i++) {
+        d[i] = 0.0;
+        e[i] = (i + 1 < K) ? sqrt((double)(i + 1)) : 0.0;
+        v[i] = (i == 0) ? 1.0 : 0.0;   /* first row of the identity */
+    }
+    for (size_t l = 0; l < K; l++) {
+        int iter = 0;
+        size_t m;
+        do {
+            for (m = l; m + 1 < K; m++) {
+                double dd = fabs(d[m]) + fabs(d[m + 1]);
+                if (fabs(e[m]) <= 1e-15 * dd) break;
+            }
+            if (m != l) {
+                if (++iter > 60) return GD_E_INTERNAL;
+                double g = (d[l + 1] - d[l]) / (2.0 * e[l]);
+                double r = hypot(g, 1.0);
+                g = d[m] - d[l] + e[l] / (g + (g >= 0.0 ? fabs(r) : -fabs(r)));
+                double s = 1.0, c = 1.0, p = 0.0;
+                size_t i = m;
+                bool early = false;
+                while (i-- > l) {
+                    double f = s * e[i], b = c * e[i];
+                    r = hypot(f, g);
+                    e[i + 1] = r;
+                    if (r == 0.0) { d[i + 1] -= p; e[m] = 0.0; early = true; break; }
+                    s = f / r; c = g / r;
+                    g = d[i + 1] - p;
+                    r = (d[i] - g) * s + 2.0 * c * b;
+                    p = s * r;
+                    d[i + 1] = g + p;
+                    g = c * r - b;
+                    f = v[i + 1];
+                    v[i + 1] = s * v[i] + c * f;
+                    v[i] = c * v[i] - s * f;
+                }
+                if (early) continue;
+                d[l] -= p; e[l] = g; e[m] = 0.0;
+            }
+        } while (m != l);
+    }
+    for (size_t i = 0; i < K; i++) { z[i] = d[i]; w[i] = v[i] * v[i]; }
+    return 0;
+}
+
+int gd_t1_rate_mixture_k(double sigma, size_t nodes, double *mult, double *logw, size_t *K)
+{
+    if (mult == NULL || logw == NULL || K == NULL) return GD_E_INVALID_ARG;
+    if (!(sigma > 0.0) || !gd_is_finite(sigma)) {
+        mult[0] = 1.0; logw[0] = 0.0; *K = 1;
+        return 0;
+    }
+    double z[GD_T1_MIX_KMAX], w[GD_T1_MIX_KMAX];
+    int rc = gauss_hermite_rule(nodes, z, w);
+    if (rc != 0) return rc;
+    /* lambda = exp(sigma z), then rescaled so the mixture mean is exactly 1:
+     * the global rate stays the mean rate over concepts, which is what makes
+     * it comparable across families and concept lists. */
+    double mean = 0.0;
+    for (size_t k = 0; k < nodes; k++) {
+        mult[k] = exp(sigma * z[k]);
+        mean += w[k] * mult[k];
+    }
+    for (size_t k = 0; k < nodes; k++) {
+        mult[k] /= mean;
+        logw[k] = log(w[k]);
+    }
+    *K = nodes;
+    return 0;
+}
+
+int gd_t1_rate_mixture(double sigma, double *mult, double *logw, size_t *K)
+{
+    return gd_t1_rate_mixture_k(sigma, GD_T1_MIX_K, mult, logw, K);
+}
+
+int gd_t1_loglik_concept_mixed(gd_t1_ws *ws, double rate, double sigma,
+                               const double *branch_mult,
+                               const gd_cognate_data *data,
+                               const gd_t1_options *opt,
+                               gd_t1_concept_result *res, gd_error *err)
+{
+    double mult[GD_T1_MIX_KMAX], logw[GD_T1_MIX_KMAX];
+    size_t K;
+    int rc = gd_t1_rate_mixture(sigma, mult, logw, &K);
+    if (rc != 0) return gd_error_set(err, rc, "t1: rate mixture rule");
+    return t1_concept_mix_impl(ws, rate, mult, logw, K, branch_mult, data, opt, res, err);
+}
+
 struct gd_mcmc_t1 {
     gd_t1_ws *ws;
     const gd_cognate_data *concepts;
@@ -781,7 +920,35 @@ struct gd_mcmc_t1 {
     double *rates;
     double *bm;
     gd_t1_concept_result *per;
+
+    /* Concepts with the same partition of the observed nodes have the same
+     * likelihood (T1 sees only which nodes share a class), so the sampler
+     * evaluates each distinct pattern once and weights it by its count.
+     * Exact; used whenever concepts share one rate (no per-concept
+     * deviations). uniq[u] is a representative concept, count[u] how many
+     * concepts have its pattern, of_concept[c] the pattern of concept c. */
+    size_t  nuniq;
+    size_t *uniq;
+    double *count;
+    size_t *of_concept;
+    gd_t1_concept_result *per_uniq;
 };
+
+/* Is concept a's partition of the nodes the same as concept b's? Labels are
+ * compared up to renaming, and missing (-1) must coincide. */
+static bool same_partition(const int *a, const int *b, size_t n, int *fwd, int *bwd, size_t cap)
+{
+    for (size_t i = 0; i < cap; i++) { fwd[i] = -1; bwd[i] = -1; }
+    for (size_t i = 0; i < n; i++) {
+        int x = a[i], y = b[i];
+        if ((x < 0) != (y < 0)) return false;
+        if (x < 0) continue;
+        if ((size_t)x >= cap || (size_t)y >= cap) return false;
+        if (fwd[x] < 0 && bwd[y] < 0) { fwd[x] = y; bwd[y] = x; }
+        else if (fwd[x] != y || bwd[y] != x) return false;
+    }
+    return true;
+}
 
 static int t1_model_loglik(void *vctx, gd_tree *tree, const gd_mcmc_state *st,
                            double *pw, double *out, gd_error *err)
@@ -800,10 +967,44 @@ static int t1_model_loglik(void *vctx, gd_tree *tree, const gd_mcmc_state *st,
     gd_t1_options opt = m->opt;
     opt.epsilon = st->epsilon;
     gd_t1_concept_result *per = (pw != NULL) ? m->per : NULL;
-    double tot;
-    int rc = gd_t1_loglik_dataset_relaxed(m->ws, m->rates, bm, m->concepts,
+    double tot = 0.0;
+    int rc;
+    if (st->concept_logdev == NULL && m->nuniq > 0) {
+        /* One rate for all concepts: evaluate each distinct pattern once. */
+        double mult[GD_T1_MIX_KMAX], logw[GD_T1_MIX_KMAX];
+        size_t K;
+        rc = gd_t1_rate_mixture(st->rate_mix_sd, mult, logw, &K);
+        if (rc != 0) return gd_error_set(err, rc, "t1: rate mixture rule");
+        double rate = exp(st->rates[0]);
+        for (size_t u = 0; u < m->nuniq; u++) {
+            rc = t1_concept_mix_impl(m->ws, rate, mult, logw, K, bm,
+                                     &m->concepts[m->uniq[u]], &opt, &m->per_uniq[u], err);
+            if (rc != 0) return rc;
+            tot += m->count[u] * m->per_uniq[u].log_lik;
+        }
+        if (pw != NULL)
+            for (size_t c = 0; c < m->nconcepts; c++) pw[c] = m->per_uniq[m->of_concept[c]].log_lik;
+        *out = tot;
+        return 0;
+    }
+    if (st->rate_mix_sd > 0.0) {
+        double mult[GD_T1_MIX_KMAX], logw[GD_T1_MIX_KMAX];
+        size_t K;
+        rc = gd_t1_rate_mixture(st->rate_mix_sd, mult, logw, &K);
+        if (rc != 0) return gd_error_set(err, rc, "t1: rate mixture rule");
+        for (size_t c = 0; c < m->nconcepts; c++) {
+            gd_t1_concept_result scratch;
+            gd_t1_concept_result *res = (per != NULL) ? &per[c] : &scratch;
+            rc = t1_concept_mix_impl(m->ws, m->rates[c], mult, logw, K, bm,
+                                     &m->concepts[c], &opt, res, err);
+            if (rc != 0) return rc;
+            tot += res->log_lik;
+        }
+    } else {
+        rc = gd_t1_loglik_dataset_relaxed(m->ws, m->rates, bm, m->concepts,
                                           m->nconcepts, &opt, per, &tot, err);
-    if (rc != 0) return rc;
+        if (rc != 0) return rc;
+    }
     if (pw != NULL) for (size_t c = 0; c < m->nconcepts; c++) pw[c] = m->per[c].log_lik;
     *out = tot;
     return 0;
@@ -832,13 +1033,49 @@ gd_mcmc_t1 *gd_mcmc_t1_create(gd_t1_ws *ws, const gd_cognate_data *concepts,
         free(m->rates); free(m->bm); free(m->per); free(m);
         return NULL;
     }
+
+    /* Distinct patterns. Quadratic in the number of concepts, once. */
+    size_t cap = m->nnodes + 1;
+    m->uniq = (size_t *)gd_malloc_array_checked(nconcepts, sizeof(size_t), err);
+    m->count = (double *)gd_calloc_checked(nconcepts, sizeof(double), err);
+    m->of_concept = (size_t *)gd_malloc_array_checked(nconcepts, sizeof(size_t), err);
+    m->per_uniq = (gd_t1_concept_result *)gd_malloc_array_checked(nconcepts, sizeof(gd_t1_concept_result), err);
+    int *fwd = (int *)gd_malloc_array_checked(cap, sizeof(int), err);
+    int *bwd = (int *)gd_malloc_array_checked(cap, sizeof(int), err);
+    if (m->uniq == NULL || m->count == NULL || m->of_concept == NULL ||
+        m->per_uniq == NULL || fwd == NULL || bwd == NULL) {
+        free(fwd); free(bwd);
+        gd_error_set(err, GD_E_NOMEM, "mcmc_t1: patterns");
+        gd_mcmc_t1_destroy(m);
+        return NULL;
+    }
+    /* A label at or beyond `cap` cannot be compared cheaply; such a dataset
+     * just keeps every concept separate (nuniq = 0 selects that path). */
+    bool ok = true;
+    for (size_t c = 0; c < nconcepts && ok; c++)
+        for (size_t i = 0; i < m->nnodes; i++)
+            if (concepts[c].labels[i] >= (int)cap) { ok = false; break; }
+    if (ok) {
+        for (size_t c = 0; c < nconcepts; c++) {
+            size_t u = 0;
+            while (u < m->nuniq &&
+                   !same_partition(concepts[m->uniq[u]].labels, concepts[c].labels,
+                                   m->nnodes, fwd, bwd, cap)) u++;
+            if (u == m->nuniq) m->uniq[m->nuniq++] = c;
+            m->count[u] += 1.0;
+            m->of_concept[c] = u;
+        }
+    }
+    free(fwd); free(bwd);
     return m;
 }
 
 void gd_mcmc_t1_destroy(gd_mcmc_t1 *m)
 {
     if (m == NULL) return;
-    free(m->rates); free(m->bm); free(m->per); free(m);
+    free(m->rates); free(m->bm); free(m->per);
+    free(m->uniq); free(m->count); free(m->of_concept); free(m->per_uniq);
+    free(m);
 }
 
 void gd_mcmc_t1_model(gd_mcmc_t1 *m, gd_mcmc_model *out)

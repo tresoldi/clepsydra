@@ -84,6 +84,12 @@ ages depend on the rate prior and calibrations — the tool says so.
   `n_unconverged_params`, `max_rhat`, `min_ess_bulk`, `min_ess_tail`), and the
   scale-dependence note.
 
+**Among-concept rates** (`--concept-rates 1`, the default). Basic meanings
+are replaced at very different rates. A single rate makes slow meanings look
+young and fast ones look old, and it biases deep nodes. Each concept's rate is
+integrated over a log-normal with mean 1 and a sampled spread `sigma_c`.
+`--concept-rates 0` gives the homogeneous model.
+
 **Power-scaling sensitivity.** `sensitivity_root_age` and
 `sensitivity_lexical_root` measure, for each component (the clock prior, the
 lexical-root prior, the calibrations, the likelihood), how far the posterior

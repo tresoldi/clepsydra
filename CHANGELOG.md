@@ -11,6 +11,24 @@ columns and example numbers are expected throughout 0.x and are listed here.
 
 ### Changed (breaking)
 
+- **Among-concept rate heterogeneity is on by default** (E2.1;
+  `--concept-rates`, `--concept-rate-prior-sd`).
+  - **The model.** Each concept's rate is `rho · lambda_c`, with
+    `log lambda_c ~ N(-sigma_c²/2, sigma_c²)`, integrated out per concept.
+    The multipliers are rescaled to mean exactly 1, so `rho` stays the mean
+    rate and is comparable across concept lists.
+  - **The quadrature.** A 24-point Gauss–Hermite rule, computed by
+    Golub–Welsch. Against a dense integral the error is below 0.4% up to
+    `sigma_c = 1.5` on long branches; 8 points erred by 6%, in the slow tail
+    that dates deep nodes.
+  - **The spread.** `sigma_c ~ HalfNormal(1)` is sampled (`log_sigma_c` in
+    `diagnostics.tsv`). On Romance it is about 1.05, and node ages move by up
+    to 2%.
+  - **Cost.** Concepts with the same cognate partition are now evaluated
+    once and weighted by their count, which is exact (Romance: 170 concepts,
+    69 patterns). Even so, the mixture makes runs about 12× slower: the
+    Romance example takes about 2 minutes.
+
 - **A proper prior on node ages** (E1.1, E1.3, E1.4, E1.7; `docs/inference.md`
   §2.3). Uncalibrated ages were flat inside a hidden `[0, 1e15]` box: the
   root was tilted towards it, and the posterior was improper. On Arawan the

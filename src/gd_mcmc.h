@@ -112,6 +112,15 @@ typedef struct gd_mcmc_config {
     double   eps_init;          /* default 0.05 */
     double   eps_step0;         /* default 0.40 (logit scale) */
 
+    /* Among-concept rate heterogeneity, integrated out (E2.1): each concept's
+     * rate is rho * lambda_c, log lambda_c ~ N(-sigma_c^2/2, sigma_c^2), summed
+     * over an 8-point quadrature in the likelihood; sigma_c ~
+     * HalfNormal(rate_mix_prior_sd), sampled on the log scale. */
+    bool     sample_rate_mix;
+    double   rate_mix_prior_sd; /* default 1.0 */
+    double   rate_mix_init;     /* default 0.5 */
+    double   rate_mix_step0;    /* default 0.30 (log scale) */
+
     /* Per-concept rate deviations (M9): mu_c ~ N(0, concept_rate_sd^2). */
     bool     sample_concept_rates;
     double   concept_rate_sd;   /* default 0.50 */

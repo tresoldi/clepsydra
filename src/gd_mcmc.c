@@ -62,6 +62,7 @@ struct gd_mcmc_chain {
     /* Assembled state, kept in sync with the parameter values. */
     double logr;
     double sigma_b;
+    double sigma_c;           /* among-concept spread; 0 when not sampled */
     double epsilon;
     double *branch_logmult;   /* nnodes, or NULL */
     double *concept_dev;      /* nconcepts, or NULL */
@@ -154,6 +155,10 @@ void gd_mcmc_config_default(gd_mcmc_config *cfg)
     cfg->eps_beta_b = 19.0;
     cfg->eps_init = 0.05;
     cfg->eps_step0 = 0.40;
+    cfg->sample_rate_mix = false;
+    cfg->rate_mix_prior_sd = 1.0;
+    cfg->rate_mix_init = 0.5;
+    cfg->rate_mix_step0 = 0.30;
     cfg->sample_concept_rates = false;
     cfg->concept_rate_sd = 0.50;
     cfg->concept_step0 = 0.30;
@@ -178,6 +183,7 @@ static void fill_state(const gd_mcmc_chain *ch, gd_mcmc_state *st)
     st->concept_logdev = ch->have_concept ? ch->concept_dev : NULL;
     st->branch_logmult = ch->have_branch ? ch->branch_logmult : NULL;
     st->epsilon = ch->epsilon;
+    st->rate_mix_sd = ch->sigma_c;
 }
 
 static int chain_eval_loglik(const gd_mcmc_chain *ch, double *pw, double *out,
@@ -204,6 +210,7 @@ static void rebuild_assembled(gd_mcmc_chain *ch)
             case GD_MCMC_P_LOGRATE:      ch->logr = pp->value; break;
             case GD_MCMC_P_LOG_SIGMA_B:  ch->sigma_b = exp(pp->value); break;
             case GD_MCMC_P_LOGIT_EPS:    ch->epsilon = sigmoid(pp->value); break;
+            case GD_MCMC_P_LOG_SIGMA_C:  ch->sigma_c = exp(pp->value); break;
             case GD_MCMC_P_BRANCH_LOGMULT:
                 ch->branch_logmult[pp->node] = pp->value; break;
             case GD_MCMC_P_CONCEPT_DEV:
@@ -277,6 +284,8 @@ static double param_logprior(const gd_mcmc_chain *ch, const gd_param *pp)
                                ch->sigma_b);
         case GD_MCMC_P_CONCEPT_DEV:
             return norm_logpdf(pp->value, 0.0, ch->cfg.concept_rate_sd);
+        case GD_MCMC_P_LOG_SIGMA_C:
+            return halfnormal_logpdf(exp(pp->value), ch->cfg.rate_mix_prior_sd) + pp->value;
     }
     return 0.0;
 }
@@ -319,6 +328,7 @@ static size_t count_params(const gd_mcmc_chain *ch, size_t *nfree_out)
     if (ch->cfg.sample_branch) np += (ch->tree->nnodes - 1) + 1; /* branches + sigma_b */
     if (ch->cfg.sample_contamination) np += 1;
     if (ch->cfg.sample_concept_rates) np += ch->nconcepts;
+    if (ch->cfg.sample_rate_mix) np += 1;
     return np;
 }
 
@@ -343,6 +353,9 @@ gd_mcmc_chain *gd_mcmc_chain_create(const gd_mcmc_model *model, gd_tree *tree,
     }
     if (!cfg->sample_rate && !(cfg->fixed_rate > 0.0)) {
         gd_error_set(err, GD_E_RANGE, "mcmc: fixed_rate > 0 required"); return NULL;
+    }
+    if (cfg->sample_rate_mix && !(cfg->rate_mix_prior_sd > 0.0 && cfg->rate_mix_init > 0.0)) {
+        gd_error_set(err, GD_E_RANGE, "mcmc: rate_mix_prior_sd and rate_mix_init > 0 required"); return NULL;
     }
     if (cfg->sample_branch && !(cfg->sigma_b_prior_sd > 0.0)) {
         gd_error_set(err, GD_E_RANGE, "mcmc: sigma_b_prior_sd > 0 required"); return NULL;
@@ -511,6 +524,14 @@ gd_mcmc_chain *gd_mcmc_chain_create(const gd_mcmc_model *model, gd_tree *tree,
             ch->params[p].step = cfg->branch_step0;
             p++;
         }
+    }
+    if (cfg->sample_rate_mix) {
+        ch->sigma_c = cfg->rate_mix_init;
+        ch->params[p].type = GD_MCMC_P_LOG_SIGMA_C;
+        ch->params[p].node = GD_NODE_NONE;
+        ch->params[p].value = log(ch->sigma_c);
+        ch->params[p].step = cfg->rate_mix_step0;
+        p++;
     }
     if (cfg->sample_contamination) {
         ch->epsilon = cfg->eps_init;
@@ -799,6 +820,11 @@ static int chain_sweep(gd_mcmc_chain *ch, int adapting, gd_error *err)
                     dprior = norm_logpdf(prop, 0.0, ch->cfg.concept_rate_sd)
                            - norm_logpdf(old_v, 0.0, ch->cfg.concept_rate_sd);
                     break;
+                case GD_MCMC_P_LOG_SIGMA_C:
+                    ch->sigma_c = exp(prop);
+                    dprior = (halfnormal_logpdf(exp(prop), ch->cfg.rate_mix_prior_sd) + prop)
+                           - (halfnormal_logpdf(exp(old_v), ch->cfg.rate_mix_prior_sd) + old_v);
+                    break;
                 default: break;
             }
             if (chain_eval_loglik(ch, NULL, &new_ll, err) != 0) return GD_E_INTERNAL;
@@ -812,6 +838,7 @@ static int chain_sweep(gd_mcmc_chain *ch, int adapting, gd_error *err)
                     case GD_MCMC_P_LOGIT_EPS:      ch->epsilon = sigmoid(old_v); break;
                     case GD_MCMC_P_BRANCH_LOGMULT: ch->branch_logmult[pp->node] = old_v; break;
                     case GD_MCMC_P_CONCEPT_DEV:    ch->concept_dev[pp->concept] = old_v; break;
+                    case GD_MCMC_P_LOG_SIGMA_C:    ch->sigma_c = exp(old_v); break;
                     default: break;
                 }
             }
