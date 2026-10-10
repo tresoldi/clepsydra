@@ -1,0 +1,9 @@
+tip	doculect_id	name	glottocode	role	side	n_concepts
+L_Hawaiian	Hawaiian	'ōlelo Hawai'i	hawa1245	ingroup	east2896	210
+L_NorthMarquesan	NorthMarquesan	'eo 'enana	nort2845	ingroup	east2895	207
+L_Maori	Maori	Reo Māori	maor1246	ingroup	east2896	210
+L_Rapanui	Rapanui	Rapanui	rapa1244	ingroup	east2895	204
+L_Rarotongan	Rarotongan	Reo Rarotongan	raro1241	ingroup	east2896	210
+L_Mangareva	Mangareva	Reo Magareva	mang1401	ingroup	east2895	203
+L_Nukeria	Nukeria	Nukeria	nuku1259	outgroup	.	209
+L_Luangiua	Luangiua	Luangiua	onto1237	outgroup	.	194

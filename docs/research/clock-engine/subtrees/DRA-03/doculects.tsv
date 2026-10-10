@@ -1,0 +1,4 @@
+tip	doculect_id	name	glottocode	role	side	n_concepts
+L_Malayalam	Malayalam	Malayalam	mala1464	ingroup	A	100
+L_Tamil	Tamil	Tamil	tami1289	ingroup	B	100
+L_Kodava	Kodava	Kodava	koda1255	outgroup	.	100

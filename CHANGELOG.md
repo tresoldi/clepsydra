@@ -52,7 +52,9 @@ columns and example numbers are expected throughout 0.x and are listed here.
 
 ### Added
 
-- **`--write-draws 1`** (E3.2) writes every retained draw to `draws.tsv`.
+- **`--write-draws 1`** and **`--write-pointwise 1`** (E3.2) write every
+  retained draw (`draws.tsv`) and the per-draw, per-concept
+  log-likelihoods for PSIS-LOO and WAIC (`pointwise.tsv`).
 - **`date-trees`: dating over a posterior sample of trees** (E3.4).
   - **Input.** Newick or NEXUS (BEAST, MrBayes and RevBayes `Translate`
     tables and `[&…]` comments are handled; `gd_treeset.h`). After burn-in,

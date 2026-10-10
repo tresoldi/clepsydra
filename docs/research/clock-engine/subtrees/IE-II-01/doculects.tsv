@@ -1,0 +1,9 @@
+tip	doculect_id	name	glottocode	role	side	n_concepts
+L_10	10	Bengali	beng1280	ingroup	A	170
+L_111	111	Maithili	mait1250	ingroup	A	170
+L_119	119	Urdu	urdu1245	ingroup	A	170
+L_118	118	Kurdish N.: Bahdini	nort2641	ingroup	B	170
+L_124	124	Ossetic: Iron	iron1242	ingroup	B	170
+L_125	125	Ossetic: Digor	digo1242	ingroup	B	170
+L_115	115	Gaelic: Scottish	scot1245	outgroup	.	170
+L_120	120	Luxembourgish	luxe1241	outgroup	.	170

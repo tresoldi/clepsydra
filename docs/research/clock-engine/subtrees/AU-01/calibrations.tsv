@@ -1,0 +1,9 @@
+calibration_id	target_id	type	p1	p2	p3	is_hard	source_key
+tip_L_Yulparija	L_Yulparija	fixed_tip	0	.	.	1	modern_list
+tip_L_Kukatja	L_Kukatja	fixed_tip	0	.	.	1	modern_list
+tip_L_Warnman	L_Warnman	fixed_tip	0	.	.	1	modern_list
+tip_L_Ngaanyatjarra	L_Ngaanyatjarra	fixed_tip	0	.	.	1	modern_list
+tip_L_MartuWangka	L_MartuWangka	fixed_tip	0	.	.	1	modern_list
+tip_L_PintupiLuritja	L_PintupiLuritja	fixed_tip	0	.	.	1	modern_list
+tip_L_Jaru	L_Jaru	fixed_tip	0	.	.	1	modern_list
+tip_L_Karajarri	L_Karajarri	fixed_tip	0	.	.	1	modern_list

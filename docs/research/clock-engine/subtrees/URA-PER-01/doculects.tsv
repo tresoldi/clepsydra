@@ -1,0 +1,6 @@
+tip	doculect_id	name	glottocode	role	side	n_concepts
+L_komi_permyak	komi_permyak	Komi-Permyak	komi1269	ingroup	komi1267	310
+L_udmurt	udmurt	Udmurt	udmu1245	ingroup	udmu1245	307
+L_komi_zyrian	komi_zyrian	Komi-Zyrian	komi1268	ingroup	komi1267	309
+L_hungarian	hungarian	Hungarian	hung1274	outgroup	.	313
+L_estonian_standard	estonian_standard	Standard Estonian	esto1258	outgroup	.	312

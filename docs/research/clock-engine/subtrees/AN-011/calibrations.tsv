@@ -1,0 +1,7 @@
+calibration_id	target_id	type	p1	p2	p3	is_hard	source_key
+tip_L_Hawaiian	L_Hawaiian	fixed_tip	0	.	.	1	modern_list
+tip_L_Tongan	L_Tongan	fixed_tip	0	.	.	1	modern_list
+tip_L_Maori	L_Maori	fixed_tip	0	.	.	1	modern_list
+tip_L_Niuean	L_Niuean	fixed_tip	0	.	.	1	modern_list
+tip_L_Rarotongan	L_Rarotongan	fixed_tip	0	.	.	1	modern_list
+tip_L_Rurutu	L_Rurutu	fixed_tip	0	.	.	1	modern_list

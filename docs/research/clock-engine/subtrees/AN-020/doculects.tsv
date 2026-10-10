@@ -1,0 +1,9 @@
+tip	doculect_id	name	glottocode	role	side	n_concepts
+L_chuukese	chuukese	Chuukese	chuu1238	ingroup	cent2276	2390
+L_kosraean	kosraean	Kosraean	kosr1238	ingroup	kosr1239	598
+L_woleaian	woleaian	Woleaian	wole1240	ingroup	cent2276	1832
+L_puluwatese	puluwatese	Puluwatese	pulu1242	ingroup	cent2276	1483
+L_saipancarolinian	saipancarolinian	Saipan Carolinian	caro1242	ingroup	cent2276	1426
+L_pohnpeian	pohnpeian	Pohnpeian	pohn1238	ingroup	cent2276	919
+L_fijian	fijian	Fijian	fiji1243	outgroup	.	231
+L_saa	saa	Sa’a	saaa1240	outgroup	.	212

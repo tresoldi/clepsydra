@@ -157,6 +157,9 @@ typedef struct gd_analysis_tree_config {
     bool     concept_rate_gamma;    /* 0 */
     double   yule_kappa;        /* 0 */
     bool     compare_prior;     /* 1: also run the prior alone and report it */
+    /* Keep the per-draw, per-concept log-likelihood (E3.2), for PSIS-LOO or
+     * WAIC model comparison outside the engine. Default 0. */
+    bool     keep_pointwise;
     double   hpd_level;         /* 0.90 */
 
     /*
@@ -295,6 +298,10 @@ typedef struct gd_analysis_tree_result {
      * that (contraction < 0.5).
      */
     gd_analysis_concept *concepts;    /* n_concepts entries, or NULL */
+    /* With keep_pointwise: log-likelihood of concept c in draw i of chain k at
+     * pointwise[(k * n_draws + i) * n_concepts + c]; NULL otherwise. Concepts
+     * excluded as incompatible contribute 0. */
+    double              *pointwise;
     gd_analysis_check   *checks;      /* posterior predictive checks */
     size_t               n_checks;
 

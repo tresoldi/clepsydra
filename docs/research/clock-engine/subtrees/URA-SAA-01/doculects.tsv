@@ -1,0 +1,9 @@
+tip	doculect_id	name	glottocode	role	side	n_concepts
+L_saami_north	saami_north	North Saami	nort2671	ingroup	west2390	311
+L_saami_skolt	saami_skolt	Skolt Saami	skol1241	ingroup	east2324	310
+L_saami_ume	saami_ume	Ume Saami	umes1235	ingroup	west2390	302
+L_saami_kildin	saami_kildin	Kildin Saami	kild1236	ingroup	east2324	308
+L_saami_south	saami_south	South Saami	sout2674	ingroup	west2390	298
+L_saami_inari	saami_inari	Inari Saami	inar1241	ingroup	east2324	303
+L_hungarian	hungarian	Hungarian	hung1274	outgroup	.	313
+L_estonian_standard	estonian_standard	Standard Estonian	esto1258	outgroup	.	312

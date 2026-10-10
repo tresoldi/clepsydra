@@ -1,0 +1,9 @@
+tip	doculect_id	name	glottocode	role	side	n_concepts
+L_16	16	Belarusian	bela1254	ingroup	east1426	170
+L_15	15	Bulgarian	bulg1262	ingroup	sout3147	170
+L_175	175	Kashubian	kash1274	ingroup	west2792	170
+L_60	60	Russian	russ1263	ingroup	east1426	170
+L_92	92	Macedonian	mace1250	ingroup	sout3147	170
+L_18	18	Czech	czec1258	ingroup	west2792	170
+L_44	44	Latvian	latv1249	outgroup	.	170
+L_46	46	Lithuanian	lith1251	outgroup	.	170

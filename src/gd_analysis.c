@@ -908,6 +908,7 @@ void gd_analysis_tree_result_destroy(gd_analysis_tree_result *res)
     if (res == NULL) return;
     free_concepts(res->concepts, res->n_concepts);
     free(res->checks);
+    free(res->pointwise);
     if (res->cal_checks != NULL)
         for (size_t i = 0; i < res->n_cal_checks; i++) free(res->cal_checks[i].id);
     free(res->cal_checks);
@@ -950,6 +951,7 @@ int gd_analysis_tree_job_run(gd_analysis_tree_job *job,
     mc.root_lex_logmean = job->cfg.root_lex_logmean;
     mc.root_lex_logsd = job->cfg.root_lex_logsd;
     mc.prior_only = job->cfg.prior_only;
+    mc.store_pointwise = job->cfg.keep_pointwise;
     mc.tree_prior = job->cfg.yule ? GD_TREE_PRIOR_YULE : GD_TREE_PRIOR_UNIFORM;
     mc.sample_rate_mix = job->cfg.concept_rates;
     mc.rate_mix_family = job->cfg.concept_rate_gamma ? 1 : 0;
@@ -1148,6 +1150,10 @@ int gd_analysis_tree_job_run(gd_analysis_tree_job *job,
         r->converged = (np > 0 && r->n_unconverged == 0);
     }
     r->min_branch_duration_corr = res->min_branch_duration_corr;
+    if (job->cfg.keep_pointwise && res->pointwise != NULL) {
+        r->pointwise = res->pointwise;   /* moves into the result */
+        res->pointwise = NULL;
+    }
 
     /* Where the calendar scale comes from (E1.6). */
     {
@@ -1453,6 +1459,7 @@ done:
     if (r != NULL) {
         free_concepts(r->concepts, job->cb.nconcept);
         free(r->checks);
+        free(r->pointwise);
         if (r->cal_checks != NULL)
             for (size_t i = 0; i < r->n_cal_checks; i++) free(r->cal_checks[i].id);
         free(r->cal_checks);

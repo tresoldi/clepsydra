@@ -1,0 +1,9 @@
+calibration_id	target_id	type	p1	p2	p3	is_hard	source_key
+tip_L_hanunoo	L_hanunoo	fixed_tip	0	.	.	1	modern_list
+tip_L_palauan	L_palauan	fixed_tip	0	.	.	1	modern_list
+tip_L_iban	L_iban	fixed_tip	0	.	.	1	modern_list
+tip_L_berawanlongterawan	L_berawanlongterawan	fixed_tip	0	.	.	1	modern_list
+tip_L_baree	L_baree	fixed_tip	0	.	.	1	modern_list
+tip_L_tetum	L_tetum	fixed_tip	0	.	.	1	modern_list
+tip_L_centralamis	L_centralamis	fixed_tip	0	.	.	1	modern_list
+tip_L_tsou	L_tsou	fixed_tip	0	.	.	1	modern_list

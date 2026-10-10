@@ -1,0 +1,6 @@
+tip	doculect_id	name	glottocode	role	side	n_concepts
+L_36	36	Icelandic	icel1247	ingroup	A	170
+L_304	304	Norwegian: Nynorsk	norw1262	ingroup	B	170
+L_58	58	Norwegian: Bokmål	norw1259	ingroup	B	170
+L_145	145	Elfdalian	elfd1234	outgroup	.	170
+L_69	69	Swedish	swed1254	outgroup	.	170

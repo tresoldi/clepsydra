@@ -1,0 +1,9 @@
+tip	doculect_id	name	glottocode	role	side	n_concepts
+L_hanunoo	hanunoo	Hanunoo	hanu1241	ingroup	grea1284	207
+L_palauan	palauan	Palauan	pala1344	ingroup	pala1344	207
+L_iban	iban	Iban	iban1264	ingroup	mala1554	206
+L_berawanlongterawan	berawanlongterawan	Berawan_Long_Terawan	west2564	ingroup	nort3253	206
+L_baree	baree	Bare'e	pamo1252	ingroup	cele1242	204
+L_tetum	tetum	Tetum	tetu1246	ingroup	timo1265	198
+L_centralamis	centralamis	Central Amis	amis1246	outgroup	.	203
+L_tsou	tsou	Tsou	tsou1248	outgroup	.	199

@@ -509,6 +509,23 @@ int cmd_date_tree(int argc, char **argv)
         gd_table_destroy(tbl);
         if (wrc != 0) goto done;
     }
+    if (res->pointwise != NULL && res->concepts != NULL) {
+        char ppath[1200];
+        if (!out_path(ppath, sizeof ppath, out_dir, "pointwise.tsv")) goto done;
+        FILE *fq = fopen(ppath, "w");
+        if (fq == NULL) { fprintf(stderr, "error: cannot open %s for writing\n", ppath); goto done; }
+        fprintf(fq, "chain\tdraw");
+        for (size_t c = 0; c < res->n_concepts; c++) fprintf(fq, "\t%s", res->concepts[c].name);
+        fprintf(fq, "\n");
+        for (size_t k = 0; k < res->n_chains; k++)
+            for (size_t i = 0; i < res->n_draws; i++) {
+                fprintf(fq, "%zu\t%zu", k, i);
+                const double *row = res->pointwise + (k * res->n_draws + i) * res->n_concepts;
+                for (size_t c = 0; c < res->n_concepts; c++) fprintf(fq, "\t%.8g", row[c]);
+                fprintf(fq, "\n");
+            }
+        if (fclose(fq) != 0) { fprintf(stderr, "error: failed to flush %s\n", ppath); goto done; }
+    }
     if (write_draws && res->trace != NULL) {
         char dpath[1200];
         if (!out_path(dpath, sizeof dpath, out_dir, "draws.tsv")) goto done;

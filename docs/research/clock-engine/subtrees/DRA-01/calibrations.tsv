@@ -1,0 +1,9 @@
+calibration_id	target_id	type	p1	p2	p3	is_hard	source_key
+tip_L_Betta_Kurumba	L_Betta_Kurumba	fixed_tip	0	.	.	1	modern_list
+tip_L_Tulu	L_Tulu	fixed_tip	0	.	.	1	modern_list
+tip_L_Kannada	L_Kannada	fixed_tip	0	.	.	1	modern_list
+tip_L_Kodava	L_Kodava	fixed_tip	0	.	.	1	modern_list
+tip_L_Malayalam	L_Malayalam	fixed_tip	0	.	.	1	modern_list
+tip_L_Tamil	L_Tamil	fixed_tip	0	.	.	1	modern_list
+tip_L_Gondi	L_Gondi	fixed_tip	0	.	.	1	modern_list
+tip_L_Koya	L_Koya	fixed_tip	0	.	.	1	modern_list

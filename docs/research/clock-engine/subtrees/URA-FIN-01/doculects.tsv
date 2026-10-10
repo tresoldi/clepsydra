@@ -1,0 +1,9 @@
+tip	doculect_id	name	glottocode	role	side	n_concepts
+L_estonian_standard	estonian_standard	Standard Estonian	esto1258	ingroup	coas1319	312
+L_estonian_south	estonian_south	Võro South Estonian	voro1241	ingroup	sout2679	310
+L_finnish_standard	finnish_standard	Standard Finnish	finn1318	ingroup	coas1319	311
+L_karelian_proper	karelian_proper	Karelian Proper	kare1335	ingroup	coas1319	309
+L_livonian_courland	livonian_courland	Courland Livonian	west1760	ingroup	coas1319	308
+L_votic_western	votic_western	Western Votic	west2391	ingroup	coas1319	308
+L_hungarian	hungarian	Hungarian	hung1274	outgroup	.	313
+L_moksha	moksha	Moksha	moks1248	outgroup	.	311

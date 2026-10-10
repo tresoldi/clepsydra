@@ -1,0 +1,7 @@
+calibration_id	target_id	type	p1	p2	p3	is_hard	source_key
+tip_L_16	L_16	fixed_tip	0	.	.	1	modern_list
+tip_L_60	L_60	fixed_tip	0	.	.	1	modern_list
+tip_L_73	L_73	fixed_tip	0	.	.	1	modern_list
+tip_L_249	L_249	fixed_tip	0	.	.	1	modern_list
+tip_L_15	L_15	fixed_tip	0	.	.	1	modern_list
+tip_L_175	L_175	fixed_tip	0	.	.	1	modern_list

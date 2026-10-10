@@ -1,0 +1,9 @@
+tip	doculect_id	name	glottocode	role	side	n_concepts
+L_Betta_Kurumba	Betta_Kurumba	Betta_Kurumba	bett1235	ingroup	tami1291	100
+L_Tulu	Tulu	Tulu	tulu1258	ingroup	tulu1261	98
+L_Kannada	Kannada	Kannada	nucl1305	ingroup	tami1291	100
+L_Kodava	Kodava	Kodava	koda1255	ingroup	tami1291	100
+L_Malayalam	Malayalam	Malayalam	mala1464	ingroup	tami1291	100
+L_Tamil	Tamil	Tamil	tami1289	ingroup	tami1291	100
+L_Gondi	Gondi	Gondi	nort2702	outgroup	.	100
+L_Koya	Koya	Koya	koya1251	outgroup	.	100

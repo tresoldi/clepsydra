@@ -1,0 +1,6 @@
+calibration_id	target_id	type	p1	p2	p3	is_hard	source_key
+tip_L_komi_permyak	L_komi_permyak	fixed_tip	0	.	.	1	modern_list
+tip_L_udmurt	L_udmurt	fixed_tip	0	.	.	1	modern_list
+tip_L_komi_zyrian	L_komi_zyrian	fixed_tip	0	.	.	1	modern_list
+tip_L_hungarian	L_hungarian	fixed_tip	0	.	.	1	modern_list
+tip_L_estonian_standard	L_estonian_standard	fixed_tip	0	.	.	1	modern_list

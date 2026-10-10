@@ -1,0 +1,9 @@
+tip	doculect_id	name	glottocode	role	side	n_concepts
+L_145	145	Elfdalian	elfd1234	ingroup	nort3266	170
+L_23	23	Faroese	faro1244	ingroup	west2805	170
+L_20	20	Danish	dani1285	ingroup	sout3248	169
+L_69	69	Swedish	swed1254	ingroup	nort3266	170
+L_304	304	Norwegian: Nynorsk	norw1262	ingroup	west2805	170
+L_36	36	Icelandic	icel1247	ingroup	west2805	170
+L_120	120	Luxembourgish	luxe1241	outgroup	.	170
+L_21	21	Dutch	dutc1256	outgroup	.	170

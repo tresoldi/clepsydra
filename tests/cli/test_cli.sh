@@ -41,6 +41,10 @@ expect 0 "unconverged run, allowed" -- "$CLE" date-tree $TREE --out "$TMP/u" --w
 expect 0 "write draws" -- "$CLE" date-tree $TREE --out "$TMP/d" --warmup 20 --samples 30 --chains 2 --concept-rates 0 --compare-prior 0 --allow-unconverged 1 --write-draws 1
 [ "$(wc -l < "$TMP/d/draws.tsv")" -eq 61 ] || { echo "  FAIL draws.tsv row count"; fail=$((fail + 1)); }
 
+# --write-pointwise writes one row per draw and one column per concept.
+expect 0 "write pointwise" -- "$CLE" date-tree $TREE --out "$TMP/pw" --warmup 20 --samples 30 --chains 2 --concept-rates 0 --compare-prior 0 --allow-unconverged 1 --write-pointwise 1
+[ "$(wc -l < "$TMP/pw/pointwise.tsv")" -eq 61 ] || { echo "  FAIL pointwise.tsv row count"; fail=$((fail + 1)); }
+
 # date-trees over a two-tree sample (the same tree twice) pools clade ages.
 cat "$EX/tree.nwk" "$EX/tree.nwk" > "$TMP/two.trees"
 printf 'clade_id\tmembers\nibero\tSpanish,Portuguese\n' > "$TMP/clades.tsv"

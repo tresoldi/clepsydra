@@ -74,6 +74,10 @@ ages depend on the rate prior and calibrations — the tool says so.
   MCSE of the mean, acceptance.
 - `draws.tsv` (with `--write-draws 1`) — every retained draw of every
   sampled parameter, one row per (chain, draw).
+- `pointwise.tsv` (with `--write-pointwise 1`) — the log-likelihood of every
+  concept in every retained draw (0 for an excluded incompatible concept).
+  It is the input for PSIS-LOO or WAIC, e.g. ArviZ `az.loo`, to compare
+  models on the same data.
 - `run_manifest.tsv` — program/commit, model, sizes, seed, priors, the
   branch-rate confounding flag, where the calendar scale comes from
   (`scale_source`: `calibration`, `tip`, both, or `clock_prior`), how far the

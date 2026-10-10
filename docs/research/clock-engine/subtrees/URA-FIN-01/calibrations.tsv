@@ -1,0 +1,9 @@
+calibration_id	target_id	type	p1	p2	p3	is_hard	source_key
+tip_L_estonian_standard	L_estonian_standard	fixed_tip	0	.	.	1	modern_list
+tip_L_estonian_south	L_estonian_south	fixed_tip	0	.	.	1	modern_list
+tip_L_finnish_standard	L_finnish_standard	fixed_tip	0	.	.	1	modern_list
+tip_L_karelian_proper	L_karelian_proper	fixed_tip	0	.	.	1	modern_list
+tip_L_livonian_courland	L_livonian_courland	fixed_tip	0	.	.	1	modern_list
+tip_L_votic_western	L_votic_western	fixed_tip	0	.	.	1	modern_list
+tip_L_hungarian	L_hungarian	fixed_tip	0	.	.	1	modern_list
+tip_L_moksha	L_moksha	fixed_tip	0	.	.	1	modern_list
