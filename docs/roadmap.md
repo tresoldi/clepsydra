@@ -54,6 +54,32 @@ Four things follow from the research and shape everything below.
    - The contamination floor makes the posterior improper.
    - Nothing on the engine track is worth doing before this is fixed.
 
+## Status (2026-10-10)
+
+- **E0: done.** All items are fixed and tested. E0.13: no external T1 code
+  exists, so the in-repo brute forces stand.
+- **E1: done, except the pipeline-level SBC.**
+  - E1.1 and E1.2: the lexical-root prior, with calendar calibrations as
+    factors.
+  - E1.3: uniform prior plus Yule.
+  - E1.4: the `1e15` cap removed.
+  - E1.5: `--prior-only`.
+  - E1.6: three ages, scale source, prior beside posterior, width
+    decomposition, power-scaling.
+  - E1.7: window-relative moves and the clock-preserving move.
+
+  The gate's SBC runs at the sampler level with the real T1 likelihood
+  (`test_mcmc_sbc_proper_prior_scenarios`). It covers a free root, normal and
+  offset-lognormal root calibrations, a dated tip, and the Yule prior, with
+  ranks per parameter plus the log-likelihood, and all pass. SBC through
+  `gd_analysis` (input parsing included) moves to D3, which needs the same
+  forms-writing simulator.
+- **Arawan at gate E1** (`docs/research/arawan-acceptance.md`):
+  - the root is finite and converged without a window;
+  - with a window it sits inside it rather than on its top;
+  - the lexical root is 0.54 ± 0.05 either way;
+  - the clock sets ~100% of the calendar width, and the report says so.
+
 ## Structure: two tracks that meet
 
 The first draft gated every phase on the previous one. Both reviews showed

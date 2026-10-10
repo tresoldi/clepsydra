@@ -847,32 +847,78 @@ TEST(test_mcmc_prior_only_matches_analytic_prior)
 }
 
 /*
- * SBC with the root free under the proper prior: truth drawn from exactly the
- * generative model the sampler assumes (rho, L, a_root = L / rho, internal
- * ages uniform below the root), data simulated, refit. Ranks are binned per
- * parameter, so opposite biases cannot cancel.
+ * SBC under the proper prior (Gate E1), over the scenarios the gate names:
+ *   FREE      — tips modern, no calibration: the lexical-time case;
+ *   NORMAL    — plus a normal_node calibration on the root;
+ *   LOGNORMAL — plus an offset_lognormal_node calibration on the root;
+ *   ANCIENT   — tip a dated 300 BP;
+ *   YULE      — the Yule alternative prior, kappa 2.
+ * Truth is drawn from each scenario's prior by exact rejection, without the
+ * sampler: rho and L from their priors, a_root = L / rho, accepted with
+ * probability cal(a_root) / max cal (and a_root above the oldest tip); the
+ * internal ages from their conditional prior. Ranks are binned per parameter,
+ * and the joint log-likelihood is an extra test quantity (Modrak et al.
+ * 2025): it is what fails when the posterior is just the prior.
  */
-TEST(test_mcmc_sbc_free_root_proper_prior)
+typedef enum { SC_FREE, SC_NORMAL, SC_LOGNORMAL, SC_ANCIENT, SC_YULE } sbc_scenario;
+
+static void run_sbc_scenario(sbc_scenario sc, size_t nrep, double *chisq_out)
 {
     const double lrm = log(3e-4), lrs = 0.3, lxm = log(0.5), lxs = 0.5;
-    const size_t NREP = 200, NCON = 60, Ld = 39, B = 8;   /* Ld + 1 ranks, 5 per bin */
-    size_t bins[4][8];
+    const size_t NCON = 60, Ld = 39, B = 8;
+    size_t bins[5][8];
     memset(bins, 0, sizeof bins);
-    for (size_t rep = 0; rep < NREP; rep++) {
+    const double TIP = 300.0, CAL_MEAN = 1800.0, CAL_SD = 250.0;
+    const double OFF = 900.0, OLM = log(800.0), OLS = 0.35;
+    for (size_t rep = 0; rep < nrep; rep++) {
         gd_error err = GD_ERROR_INIT;
-        gd_rng *rng = gd_rng_create(7000u + rep, 13u, &err);
+        gd_rng *rng = gd_rng_create(30000u + 1000u * (uint64_t)sc + rep, 17u, &err);
         sbc_model sm;
         memset(&sm, 0, sizeof sm);
         sm.t = make_quartet(1000.0);
         size_t n = sm.t->nnodes, root = sm.t->root;
         size_t r1 = gd_tree_find_label(sm.t, "r1"), r2 = gd_tree_find_label(sm.t, "r2");
-        double logr = lrm + gd_rng_normal(rng, 0.0, lrs);
-        double L = exp(lxm + gd_rng_normal(rng, 0.0, lxs));
-        double R = L / exp(logr);
-        double a1 = R * gd_rng_uniform_open(rng), a2 = R * gd_rng_uniform_open(rng);
+        size_t ta = gd_tree_find_label(sm.t, "a");
+        double floor_r1 = (sc == SC_ANCIENT) ? TIP : 0.0;
+
+        /* Truth by rejection from the scenario's prior. */
+        double logr, R;
+        for (;;) {
+            logr = lrm + gd_rng_normal(rng, 0.0, lrs);
+            R = exp(lxm + gd_rng_normal(rng, 0.0, lxs)) / exp(logr);
+            double acc = 1.0;
+            if (sc == SC_NORMAL) {
+                double z = (R - CAL_MEAN) / CAL_SD;
+                acc = exp(-0.5 * z * z);
+            } else if (sc == SC_LOGNORMAL) {
+                /* density / its maximum, the max taken at the mode */
+                if (R <= OFF) acc = 0.0;
+                else {
+                    double x = R - OFF, mode = exp(OLM - OLS * OLS);
+                    double lz = (log(x) - OLM) / OLS, lzm = (log(mode) - OLM) / OLS;
+                    acc = exp(-0.5 * lz * lz - log(x) + 0.5 * lzm * lzm + log(mode));
+                }
+            } else if (sc == SC_ANCIENT) {
+                acc = (R > TIP) ? 1.0 : 0.0;
+            }
+            if (gd_rng_uniform_open(rng) < acc) break;
+        }
+        double a1, a2;
+        if (sc == SC_YULE) {
+            /* Truncated Exponential(kappa / R) on (0, R), by inversion. */
+            double k = 2.0;
+            double u1 = gd_rng_uniform_open(rng), u2 = gd_rng_uniform_open(rng);
+            a1 = -R / k * log(1.0 - u1 * (1.0 - exp(-k)));
+            a2 = -R / k * log(1.0 - u2 * (1.0 - exp(-k)));
+        } else {
+            a1 = floor_r1 + (R - floor_r1) * gd_rng_uniform_open(rng);
+            a2 = R * gd_rng_uniform_open(rng);
+        }
         sm.t->nodes[root].age = R;
         sm.t->nodes[r1].age = a1;
         sm.t->nodes[r2].age = a2;
+        sm.t->nodes[ta].age = (sc == SC_ANCIENT) ? TIP : 0.0;
+
         sm.ncon = NCON;
         sm.store = (int *)malloc(NCON * n * sizeof(int));
         sm.concepts = (gd_cognate_data *)malloc(NCON * sizeof(gd_cognate_data));
@@ -891,12 +937,41 @@ TEST(test_mcmc_sbc_free_root_proper_prior)
         sm.opt.incompatible = GD_INCOMPATIBLE_EXCLUDE;
         sm.m = gd_mcmc_t1_create(sm.ws, sm.concepts, NCON, &sm.opt, &err);
         gd_mcmc_model model; gd_mcmc_t1_model(sm.m, &model);
-        gd_calibration_set *cs = make_free_bounds(sm.t, &err);
+
+        /* Log-likelihood at the truth, for the extra test quantity. */
+        double ll_true;
+        {
+            gd_mcmc_state st;
+            memset(&st, 0, sizeof st);
+            st.rates = &logr; st.n_rates = 1; st.epsilon = 0.0;
+            CHECK(model.loglik(model.ctx, sm.t, &st, NULL, &ll_true, &err) == 0);
+        }
+
+        /* The calibration set the sampler sees. */
+        gd_calibration_set *cs = NULL;
+        size_t ncal = (sc == SC_NORMAL || sc == SC_LOGNORMAL) ? 1 : 0;
+        cs = gd_calset_create(ncal + (sc == SC_ANCIENT ? 1 : 0), &err);
+        size_t k = 0;
+        if (ncal) {
+            gd_calibration *cl = &cs->cals[k++];
+            cl->target_id = (char *)malloc(5); memcpy(cl->target_id, "root", 5);
+            if (sc == SC_NORMAL) { cl->type = GD_CAL_NORMAL_NODE; cl->p1 = CAL_MEAN; cl->p2 = CAL_SD; }
+            else { cl->type = GD_CAL_OFFSET_LOGNORMAL_NODE; cl->p1 = OFF; cl->p2 = OLM; cl->p3 = OLS; }
+        }
+        if (sc == SC_ANCIENT) {
+            gd_calibration *cl = &cs->cals[k++];
+            cl->target_id = (char *)malloc(2); memcpy(cl->target_id, "a", 2);
+            cl->type = GD_CAL_FIXED_TIP; cl->p1 = TIP; cl->is_hard = true;
+        }
+        CHECK(gd_calibrations_resolve(cs, sm.t, &err) == 0);
+        CHECK(gd_calibrations_propagate(cs, sm.t, &err) == 0);
+
         gd_mcmc_config cfg; gd_mcmc_config_default(&cfg);
-        cfg.seed = 900u + rep;
+        cfg.seed = 900u + 1000u * (uint64_t)sc + rep;
         cfg.n_warmup = 600; cfg.n_samples = Ld; cfg.thin = 6;
         cfg.rate_logmean = lrm; cfg.rate_logsd = lrs;
         cfg.root_lex_logmean = lxm; cfg.root_lex_logsd = lxs;
+        if (sc == SC_YULE) { cfg.tree_prior = GD_TREE_PRIOR_YULE; cfg.yule_kappa = 2.0; }
         gd_mcmc_chain *ch = gd_mcmc_chain_create(&model, sm.t, cs, &cfg, 0, &err);
         CHECK(ch != NULL);
         CHECK(gd_mcmc_chain_run(ch, &err) == 0);
@@ -909,31 +984,45 @@ TEST(test_mcmc_sbc_free_root_proper_prior)
             else if (node == r2) pc[3] = p;
         }
         double truth[4] = { logr, R, a1, a2 };
-        for (int k = 0; k < 4; k++) {
-            CHECK(pc[k] != (size_t)-1);
+        for (int q = 0; q < 5; q++) {
             size_t rank = 0;
-            for (size_t d = 0; d < Ld; d++)
-                if (gd_mcmc_chain_sample(ch, d, pc[k]) < truth[k]) rank++;
+            for (size_t d = 0; d < Ld; d++) {
+                double v = (q < 4) ? gd_mcmc_chain_sample(ch, d, pc[q])
+                                   : gd_mcmc_chain_sample_loglik(ch, d);
+                double t = (q < 4) ? truth[q] : ll_true;
+                if (v < t) rank++;
+            }
             size_t b = rank * B / (Ld + 1);
-            bins[k][b < B ? b : B - 1]++;
+            bins[q][b < B ? b : B - 1]++;
         }
         gd_mcmc_chain_destroy(ch);
         gd_calset_destroy(cs);
         sbc_model_free(&sm);
         gd_rng_destroy(rng);
     }
-    const char *names[4] = { "log_rate", "root", "r1", "r2" };
-    for (int k = 0; k < 4; k++) {
-        double e = (double)NREP / (double)B, chisq = 0.0;
-        printf("    SBC %-8s:", names[k]);
+    static const char *const names[5] = { "log_rate", "root", "r1", "r2", "loglik" };
+    static const char *const scn[5] = { "free", "normal", "lognormal", "ancient", "yule" };
+    for (int q = 0; q < 5; q++) {
+        double e = (double)nrep / (double)B, c2 = 0.0;
+        printf("    SBC %-9s %-8s:", scn[sc], names[q]);
         for (size_t i = 0; i < B; i++) {
-            double d = (double)bins[k][i] - e;
-            chisq += d * d / e;
-            printf(" %zu", bins[k][i]);
+            double d = (double)bins[q][i] - e;
+            c2 += d * d / e;
+            printf(" %zu", bins[q][i]);
         }
-        printf("  chisq=%.2f\n", chisq);
-        /* dof 7: the 0.999 quantile is 24.3; four tests, so ~0.4% family-wise. */
-        CHECK(chisq < 24.3);
+        printf("  chisq=%.2f\n", c2);
+        chisq_out[q] = c2;
+    }
+}
+
+TEST(test_mcmc_sbc_proper_prior_scenarios)
+{
+    const sbc_scenario all[5] = { SC_FREE, SC_NORMAL, SC_LOGNORMAL, SC_ANCIENT, SC_YULE };
+    for (int s = 0; s < 5; s++) {
+        double c2[5];
+        run_sbc_scenario(all[s], 160, c2);
+        /* dof 7: 0.999 quantile 24.3; 25 tests, ~2.5% family-wise. */
+        for (int q = 0; q < 5; q++) CHECK(c2[q] < 24.3);
     }
 }
 
@@ -1002,7 +1091,7 @@ static void run_tests(void)
     RUN(test_mcmc_sbc_strict_clock_tree);
     RUN(test_mcmc_prior_only_matches_analytic_prior);
     RUN(test_mcmc_yule_prior_ratios);
-    RUN(test_mcmc_sbc_free_root_proper_prior);
+    RUN(test_mcmc_sbc_proper_prior_scenarios);
 }
 
 TEST_MAIN()

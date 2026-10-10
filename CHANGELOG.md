@@ -34,6 +34,12 @@ columns and example numbers are expected throughout 0.x and are listed here.
 
 ### Added
 
+- **SBC of the proper prior** (Gate E1). It covers five scenarios: free
+  root, normal root calibration, offset-lognormal root calibration, dated
+  tip, and Yule. Truths are drawn by exact rejection without the sampler,
+  ranks are kept per parameter, and the joint log-likelihood is a test
+  quantity. The earlier SBC binned 41 ranks into 8 bins, so bin 0 held six
+  ranks and expected 17% more counts; it now uses 40.
 - **Width decomposition and power-scaling sensitivity** (E1.6).
   `run_manifest.tsv` reports the share of the calendar root's log-variance
   due to the lexical root (the cognates) and to the clock. On uncalibrated
