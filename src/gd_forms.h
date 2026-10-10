@@ -98,6 +98,7 @@ typedef struct gd_forms {
     size_t  *cell_start;          /* ncell + 1 */
     char   **cand_cognate;        /* owned */
     double  *cand_weight;
+    double  *cand_conf;           /* cognacy_confidence, 1 when absent */
     size_t   ncand;
     /* Rows of other codings, skipped because an analysis_id was selected. */
     size_t n_other_analysis;
@@ -144,6 +145,10 @@ size_t gd_forms_language_index(const gd_forms *f, const char *name);
  * (borrowed). 0 for an empty cell. */
 size_t gd_forms_candidates(const gd_forms *f, size_t concept, size_t lang,
                            char *const **cog, const double **w);
+
+/* The candidates' cognacy confidences (same order as gd_forms_candidates). */
+size_t gd_forms_candidates_conf(const gd_forms *f, size_t concept, size_t lang,
+                                const double **conf);
 
 /* The winning cognate id for a cell, or NULL. Borrowed from `f`. */
 const char *gd_forms_primary(const gd_forms *f, size_t concept, size_t lang);

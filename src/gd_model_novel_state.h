@@ -264,6 +264,19 @@ int gd_t1_simulate(gd_rng *rng, const gd_tree *tree, double rate,
 #define GD_T1_MIX_K    24   /* nodes used by the sampler: < 0.5% error up to sigma 1.5 */
 #define GD_T1_MIX_KMAX 64
 int gd_t1_rate_mixture(double sigma, double *mult, double *logw, size_t *K);
+/* Mixing families (E2.8): log-normal (spread = log-sd), or gamma with
+ * coefficient of variation `spread` (shape 1/spread^2), whose slow tail is
+ * heavier: gamma mixing gives power-law retention. Gamma uses a generalised
+ * Gauss-Laguerre rule. Both have mean exactly 1. */
+#define GD_T1_MIX_LOGNORMAL 0
+#define GD_T1_MIX_GAMMA     1
+int gd_t1_rate_mixture_family(int family, double spread, double *mult, double *logw, size_t *K);
+int gd_t1_rate_mixture_gamma_k(double cv, size_t nodes, double *mult, double *logw, size_t *K);
+int gd_t1_loglik_concept_mixed_family(gd_t1_ws *ws, double rate, int family, double spread,
+                                      const double *branch_mult,
+                                      const gd_cognate_data *data,
+                                      const gd_t1_options *opt,
+                                      gd_t1_concept_result *res, gd_error *err);
 /* The same with an explicit node count (1..GD_T1_MIX_KMAX). */
 int gd_t1_rate_mixture_k(double sigma, size_t nodes, double *mult, double *logw, size_t *K);
 int gd_t1_loglik_concept_mixed(gd_t1_ws *ws, double rate, double sigma,

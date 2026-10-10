@@ -1252,6 +1252,25 @@ TEST(test_analysis_pair_synonyms_marginalised)
     }
     CHECK(nsyn[0] == 0 && nsyn[1] == 1 && nsyn[2] == 0);
     CHECK(med[2] < med[1] && med[1] < med[0]);
+
+    /* E2.5: a shared class held with confidence 0.5 on one side weighs
+     * like a half match: between "shared" and "not shared". */
+    static const char *CONF =
+        "language_id\tconcept_id\tcognate_id\tcognacy_confidence\n"
+        "A\tc1\tk1\t1\n" "B\tc1\tk1\t1\n"
+        "A\tc2\tk2\t1\n" "B\tc2\tk2\t1\n"
+        "A\tc3\tk3\t1\n" "B\tc3\tk4\t1\n"
+        "A\tc4\tk5\t0.5\n" "B\tc4\tk5\t1\n";
+    gd_analysis_pair_input in; memset(&in, 0, sizeof in);
+    in.forms_tsv = CONF; in.forms_len = GD_LEN_NUL_TERMINATED;
+    in.lang_a = "A"; in.lang_b = "B";
+    gd_analysis_pair_config cfg; gd_analysis_pair_config_default(&cfg);
+    gd_error err = GD_ERROR_INIT;
+    gd_analysis_pair_result *r = NULL;
+    CHECK(gd_analysis_pair_run(&in, &cfg, &r, &err) == 0);
+    double mc = r->median;
+    gd_analysis_pair_result_destroy(r);
+    CHECK_APPROX(mc, med[1], 1e-6);
 }
 
 /* E2.7: an ancestor_tip pins its parent to its own age, so the tip hangs on

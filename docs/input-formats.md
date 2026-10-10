@@ -85,7 +85,9 @@ How the engine reads these columns (0.3):
   `w` normalised within each cell, it uses the probability that the two
   compared forms are cognate, `y = Σ w_i w_j [same class]`, as a soft match.
   `date-tree` (T1, one state per cell) uses the highest-weight form.
-- `cognacy_confidence`: not yet read by either engine.
+- `cognacy_confidence`: the probability that a form's cognate assignment is
+  right. `date-pair` weights each shared class by both forms' confidences,
+  `y = Σ w_i w_j c_i c_j [same class]`. `date-tree` does not read it yet.
 
 Multiple forms per (analysis, language, concept) cell are retained (synonyms
 / polymorphism). A missing cell has no rows (or rows with `status=missing`).

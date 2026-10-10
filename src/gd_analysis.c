@@ -952,6 +952,7 @@ int gd_analysis_tree_job_run(gd_analysis_tree_job *job,
     mc.prior_only = job->cfg.prior_only;
     mc.tree_prior = job->cfg.yule ? GD_TREE_PRIOR_YULE : GD_TREE_PRIOR_UNIFORM;
     mc.sample_rate_mix = job->cfg.concept_rates;
+    mc.rate_mix_family = job->cfg.concept_rate_gamma ? 1 : 0;
     /* Tip observation-error priors (E2.9), from tip_error rows. */
     double *te_mean = NULL, *te_conc = NULL;
     for (size_t c = 0; c < job->cs->ncals; c++) {
@@ -1280,7 +1281,8 @@ int gd_analysis_tree_job_run(gd_analysis_tree_job *job,
             gd_t1_ws_set_tip_error(job->ws, hz);
             for (size_t c = 0; c < nc; c++) {
                 gd_t1_concept_result cr;
-                if (gd_t1_loglik_concept_mixed(job->ws, rate, sc, job->cfg.relaxed ? bm : NULL,
+                if (gd_t1_loglik_concept_mixed_family(job->ws, rate, job->cfg.concept_rate_gamma ? 1 : 0,
+                                               sc, job->cfg.relaxed ? bm : NULL,
                                                &job->concepts[c], &opt, &cr, err) != 0) { ok = false; break; }
                 if (cr.excluded) { r->concepts[c].incompatible = true; continue; }
                 r->concepts[c].p_contaminated += cr.p_contaminated / (double)ndraw;
@@ -1344,7 +1346,11 @@ int gd_analysis_tree_job_run(gd_analysis_tree_job *job,
                 if (res->param_type[p] == GD_MCMC_P_LOGIT_TIPERR)
                     hz[res->param_node[p]] = log1p(exp(gd_mcmc_result_at(res, p, i)));
             for (size_t c = 0; c < nc; c++) {
-                double lam = (sc > 0.0) ? exp(sc * gd_rng_normal(rng, 0.0, 1.0) - 0.5 * sc * sc) : 1.0;
+                double lam = 1.0;
+                if (sc > 0.0)
+                    lam = job->cfg.concept_rate_gamma
+                        ? gd_rng_gamma(rng, 1.0 / (sc * sc), sc * sc)
+                        : exp(sc * gd_rng_normal(rng, 0.0, 1.0) - 0.5 * sc * sc);
                 simulate_concept(rng, job->tree, rate * lam, job->cfg.relaxed ? bm : NULL, eps,
                                  job->opt.noise_alpha, job->concepts[c].labels, sim + c * n);
                 /* Observation error: a tip's form is replaced by a new class
@@ -1617,10 +1623,15 @@ int gd_analysis_pair_run(const gd_analysis_pair_input *in,
         size_t na = gd_forms_candidates(forms, i, li_a, &ca, &wa);
         size_t nb = gd_forms_candidates(forms, i, li_b, &cb, &wb);
         if (na == 0 || nb == 0) continue;
+        const double *ka, *kb;
+        (void)gd_forms_candidates_conf(forms, i, li_a, &ka);
+        (void)gd_forms_candidates_conf(forms, i, li_b, &kb);
+        /* A shared class counts as a match only as far as both cognate
+         * assignments can be trusted (cognacy_confidence, E2.5). */
         double y = 0.0;
         for (size_t x = 0; x < na; x++)
             for (size_t z = 0; z < nb; z++)
-                if (strcmp(ca[x], cb[z]) == 0) y += wa[x] * wb[z];
+                if (strcmp(ca[x], cb[z]) == 0) y += wa[x] * wb[z] * ka[x] * kb[z];
         if (y > 1.0) y = 1.0;
         if (na > 1 || nb > 1) nsyn++;
         matches[m] = 1;

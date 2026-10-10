@@ -152,6 +152,9 @@ typedef struct gd_analysis_tree_config {
      * (E2.4); above 1 keeps them all. */
     double   loan_threshold;    /* 0.5 */
     double   concept_rate_prior_sd; /* 1.0 */
+    /* Mixing family for the concept rates (E2.8): 0 log-normal (the spread
+     * is a log-sd), 1 gamma (the spread is a coefficient of variation). */
+    bool     concept_rate_gamma;    /* 0 */
     double   yule_kappa;        /* 0 */
     bool     compare_prior;     /* 1: also run the prior alone and report it */
     double   hpd_level;         /* 0.90 */

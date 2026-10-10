@@ -24,12 +24,13 @@ typedef struct {
     size_t concept;
     size_t lang;
     double weight;
+    double confidence;   /* cognacy_confidence; 1 when absent */
     char  *cognate;      /* owned */
 } forms_row;
 
 typedef struct {
     size_t c_lang, c_con, c_cog, c_w, c_status; /* column indices; SIZE_MAX if absent */
-    size_t c_analysis, c_loan, c_inherit;
+    size_t c_analysis, c_loan, c_inherit, c_conf;
     gd_forms_options opt;
     char **analyses; size_t nanalysis, analysis_cap;   /* distinct ids seen */
     int    header_seen;
@@ -93,7 +94,7 @@ static int header_cb(const gd_tsv_row *row, void *user, gd_error *err)
 {
     forms_builder *b = (forms_builder *)user;
     b->c_lang = b->c_con = b->c_cog = b->c_w = b->c_status = SIZE_MAX;
-    b->c_analysis = b->c_loan = b->c_inherit = SIZE_MAX;
+    b->c_analysis = b->c_loan = b->c_inherit = b->c_conf = SIZE_MAX;
     for (size_t i = 0; i < row->nfields; i++) {
         const char *f = row->fields[i];
         size_t      l = row->lengths[i];
@@ -105,6 +106,7 @@ static int header_cb(const gd_tsv_row *row, void *user, gd_error *err)
         else if (field_is(f, l, "analysis_id"))    b->c_analysis = i;
         else if (field_is(f, l, "loan_probability")) b->c_loan = i;
         else if (field_is(f, l, "inheritance_probability")) b->c_inherit = i;
+        else if (field_is(f, l, "cognacy_confidence")) b->c_conf = i;
     }
     b->header_seen = 1;
     if (b->c_lang == SIZE_MAX || b->c_con == SIZE_MAX || b->c_cog == SIZE_MAX) {
@@ -250,7 +252,20 @@ static int row_cb(const gd_tsv_row *row, void *user, gd_error *err)
         b->rows = grown;
         b->row_cap = nc;
     }
+    double conf = 1.0;
+    if (b->c_conf != SIZE_MAX && b->c_conf < row->nfields) {
+        const char *cf2 = row->fields[b->c_conf];
+        size_t      cl2 = row->lengths[b->c_conf];
+        if (cl2 != 0 && !gd_tsv_is_missing(cf2, cl2) &&
+            (gd_tsv_parse_double(cf2, cl2, &conf) != GD_E_OK || !(conf >= 0.0 && conf <= 1.0))) {
+            b->failed = GD_E_BAD_NUMERIC;
+            return gd_error_setf(err, GD_E_BAD_NUMERIC,
+                                 "forms line %zu: cognacy_confidence must be in [0, 1]", row->line_no);
+        }
+    }
+
     forms_row *fr = &b->rows[b->nrows];
+    fr->confidence = conf;
     fr->concept = ci;
     fr->lang    = li;
     fr->weight  = w;
@@ -301,6 +316,7 @@ void gd_forms_destroy(gd_forms *f)
         for (size_t i = 0; i < f->ncand; i++) gd_free(f->cand_cognate[i]);
     gd_free(f->cand_cognate);
     gd_free(f->cand_weight);
+    gd_free(f->cand_conf);
     gd_free(f->cell_start);
     gd_free(f);
 }
@@ -332,7 +348,7 @@ int gd_forms_read_opts(const char *tsv, size_t len, const gd_forms_options *opt,
 
     memset(&b, 0, sizeof b);
     b.c_lang = b.c_con = b.c_cog = b.c_w = b.c_status = SIZE_MAX;
-    b.c_analysis = b.c_loan = b.c_inherit = SIZE_MAX;
+    b.c_analysis = b.c_loan = b.c_inherit = b.c_conf = SIZE_MAX;
     if (opt != NULL) b.opt = *opt; else gd_forms_options_default(&b.opt);
 
     rc = gd_tsv_parse(tsv, len, header_cb, row_cb, &b, err);
@@ -384,7 +400,9 @@ int gd_forms_read_opts(const char *tsv, size_t len, const gd_forms_options *opt,
     f->cell_start = (size_t *)gd_calloc_checked(ncell + 1, sizeof(size_t), err);
     f->cand_cognate = (char **)gd_calloc_checked(b.nrows ? b.nrows : 1, sizeof(char *), err);
     f->cand_weight = (double *)gd_malloc_array_checked(b.nrows ? b.nrows : 1, sizeof(double), err);
-    if (f->cell_start == NULL || f->cand_cognate == NULL || f->cand_weight == NULL) {
+    f->cand_conf = (double *)gd_malloc_array_checked(b.nrows ? b.nrows : 1, sizeof(double), err);
+    if (f->cell_start == NULL || f->cand_cognate == NULL || f->cand_weight == NULL ||
+        f->cand_conf == NULL) {
         rc = GD_E_NOMEM; goto done;
     }
     for (size_t i = 0; i < b.nrows; i++)
@@ -400,6 +418,7 @@ int gd_forms_read_opts(const char *tsv, size_t len, const gd_forms_options *opt,
             f->cand_cognate[k] = gd_strdup_n(b.rows[i].cognate, strlen(b.rows[i].cognate), NULL);
             if (f->cand_cognate[k] == NULL) { gd_free(fill); rc = GD_E_NOMEM; goto done; }
             f->cand_weight[k] = (b.rows[i].weight > 0.0) ? b.rows[i].weight : 0.0;
+            f->cand_conf[k] = b.rows[i].confidence;
         }
         gd_free(fill);
         for (size_t s2 = 0; s2 < ncell; s2++) {
@@ -456,6 +475,15 @@ size_t gd_forms_language_index(const gd_forms *f, const char *name)
     for (size_t i = 0; i < f->nlang; i++)
         if (strcmp(f->languages[i], name) == 0) return i;
     return SIZE_MAX;
+}
+
+size_t gd_forms_candidates_conf(const gd_forms *f, size_t concept, size_t lang,
+                                const double **conf)
+{
+    if (f == NULL || f->cell_start == NULL || concept >= f->nconcept || lang >= f->nlang) return 0;
+    size_t s = concept * f->nlang + lang;
+    if (conf != NULL) *conf = f->cand_conf + f->cell_start[s];
+    return f->cell_start[s + 1] - f->cell_start[s];
 }
 
 size_t gd_forms_candidates(const gd_forms *f, size_t concept, size_t lang,

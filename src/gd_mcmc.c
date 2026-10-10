@@ -194,6 +194,7 @@ static void fill_state(const gd_mcmc_chain *ch, gd_mcmc_state *st)
     st->branch_logmult = ch->have_branch ? ch->branch_logmult : NULL;
     st->epsilon = ch->epsilon;
     st->rate_mix_sd = ch->sigma_c;
+    st->rate_mix_family = ch->cfg.rate_mix_family;
     st->tip_hazard = ch->tip_hazard;
 }
 

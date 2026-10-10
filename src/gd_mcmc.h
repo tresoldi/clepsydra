@@ -124,6 +124,7 @@ typedef struct gd_mcmc_config {
      * over an 8-point quadrature in the likelihood; sigma_c ~
      * HalfNormal(rate_mix_prior_sd), sampled on the log scale. */
     bool     sample_rate_mix;
+    int      rate_mix_family;   /* GD_T1_MIX_LOGNORMAL (0) or _GAMMA (1) */
     double   rate_mix_prior_sd; /* default 1.0 */
     double   rate_mix_init;     /* default 0.5 */
     double   rate_mix_step0;    /* default 0.30 (log scale) */

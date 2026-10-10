@@ -832,15 +832,14 @@ void gd_t1_ws_set_tip_error(gd_t1_ws *ws, const double *hazard)
  * components of its eigenvectors. Implicit QL with Wilkinson shifts
  * (Numerical Recipes tqli), carrying only the first eigenvector row.
  */
-static int gauss_hermite_rule(size_t K, double *z, double *w)
+/* Eigen-decomposition of the K x K symmetric tridiagonal Jacobi matrix with
+ * diagonal d and off-diagonal e (e[K-1] unused): nodes and weights of the
+ * Gauss rule for its orthogonal polynomials, weights normalised to sum 1. */
+static int jacobi_rule(size_t K, double *d, double *e, double *z, double *w)
 {
-    double d[GD_T1_MIX_KMAX], e[GD_T1_MIX_KMAX], v[GD_T1_MIX_KMAX];
+    double v[GD_T1_MIX_KMAX];
     if (K < 1 || K > GD_T1_MIX_KMAX) return GD_E_RANGE;
-    for (size_t i = 0; i < K; i++) {
-        d[i] = 0.0;
-        e[i] = (i + 1 < K) ? sqrt((double)(i + 1)) : 0.0;
-        v[i] = (i == 0) ? 1.0 : 0.0;   /* first row of the identity */
-    }
+    for (size_t i = 0; i < K; i++) v[i] = (i == 0) ? 1.0 : 0.0;
     for (size_t l = 0; l < K; l++) {
         int iter = 0;
         size_t m;
@@ -881,6 +880,29 @@ static int gauss_hermite_rule(size_t K, double *z, double *w)
     return 0;
 }
 
+static int gauss_hermite_rule(size_t K, double *z, double *w)
+{
+    double d[GD_T1_MIX_KMAX], e[GD_T1_MIX_KMAX];
+    if (K < 1 || K > GD_T1_MIX_KMAX) return GD_E_RANGE;
+    for (size_t i = 0; i < K; i++) {
+        d[i] = 0.0;
+        e[i] = (i + 1 < K) ? sqrt((double)(i + 1)) : 0.0;
+    }
+    return jacobi_rule(K, d, e, z, w);
+}
+
+/* Generalised Gauss-Laguerre: weight x^alpha e^-x (alpha > -1). */
+static int gauss_laguerre_rule(size_t K, double alpha, double *z, double *w)
+{
+    double d[GD_T1_MIX_KMAX], e[GD_T1_MIX_KMAX];
+    if (K < 1 || K > GD_T1_MIX_KMAX || !(alpha > -1.0)) return GD_E_RANGE;
+    for (size_t i = 0; i < K; i++) {
+        d[i] = 2.0 * (double)i + alpha + 1.0;
+        e[i] = (i + 1 < K) ? sqrt((double)(i + 1) * ((double)(i + 1) + alpha)) : 0.0;
+    }
+    return jacobi_rule(K, d, e, z, w);
+}
+
 int gd_t1_rate_mixture_k(double sigma, size_t nodes, double *mult, double *logw, size_t *K)
 {
     if (mult == NULL || logw == NULL || K == NULL) return GD_E_INVALID_ARG;
@@ -910,6 +932,49 @@ int gd_t1_rate_mixture_k(double sigma, size_t nodes, double *mult, double *logw,
 int gd_t1_rate_mixture(double sigma, double *mult, double *logw, size_t *K)
 {
     return gd_t1_rate_mixture_k(sigma, GD_T1_MIX_K, mult, logw, K);
+}
+
+int gd_t1_rate_mixture_gamma_k(double cv, size_t nodes, double *mult, double *logw, size_t *K)
+{
+    if (mult == NULL || logw == NULL || K == NULL) return GD_E_INVALID_ARG;
+    if (!(cv > 0.0) || !gd_is_finite(cv)) {
+        mult[0] = 1.0; logw[0] = 0.0; *K = 1;
+        return 0;
+    }
+    double shape = 1.0 / (cv * cv);
+    double z[GD_T1_MIX_KMAX], w[GD_T1_MIX_KMAX];
+    int rc = gauss_laguerre_rule(nodes, shape - 1.0, z, w);
+    if (rc != 0) return rc;
+    double mean = 0.0;
+    for (size_t k = 0; k < nodes; k++) { mult[k] = z[k] / shape; mean += w[k] * mult[k]; }
+    for (size_t k = 0; k < nodes; k++) { mult[k] /= mean; logw[k] = log(w[k]); }
+    *K = nodes;
+    return 0;
+}
+
+int gd_t1_rate_mixture_family(int family, double spread, double *mult, double *logw, size_t *K)
+{
+    if (family == GD_T1_MIX_GAMMA) {
+        /* A small shape puts the slow tail against the singular weight near
+         * 0, where the Laguerre rule converges slowly: at cv 1.5, 24 nodes
+         * err by 22%, 64 by 0.08%. The node count follows the shape. */
+        size_t nodes = (spread <= 1.0) ? GD_T1_MIX_K : (spread <= 1.25) ? 40 : GD_T1_MIX_KMAX;
+        return gd_t1_rate_mixture_gamma_k(spread, nodes, mult, logw, K);
+    }
+    return gd_t1_rate_mixture_k(spread, GD_T1_MIX_K, mult, logw, K);
+}
+
+int gd_t1_loglik_concept_mixed_family(gd_t1_ws *ws, double rate, int family, double spread,
+                                      const double *branch_mult,
+                                      const gd_cognate_data *data,
+                                      const gd_t1_options *opt,
+                                      gd_t1_concept_result *res, gd_error *err)
+{
+    double mult[GD_T1_MIX_KMAX], logw[GD_T1_MIX_KMAX];
+    size_t K;
+    int rc = gd_t1_rate_mixture_family(family, spread, mult, logw, &K);
+    if (rc != 0) return gd_error_set(err, rc, "t1: rate mixture rule");
+    return t1_concept_mix_impl(ws, rate, mult, logw, K, branch_mult, data, opt, res, err);
 }
 
 int gd_t1_loglik_concept_mixed(gd_t1_ws *ws, double rate, double sigma,
@@ -988,7 +1053,7 @@ static int t1_model_loglik(void *vctx, gd_tree *tree, const gd_mcmc_state *st,
         /* One rate for all concepts: evaluate each distinct pattern once. */
         double mult[GD_T1_MIX_KMAX], logw[GD_T1_MIX_KMAX];
         size_t K;
-        rc = gd_t1_rate_mixture(st->rate_mix_sd, mult, logw, &K);
+        rc = gd_t1_rate_mixture_family(st->rate_mix_family, st->rate_mix_sd, mult, logw, &K);
         if (rc != 0) return gd_error_set(err, rc, "t1: rate mixture rule");
         double rate = exp(st->rates[0]);
         for (size_t u = 0; u < m->nuniq; u++) {
@@ -1005,7 +1070,7 @@ static int t1_model_loglik(void *vctx, gd_tree *tree, const gd_mcmc_state *st,
     if (st->rate_mix_sd > 0.0) {
         double mult[GD_T1_MIX_KMAX], logw[GD_T1_MIX_KMAX];
         size_t K;
-        rc = gd_t1_rate_mixture(st->rate_mix_sd, mult, logw, &K);
+        rc = gd_t1_rate_mixture_family(st->rate_mix_family, st->rate_mix_sd, mult, logw, &K);
         if (rc != 0) return gd_error_set(err, rc, "t1: rate mixture rule");
         for (size_t c = 0; c < m->nconcepts; c++) {
             gd_t1_concept_result scratch;

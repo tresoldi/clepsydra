@@ -98,7 +98,11 @@ rate relative to the mean, under the concept-rate mixture.
 are replaced at very different rates. A single rate makes slow meanings look
 young and fast ones look old, and it biases deep nodes. Each concept's rate is
 integrated over a log-normal with mean 1 and a sampled spread `sigma_c`.
-`--concept-rates 0` gives the homogeneous model.
+`--concept-rates 0` gives the homogeneous model. `--concept-rate-gamma 1`
+swaps the log-normal for a gamma with mean 1 and coefficient of variation
+`sigma_c`. Its slow tail is heavier: gamma mixing gives power-law retention.
+Deep dates depend on that tail, so the two families are a model-uncertainty
+axis to report, not a choice to make silently.
 
 **Adequacy** (`adequacy.tsv`). Posterior predictive checks compare
 statistics of the observed data with data replicated from 200 posterior

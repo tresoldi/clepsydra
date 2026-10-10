@@ -1459,8 +1459,49 @@ TEST(test_t1_pattern_compression_is_exact)
     gd_tree_destroy(t);
 }
 
+/* E2.8: the gamma mixing family. Generalised Gauss-Laguerre against a dense
+ * integral over log(lambda), lambda ~ Gamma(shape 1/cv^2, mean 1). */
+TEST(test_t1_gamma_mixture_matches_dense_integral)
+{
+    gd_error err = GD_ERROR_INIT;
+    gd_tree *t = tree_quartet();
+    gd_t1_ws *ws = gd_t1_ws_create(t, &err);
+    gd_t1_options opt; gd_t1_options_default(&opt);
+    opt.epsilon = 0.0;
+    const char *names[4] = { "a", "b", "c", "d" };
+    const int cls[3][4] = { {1,1,1,1}, {1,1,2,2}, {1,2,3,4} };
+    int pats[3][7];
+    for (int q = 0; q < 3; q++) {
+        for (size_t i = 0; i < t->nnodes; i++) pats[q][i] = -1;
+        for (int k = 0; k < 4; k++) pats[q][gd_tree_find_label(t, names[k])] = cls[q][k];
+    }
+    const double rates[3] = { 2e-5, 2e-4, 1e-3 }, cvs[3] = { 0.3, 0.8, 1.5 };
+    double worst = 0.0;
+    for (int ri = 0; ri < 3; ri++) for (int ci = 0; ci < 3; ci++) for (int q = 0; q < 3; q++) {
+        gd_cognate_data d = { pats[q], t->nnodes };
+        double a = 1.0 / (cvs[ci] * cvs[ci]), acc = 0.0, h = 0.002;
+        for (double u = -40.0; u <= 6.0; u += h) {          /* u = log lambda */
+            double lam = exp(u);
+            double logdens = a * log(a) - lgamma(a) + a * u - a * lam;   /* density of u */
+            gd_t1_concept_result r1;
+            CHECK(gd_t1_loglik_concept(ws, rates[ri] * lam, &d, &opt, &r1, &err) == 0);
+            acc += h * exp(logdens + r1.log_lik);
+        }
+        gd_t1_concept_result res;
+        CHECK(gd_t1_loglik_concept_mixed_family(ws, rates[ri], GD_T1_MIX_GAMMA, cvs[ci], NULL,
+                                                &d, &opt, &res, &err) == 0);
+        double rel = fabs(exp(res.log_lik) - acc) / acc;
+        if (rel > worst) worst = rel;
+    }
+    printf("    worst relative error of the gamma rule (24-64 nodes by shape): %.2e\n", worst);
+    gd_t1_ws_destroy(ws);
+    gd_tree_destroy(t);
+    CHECK(worst < 0.005);
+}
+
 static void run_tests(void)
 {
+    RUN(test_t1_gamma_mixture_matches_dense_integral);
     RUN(test_t1_pattern_compression_is_exact);
     RUN(test_t1_rate_mixture_matches_dense_integral);
     RUN(test_t1_bf_binary_one_class);

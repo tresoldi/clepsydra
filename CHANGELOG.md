@@ -73,6 +73,12 @@ columns and example numbers are expected throughout 0.x and are listed here.
   - **Synonyms in `date-pair`** are marginalised exactly, as the soft match
     `y = Σ w_i w_j [same class]`; `n_synonym_concepts` is reported.
     `gd_forms_candidates` and `gd_forms_read_opts` are new.
+- **Gamma concept-rate mixing** (E2.8; `--concept-rate-gamma 1`) as the
+  alternative to log-normal. It uses a generalised Gauss–Laguerre rule from
+  the same Golub–Welsch solver, with 24 to 64 nodes by shape. Against a
+  dense integral the worst error is 0.09%, where 24 nodes at cv 1.5 erred
+  by 22%.
+- **`cognacy_confidence`** (E2.5) weights shared classes in `date-pair`.
 - **Tip observation error** (E2.9; `tip_error` calibration rows). A tip's
   list may replace forms "in error" with a sampled probability e, which has
   a Beta prior. Under T1, e is identified only by that prior, so the docs
