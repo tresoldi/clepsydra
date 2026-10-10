@@ -3,19 +3,27 @@
 Hierarchical Bayesian lexical dating in portable C99, with an optional
 Python reference-prior toolchain.
 
-> **Status: v0.2.0.** Milestones 0–12 complete. The C99 engine implements the
-> classical and hierarchical pairwise models (P0/P1), the strict novel-state
-> tree likelihood (T1) with a relaxed branch clock, the binary cognate-set
-> likelihood (T2), a fixed-tree Metropolis-within-Gibbs sampler with block
-> age-scaling, convergence diagnostics and checkpoint/resume, and an adequacy +
-> cross-family validation suite with a model card per likelihood
-> (`docs/model-cards.md`). The `clepsydra` CLI (`date-tree`, `date-pair`) runs
-> end-to-end, with reproducible worked examples on real **IE-CoR** cognate data
-> (CC-BY-4.0) under `examples/`. `make test` is 190/190, sanitizer-clean. The
-> **browser page** (`web/`) runs the same engine via WebAssembly, with a live
-> pairwise tab, a worker-driven chronology, a decay-law comparison and the
-> validation evidence; it agrees with the CLI to the last digit. See `PLAN.md`
-> for the roadmap and `docs/` for the specification.
+> **Status: v0.2.0, with 0.3 in progress on `main`.** `docs/roadmap.md` is the
+> plan, and it changes defaults, CLI options and outputs as it goes (see
+> `CHANGELOG.md`, "Unreleased"). The C99 engine implements the classical and
+> hierarchical pairwise models (P0/P1), the strict novel-state tree likelihood
+> (T1) with a relaxed branch clock, a fixed-tree Metropolis-within-Gibbs
+> sampler, convergence diagnostics matched to ArviZ with a pass/fail gate, and
+> checkpoint/resume. The binary cognate-set likelihood (T2) is implemented and
+> tested at the likelihood level but is **experimental**: the CLI cannot run it
+> and no sampler path fits it. The `clepsydra` CLI (`date-tree`, `date-pair`)
+> runs end-to-end, with reproducible worked examples on real Lexibank cognate
+> data (CC-BY-4.0) under `examples/`. `make test` runs the C suites under
+> sanitizers plus the CLI checks.
+>
+> **Read this before using absolute dates.** Until roadmap phase E1 lands, the
+> engine has no proper prior on uncalibrated node ages: an uncalibrated root is
+> shaped by numerical bounds, not by a tree prior. Calibrated runs are sound
+> as far as their calibrations go. Uncalibrated calendar ages are not
+> (`docs/research/arawan-lessons.md`).
+>
+> The **browser page** (`web/`) runs the engine via WebAssembly; its
+> committed build predates the 0.3 changes.
 
 ## What this is
 
@@ -47,7 +55,8 @@ fuzz/       libFuzzer harnesses over the parsers + committed corpora
 bench/      `make benchmark`; docs/benchmark-baseline.md states its resolution
 STYLE.md    the conventions this code follows, and why
 CONTRIBUTING.md  project state, the CI/analysis/fuzzing gates, reading order
-examples/   pair_simple, pair_context, romance_tree, five_ie_reproduction
+examples/   pair_simple, families_pairwise, romance_tree, five_ie_reproduction,
+            sinotibetan_tree, polynesian_tree, loco_benchmark
 docs/       model-spec, paper-evaluation, input-formats, calibrations,
             inference, validation
 literature/ citations for the required reading (the papers themselves are not
@@ -135,7 +144,7 @@ Three things worth knowing before depending on it:
 make native     # strict C99, -Wall -Wextra -Wpedantic -Wconversion ...; builds build/clepsydra
 make debug      # -O0 -g, assertions on
 make release    # -O2 -DNDEBUG, assertions off
-make test       # sanitizer-clean unit + regression + simulation tests (261/261)
+make test       # sanitizer-clean unit, likelihood, regression, simulation and CLI tests
 make analyze    # gcc -fanalyzer + clang --analyze; gate is zero findings
 make fuzz-run   # libFuzzer over the parsers, ASan + UBSan, from committed corpora
 make benchmark  # iterations/sec on two examples; see docs/benchmark-baseline.md

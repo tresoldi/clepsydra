@@ -102,7 +102,7 @@ the mathematical analysis.
 | E0.10 | Language count from `is_leaf`, not `(n+1)/2`; forms languages resolve to leaves only | C21, C22 |
 | E0.11 | Calibrations may target a taxon set (`mrca:lang1,lang2,...`); unlabelled internal nodes get stable generated names | A6 |
 | E0.12 | Never mutate `feasible`; the initial state must have finite prior and likelihood or the run fails | K-m1/m2/m3, C23 |
-| E0.13 | **Likelihood oracle.** Fixed-parameter T1 log-likelihoods identical to Rönchen et al.'s reference code and to brute-force enumeration on 3–4-tip trees. *(Moved here from R7.5: it checks the foundation of every number, and it is cheap.)* | K §4.5, RC, RK |
+| E0.13 | **Likelihood oracle.** *Status 2026-10-10:* Rönchen et al. published no code; their LDC 2024 appendix (figshare 26089507) holds proofs only, with no worked numbers. The T1 recursion is therefore checked against two in-repo brute forces that do not share it (`tests/likelihood/test_t1_likelihood.c`: enumeration of edge-replacement patterns, and of all node labellings, including missing tips, polytomies and dated tips). An external cross-check moves to X5/M4 (BEAST2/RevBayes on shared fixed-parameter cases). | K §4.5, RC, RK |
 | E0.14 | CLI rejects options missing their value; short reads checked; public API null checks; RNG bound arithmetic. *(Needed, but does not block experiments.)* | C27, C28 |
 | E0.15 | T2 marked **experimental** in CLI help, docs and README; P1's fixed ε documented. Docs claims match code | C10, C11, C32, K-M6 |
 

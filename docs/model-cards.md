@@ -57,6 +57,13 @@ integrated deterministically (no MCMC in normal low dimensions).
 - **Assumptions.** `log r_{f,c} = μ_c + β_f + u_{f,c}`; concepts conditionally
   independent given parameters; uncertain cognacy via `y_c`; global
   contamination `ε`; exact synonym marginalization over candidate pairs.
+- **As implemented (0.3, `date-pair`).** Every concept gets the same rate
+  prior (`--rate-logmean/-logsd`); no reference package is loaded. `ε` is
+  fixed at 0 (the Beta prior's `eps_a/eps_b` are accepted and ignored by
+  `gd_p1_posterior`), `σ_f = 0.3` and the standard preset are fixed, and
+  synonyms are resolved to the highest-weight form before comparison. The
+  hierarchy below is the model's specification. Roadmap items E2.2 and M1
+  close the gap.
 - **Priors.** `μ_c ~ N(m_c^ref, s_c^ref²)` from the reference package;
   `β_f ~ N(β̄, σ_f²)`; `ε ~ Beta(1,19)`. Sensitivity presets tight/standard/wide
   must all be run for any published result. The shared family clock offset
@@ -154,7 +161,7 @@ re-derived). One primary cognate per language–meaning.
   - *Polytomies* — resolved to zero-length ladders (exact for this model,
     brute-force verified); the exact non-binary recursion awaits the appendix
     supplement, so **no published polytomy result before it is checked**.
-  - *Synonym coexistence* — not modelled (single primary state); use T2 for
+  - *Synonym coexistence* — not modelled (single primary state); T2 (experimental, not runnable) is meant for
     polymorphism.
 
 ---
@@ -191,6 +198,12 @@ variation.
 ---
 
 ## T2 — binary cognate-set model
+
+> **Experimental.** The likelihood is implemented and tested against brute
+> force, but it cannot be fitted: the sampler exposes one rate and T2 needs
+> two, the CLI always builds T1, and the per-meaning weight (`opt->weight`)
+> is never applied, so a meaning with *k* classes counts *k* times. Do not
+> report T2 results. See roadmap X5.
 
 **Purpose.** Each cognate class is a binary present/absent trait under an
 asymmetric two-state CTMC; a polymorphism-tolerant alternative to T1's
