@@ -134,6 +134,11 @@ typedef struct gd_analysis_tree_config {
     double   root_lex_logmean;  /* -1.2, i.e. 0.30 */
     double   root_lex_logsd;    /* 1.5 */
     bool     prior_only;        /* 0: sample with the likelihood switched off */
+    /* Sensitivity alternative to the uniform age prior: Yule (pure birth,
+     * complete sampling) conditioned on the root, lambda = kappa / root.
+     * Tips must all be modern. kappa 0 means H(n) - 1 for n tips. */
+    bool     yule;              /* 0 */
+    double   yule_kappa;        /* 0 */
     bool     compare_prior;     /* 1: also run the prior alone and report it */
     double   hpd_level;         /* 0.90 */
 

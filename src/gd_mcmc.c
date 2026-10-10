@@ -239,7 +239,7 @@ static double node_logprior(const gd_calibration_set *cal, size_t v, double age)
 static double tree_lp(const gd_mcmc_chain *ch)
 {
     if (ch->tp == NULL) return 0.0;
-    return gd_tree_prior_logpdf(ch->tp, ch->tree->nodes[ch->tree->root].age, ch->logr);
+    return gd_tree_prior_logpdf_tree(ch->tp, ch->logr);
 }
 
 /* Sum of branch-multiplier log-priors at a given sigma_b. */
@@ -420,7 +420,7 @@ gd_mcmc_chain *gd_mcmc_chain_create(const gd_mcmc_model *model, gd_tree *tree,
         ch->logr = cfg->rate_logmean + gd_rng_normal(ch->rng, 0.0, cfg->rate_logsd);
 
     /* The age prior. */
-    if (cfg->tree_prior == GD_TREE_PRIOR_UNIFORM) {
+    if (cfg->tree_prior == GD_TREE_PRIOR_UNIFORM || cfg->tree_prior == GD_TREE_PRIOR_YULE) {
         bool *is_free = (bool *)gd_malloc_array_checked(tree->nnodes, sizeof(bool), err);
         double *fixed = (double *)gd_malloc_array_checked(tree->nnodes, sizeof(double), err);
         if (is_free == NULL || fixed == NULL) {
@@ -435,6 +435,15 @@ gd_mcmc_chain *gd_mcmc_chain_create(const gd_mcmc_model *model, gd_tree *tree,
                                       cfg->root_lex_logsd, err);
         free(is_free); free(fixed);
         if (ch->tp == NULL) { gd_mcmc_chain_destroy(ch); return NULL; }
+        if (cfg->tree_prior == GD_TREE_PRIOR_YULE) {
+            size_t ntip = 0;
+            for (size_t v = 0; v < tree->nnodes; v++) ntip += tree->nodes[v].is_leaf ? 1u : 0u;
+            double kappa = (cfg->yule_kappa > 0.0) ? cfg->yule_kappa
+                                                   : gd_tree_prior_default_kappa(ntip);
+            if (gd_tree_prior_set_yule(ch->tp, kappa, err) != 0) {
+                gd_mcmc_chain_destroy(ch); return NULL;
+            }
+        }
     } else {
         /* The flat measure is proper only inside bounded calibration windows. */
         for (size_t v = 0; v < tree->nnodes; v++) {
@@ -734,7 +743,7 @@ static int chain_sweep(gd_mcmc_chain *ch, int adapting, gd_error *err)
                 node->age = prop;
                 double new_ll;
                 if (chain_eval_loglik(ch, NULL, &new_ll, err) != 0) { node->age = old_age; return GD_E_INTERNAL; }
-                double new_tp = is_root ? tree_lp(ch) : ch->cur_tp;
+                double new_tp = tree_lp(ch);
                 double dprior = node_logprior(ch->cal, v, prop) - old_pr
                               + (new_tp - ch->cur_tp);
                 if (accept_move(ch, (new_ll - ch->cur_loglik) + dprior + log_hastings)) {

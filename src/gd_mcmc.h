@@ -43,7 +43,8 @@
 
 typedef enum {
     GD_TREE_PRIOR_UNIFORM = 0,
-    GD_TREE_PRIOR_NONE    = 1
+    GD_TREE_PRIOR_NONE    = 1,
+    GD_TREE_PRIOR_YULE    = 2    /* sensitivity alternative; tips at 0 only */
 } gd_tree_prior_kind;
 
 
@@ -71,6 +72,7 @@ typedef struct gd_mcmc_config {
     gd_tree_prior_kind tree_prior;
     double   root_lex_logmean;  /* default -1.2: 0.30 replacements per concept */
     double   root_lex_logsd;    /* default 1.5 */
+    double   yule_kappa;        /* GD_TREE_PRIOR_YULE: lambda * root; 0 = H(n) - 1 */
 
     /* Likelihood switched off: the sampler then draws from the prior the
      * posterior is built on, exactly (E1.5). */

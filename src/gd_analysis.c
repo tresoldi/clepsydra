@@ -798,6 +798,8 @@ int gd_analysis_tree_job_run(gd_analysis_tree_job *job,
     mc.root_lex_logmean = job->cfg.root_lex_logmean;
     mc.root_lex_logsd = job->cfg.root_lex_logsd;
     mc.prior_only = job->cfg.prior_only;
+    mc.tree_prior = job->cfg.yule ? GD_TREE_PRIOR_YULE : GD_TREE_PRIOR_UNIFORM;
+    mc.yule_kappa = job->cfg.yule_kappa;
     mc.on_progress = job->cfg.on_progress;
     mc.progress_user = job->cfg.progress_user;
     mc.progress_every = job->cfg.progress_every;

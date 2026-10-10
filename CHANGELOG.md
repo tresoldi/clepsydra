@@ -34,6 +34,12 @@ columns and example numbers are expected throughout 0.x and are listed here.
 
 ### Added
 
+- **Yule age prior as a sensitivity alternative** (E1.3; `--yule 1`,
+  `--yule-kappa`). This is a pure-birth, completely sampled prior conditioned
+  on the root. The rate is written as `kappa / root`, so the prior has no
+  calendar unit, and the default kappa matches the expected root for the tip
+  count. It is defined only when every tip is modern. On the Polynesian
+  example it moves nodes by 1–4% against the uniform prior.
 - **Three kinds of age, the scale source and the prior beside the posterior**
   (E1.6).
   - `posterior_nodes.tsv` reports every node's lexical age (`rho · age`,

@@ -937,6 +937,55 @@ TEST(test_mcmc_sbc_free_root_proper_prior)
     }
 }
 
+/* E1.3: the Yule alternative. Under the prior alone each non-root internal
+ * age, as a fraction s of the root's, is Exponential(kappa) truncated to
+ * (0, 1): E[s] = 1/kappa - 1/(e^kappa - 1). The root is the same lexical-root
+ * prior as before. A dated tip is refused. */
+TEST(test_mcmc_yule_prior_ratios)
+{
+    gd_error err = GD_ERROR_INIT;
+    sbc_model sm; gd_calibration_set *cs0 = NULL;
+    CHECK(build_dataset(&sm, &cs0, 3000.0, log(0.0005), 1700.0, 1300.0, 20, 12u, &err) == 0);
+    gd_calset_destroy(cs0);
+    gd_calibration_set *cs = make_free_bounds(sm.t, &err);
+    gd_mcmc_model model; gd_mcmc_t1_model(sm.m, &model);
+    gd_mcmc_config cfg; gd_mcmc_config_default(&cfg);
+    cfg.prior_only = true;
+    cfg.tree_prior = GD_TREE_PRIOR_YULE;
+    cfg.yule_kappa = 3.0;
+    cfg.n_warmup = 2000; cfg.n_samples = 20000; cfg.seed = 5u;
+    gd_mcmc_chain *ch = gd_mcmc_chain_create(&model, sm.t, cs, &cfg, 0u, &err);
+    CHECK(ch != NULL);
+    CHECK(gd_mcmc_chain_run(ch, &err) == 0);
+    size_t root = sm.t->root, r1 = gd_tree_find_label(sm.t, "r1");
+    size_t p_root = (size_t)-1, p_r1 = (size_t)-1;
+    for (size_t p = 0; p < gd_mcmc_chain_param_count(ch); p++) {
+        if (gd_mcmc_chain_param_node(ch, p) == root) p_root = p;
+        if (gd_mcmc_chain_param_node(ch, p) == r1) p_r1 = p;
+    }
+    size_t N = gd_mcmc_chain_nsamples(ch);
+    double mean = 0.0;
+    for (size_t d = 0; d < N; d++)
+        mean += gd_mcmc_chain_sample(ch, d, p_r1) / gd_mcmc_chain_sample(ch, d, p_root);
+    mean /= (double)N;
+    gd_mcmc_chain_destroy(ch);
+    double want = 1.0 / 3.0 - 1.0 / (exp(3.0) - 1.0);
+    printf("    Yule prior-only E[s] = %.4f (want %.4f)\n", mean, want);
+    CHECK_APPROX(mean, want, 0.02);
+
+    /* A dated tip: refused, with a pointer to the uniform prior. */
+    cs->node_lo[gd_tree_find_label(sm.t, "a")] = 100.0;
+    cs->node_hi[gd_tree_find_label(sm.t, "a")] = 100.0;
+    gd_error_clear(&err);
+    ch = gd_mcmc_chain_create(&model, sm.t, cs, &cfg, 0u, &err);
+    int refused = (ch == NULL);
+    gd_mcmc_chain_destroy(ch);
+    gd_calset_destroy(cs);
+    sbc_model_free(&sm);
+    CHECK(refused);
+    CHECK(strstr(err.message, "uniform") != NULL);
+}
+
 static void run_tests(void)
 {
     RUN(test_mcmc_reproducible);
@@ -952,6 +1001,7 @@ static void run_tests(void)
     RUN(test_mcmc_progress_can_cancel);
     RUN(test_mcmc_sbc_strict_clock_tree);
     RUN(test_mcmc_prior_only_matches_analytic_prior);
+    RUN(test_mcmc_yule_prior_ratios);
     RUN(test_mcmc_sbc_free_root_proper_prior);
 }
 

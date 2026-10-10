@@ -86,6 +86,14 @@ gd_tree_prior *gd_tree_prior_create(const gd_tree *tree, const bool *is_free,
     }
     tp->root = tree->root;
     tp->root_free = is_free[tree->root];
+    tp->tree = tree;
+    tp->is_free = (bool *)gd_malloc_array_checked(n ? n : 1, sizeof(bool), err);
+    if (tp->is_free == NULL) {
+        gd_error_set(err, GD_E_NOMEM, "tree_prior: alloc");
+        free(tp); free(F); free(fl);
+        return NULL;
+    }
+    memcpy(tp->is_free, is_free, n * sizeof(bool));
     tp->lex_logmean = lex_logmean;
     tp->lex_logsd = lex_logsd;
 
@@ -142,6 +150,7 @@ void gd_tree_prior_destroy(gd_tree_prior *tp)
 {
     if (tp == NULL) return;
     free(tp->coef);
+    free(tp->is_free);
     free(tp);
 }
 
@@ -164,6 +173,57 @@ double gd_tree_prior_logpdf(const gd_tree_prior *tp, double root_age, double log
     double ll = log_rate + log(root_age);
     double z = (ll - tp->lex_logmean) / tp->lex_logsd;
     double lp = -0.5 * z * z - log(tp->lex_logsd) - 0.5 * log(2.0 * M_PI) - log(root_age);
+    if (tp->yule_kappa > 0.0) return lp;   /* the age terms are in _tree */
     if (tp->root_free) lp -= gd_tree_prior_log_volume(tp, root_age);
     return lp;
+}
+
+int gd_tree_prior_set_yule(gd_tree_prior *tp, double kappa, gd_error *err)
+{
+    if (tp == NULL) return gd_error_set(err, GD_E_INVALID_ARG, "tree_prior: NULL");
+    if (!(kappa > 0.0) || !isfinite(kappa))
+        return gd_error_set(err, GD_E_RANGE, "tree_prior: Yule kappa must be finite and > 0");
+    const gd_tree *t = tp->tree;
+    for (size_t v = 0; v < t->nnodes; v++) {
+        bool fixed = !tp->is_free[v];
+        if (!t->nodes[v].is_leaf && fixed && v != t->root)
+            return gd_error_set(err, GD_E_CALIBRATION,
+                "tree_prior: the Yule prior needs every internal node free "
+                "(a pinned internal node breaks it); use the uniform prior");
+        if (t->nodes[v].is_leaf && !fixed)
+            return gd_error_set(err, GD_E_CALIBRATION,
+                "tree_prior: the Yule prior needs every tip fixed at age 0; "
+                "dated tips need the uniform prior");
+    }
+    if (tp->floor > 0.0)
+        return gd_error_set(err, GD_E_CALIBRATION,
+            "tree_prior: the Yule prior needs every tip at age 0; dated tips need the uniform prior");
+    tp->yule_kappa = kappa;
+    return 0;
+}
+
+double gd_tree_prior_logpdf_tree(const gd_tree_prior *tp, double log_rate)
+{
+    if (tp == NULL) return 0.0;
+    const gd_tree *t = tp->tree;
+    double T = t->nodes[t->root].age;
+    double lp = gd_tree_prior_logpdf(tp, T, log_rate);
+    if (!(tp->yule_kappa > 0.0) || !tp->root_free) return lp;
+    /* Each free non-root internal age s: log(kappa / T) - kappa s / T
+     * - log(1 - exp(-kappa)). */
+    double k = tp->yule_kappa, lnorm = log(-expm1(-k));
+    for (size_t v = 0; v < t->nnodes; v++) {
+        if (v == t->root || t->nodes[v].is_leaf || !tp->is_free[v]) continue;
+        double s = t->nodes[v].age;
+        if (!(s > 0.0 && s < T)) return -HUGE_VAL;
+        lp += log(k) - log(T) - k * s / T - lnorm;
+    }
+    return lp;
+}
+
+double gd_tree_prior_default_kappa(size_t n_tips)
+{
+    double h = 0.0;
+    for (size_t k = 2; k <= n_tips; k++) h += 1.0 / (double)k;
+    return (h > 0.0) ? h : 1.0;
 }

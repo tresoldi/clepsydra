@@ -38,6 +38,10 @@
 typedef struct gd_tree_prior {
     size_t root;
     bool   root_free;
+    /* yule_kappa > 0 selects the Yule alternative (below); 0 the uniform. */
+    double yule_kappa;
+    const gd_tree *tree;      /* borrowed: read for the Yule ages */
+    bool          *is_free;   /* owned copy, nnodes */
     double lex_logmean, lex_logsd;
     /* V(x) = sum_k coef[k] * (x / scale)^k, valid for x >= floor. */
     double *coef;
@@ -57,6 +61,18 @@ gd_tree_prior *gd_tree_prior_create(const gd_tree *tree, const bool *is_free,
                                     gd_error *err);
 void gd_tree_prior_destroy(gd_tree_prior *tp);
 
+/*
+ * The sensitivity alternative (docs/roadmap.md E1.3): a Yule (pure-birth,
+ * completely sampled) prior conditioned on the root. Given the root age T,
+ * each other internal age is independently Exponential(lambda) truncated to
+ * (0, T) (Gernhard 2008). The rate is written as lambda = kappa / T, so the
+ * prior has no calendar unit and lexical-time mode stays scale-invariant;
+ * kappa -> 0 recovers the uniform prior. Defined only when every tip is
+ * modern and no internal node is pinned (dated tips need the fossilized
+ * birth-death prior, roadmap X3). Call after gd_tree_prior_create.
+ */
+int gd_tree_prior_set_yule(gd_tree_prior *tp, double kappa, gd_error *err);
+
 /* log V(x), up to a constant; -HUGE_VAL at or below the floor. */
 double gd_tree_prior_log_volume(const gd_tree_prior *tp, double root_age);
 
@@ -68,5 +84,13 @@ double gd_tree_prior_log_volume(const gd_tree_prior *tp, double root_age);
  * volume term is constant and only the lexical-root factor remains.
  */
 double gd_tree_prior_logpdf(const gd_tree_prior *tp, double root_age, double log_rate);
+
+/* The full prior at the tree's current ages: gd_tree_prior_logpdf plus, for
+ * the Yule prior, the terms of the non-root ages. */
+double gd_tree_prior_logpdf_tree(const gd_tree_prior *tp, double log_rate);
+
+/* The Yule kappa that matches a Yule tree's expected root age given its
+ * rate: E[T_root] = (1/2 + 1/3 + ... + 1/n) / lambda for n tips. */
+double gd_tree_prior_default_kappa(size_t n_tips);
 
 #endif /* GD_TREE_PRIOR_H */
