@@ -1,0 +1,79 @@
+id	use	node_spec	glottolog_mrca	node_name	lo_bp	hi_bp	center_bp	status	reason
+IE-ROM-01	interval	split:east2714|ital1285	roma1334	Romance	1450	1900	.	primary	max-leaning point; two-sided Uniform(1450,1900) from suggested_distribution
+IE-LATROM-01	exclude	split:lati1261|roma1334	impe1234	Imperial Latin	.	.	.	excluded: Latin is a sampled ancestor of Romance: Latin-Romance distance measures one branch, not a split	Latin is a sampled ancestor of Romance: Latin-Romance distance measures one branch, not a split
+IE-GER-04	interval	crown:angl1264	angl1264	Anglo-Frisian	1350	1600	.	primary	max-leaning point; Uniform(1350,1600) from suggested_distribution
+IE-GER-05	interval	crown:nort3160	nort3160	North Germanic	900	1200	.	primary	interval as published
+IE-GER-06	max	split:icel1247|norw1258	west2805	West Scandinavian	.	1080	.	primary	settlement date is a hard maximum; the 700 floor in suggested_distribution is not evidenced
+IE-GER-07	max	split:afri1274|dutc1256	glob1241	Global Dutch	.	298	.	primary	hard maximum (1652 founding)
+IE-CEL-01	interval	crown:bryt1239	bryt1239	Brythonic	1300	1550	.	primary	interval as published
+IE-CEL-02	interval	crown:mode1265	mode1265	Modern Goidelic	700	1100	.	primary	Irish vs Scottish Gaelic-Manx = crown of Modern Goidelic; Uniform(700,1100) from suggested_distribution
+IE-CEL-03	min	split:goid1240|bryt1239	insu1254	Insular Celtic	1650	.	.	primary	min only; node read as Insular Celtic (Bouckaert data are Insular only)
+IE-SLA-01	min	crown:slav1255	slav1255	Slavic	1150	.	.	primary	Holman point is itself an estimate; Bouckaert hard min 1150 is the defensible part
+IE-SLA-02	interval	crown:east1426	east1426	East Slavic	500	750	.	primary	max-leaning point; Uniform(500,750) from suggested_distribution
+IE-II-01	min	split:indo1321|iran1269	indo1320	Indo-Iranian	2950	.	.	primary	archaeological point is grade C; epigraphic min only
+IE-II-03	min	crown:iran1269	iran1269	Iranian	2550	.	.	primary	archaeological point is grade C; epigraphic min only
+IE-II-04	min	split:indo1321|iran1269	indo1320	Indo-Iranian	3300	.	.	duplicate of IE-II-01 (same MRCA indo1320)	min only; exact number grade U (same node as IE-II-01)
+IE-II-06	interval	crown:roma1329	roma1329	Romani	450	700	.	primary	max-leaning point; Uniform(450,700) from suggested_distribution
+IE-TOC-01	exclude	split:tokh1242|tokh1243	tokh1241	Tokharian	1600	.	.	excluded: both daughters attested only as ancient tips; min only	both daughters attested only as ancient tips; min only
+URA-FIN-01	interval	crown:finn1317	finn1317	Finnic	670	1850	.	primary	99% interval as published
+URA-SAA-01	interval	crown:saam1281	saam1281	Saami	1400	2000	.	primary	95% interval as published
+URA-PER-01	interval	crown:perm1256	perm1256	Permian	600	1200	.	primary	asymmetric interval as published (fallback Uniform)
+URA-UGR-01	exclude	stem:hung1287	ural1272	Uralic	760	.	.	excluded: uninformative min; Ugric is not a Glottolog node, so the Hungarian stem would be the Uralic root	uninformative min; Ugric is not a Glottolog node, so the Hungarian stem would be the Uralic root
+MON-01	interval	stem:mogh1245	mong1329	Mongolic	550	800	.	primary	max-leaning point; Uniform(550,800); contested (ASJP +67%)
+TUN-01	interval	split:manc1252|xibe1242	manc1251	Manchu-Xibe	100	186	.	primary	max-leaning point; Uniform(100,186) from suggested_distribution; Xibe may predate 1764
+AIN-01	interval	crown:sakh1245	sakh1245	Sakhalin Ainu	350	550	.	primary	interval as published (Glottolog has no Sakhalin subdivisions)
+AN-01	interval	crown:mala1545	mala1545	Malayo-Polynesian	3950	4450	.	primary	interval as published
+AN-04	interval	split:east2563|west2650	cham1328	Cham	300	479	.	primary	max-leaning point; Uniform(300,479)
+AN-05	interval	split:nort2994|tsat1238	nort3219	Northern Cham	600	1000	.	primary	max-leaning point; Uniform(600,1000)
+AN-06	interval	split:maan1238|mala1537	sout2919	Southeast Barito	1000	1400	.	primary	max-leaning point; Uniform(1000,1400)
+DRA-01	min	crown:sout3138	sout3138	South Dravidian I	2200	.	.	primary	min only (attestation)
+DRA-03	interval	split:mala1464|tami1289	tami1298	Tamil-Malayalam	750	1150	.	primary	truncated-normal interval as published; read as Malayalam vs Tamil
+DRA-04	min	stem:telu1262	telu1265	Teluguic	1350	.	.	primary	min only; sister of Telugu ambiguous (Glottolog Teluguic)
+DRA-05	min	split:nucl1305|tulu1258	sout3138	South Dravidian I	1250	.	.	duplicate of DRA-01 (same MRCA sout3138)	min only (same Glottolog node as DRA-01)
+SEM-01	exclude	crown:semi1276	semi1276	Semitic	4300	7950	.	excluded: East Semitic survives only in ancient languages: no contemporary cross pairs; max arbitrary	East Semitic survives only in ancient languages: no contemporary cross pairs; max arbitrary
+SEM-07	interval	split:malt1254|nort3191	nort3191	North African Arabic	860	1080	.	primary	interval (870 conquest to 1090 end of Arab rule); Maltese vs North African Arabic
+SEM-08	max	split:nort3191|east2729,egyp1251,arab1393,leva1239	arab1395	Arabic	.	1320	.	primary	soft max only
+CUS-01	interval	crown:nucl1736	nucl1736	Nuclear Oromo	300	450	.	primary	max-leaning point; Uniform(300,450)
+NC-03	interval	crown:swah1253	swah1253	Swahili	1050	1250	.	primary	point; Uniform(1050,1250) from suggested_distribution
+HOL-002	interval	crown:mala1545	mala1545	Malayo-Polynesian	3950	4450	.	duplicate of AN-01 (same MRCA mala1545)	same node as AN-01
+HOL-003	point	crown:east2712	east2712	Eastern Malayo-Polynesian	.	.	3300	primary	Holman point, normal sd 15%
+HOL-004	max	crown:temo1244	temo1244	Temotu	.	3150	.	primary	settlement is a maximum (notes)
+HOL-007	point	crown:mala1554	mala1554	Malayo-Chamic	.	.	2350	primary	Holman point, normal sd 15%
+HOL-008	point	split:maan1238|mala1537	sout2919	Southeast Barito	.	.	1300	duplicate of AN-06 (same MRCA sout2919)	same node as AN-06
+HOL-010	point	crown:inui1246	inui1246	Inuit	.	.	750	duplicate of NA-002 (same MRCA inui1246)	same node as NA-002
+HOL-013	point	split:nort2994|tsat1238	nort3219	Northern Cham	.	.	950	duplicate of AN-05 (same MRCA nort3219)	same node as AN-05
+HOL-014	point	split:east2563|west2650	cham1328	Cham	.	.	479	duplicate of AN-04 (same MRCA cham1328)	same node as AN-04
+HOL-015	min	split:chor1272|chol1281	chol1287	Cholan	1550	.	.	duplicate of MA-002 (same MRCA chol1287)	minimum-type evidence (same node as MA-002)
+AN-005	interval	crown:ocea1241	ocea1241	Oceanic	3200	3600	.	primary	range as published
+AN-006	interval	crown:ocea1241	ocea1241	Oceanic	3240	3470	.	duplicate of AN-005 (same MRCA ocea1241)	same node as AN-005
+AN-007	interval	crown:cent2060	cent2060	Central Pacific linkage	2800	3200	.	primary	range as published
+AN-008	max	crown:cent2060	cent2060	Central Pacific linkage	.	3130	.	duplicate of AN-007 (same MRCA cent2060)	same node as AN-007
+AN-010	max	crown:reef1242	reef1242	Reefs-Santa Cruz	.	3150	.	primary	maximum (notes)
+AN-011	max	crown:poly1242	poly1242	Polynesian	.	2846	.	primary	hard maximum (Tonga settlement)
+AN-014	max	crown:east2449	east2449	East Polynesian	.	925	.	primary	maximum (EP settlement)
+AN-015	min	crown:east2449	east2449	East Polynesian	697	.	.	duplicate of AN-014 (same MRCA east2449); combined into interval	minimum; with AN-014 brackets the same node
+AN-017	min	split:maor1246|sout3383-maor1247	sout3383	Southern East Polynesian Proximal	668	.	.	primary	minimum (NZ settlement); Maori vs Southern East Polynesian Proximal
+AN-019	min	stem:marq1246	east2895	East Polynesian Distal	673	.	.	primary	minimum (Marquesas settlement)
+AN-020	interval	crown:micr1243	micr1243	Micronesian	1800	2200	.	primary	range as published
+AN-028	max	crown:mala1537	mala1537	Malagasic	.	1300	.	primary	settlement is logically a maximum (notes)
+NA-001	max	split:east2534|gree1280	inui1246	Inuit	.	800	.	duplicate of NA-002 (same MRCA inui1246)	maximum for eastern dialect chain
+NA-002	interval	crown:inui1246	inui1246	Inuit	700	1100	.	primary	range as published
+NA-020	exclude	crown:utoa1244	utoa1244	Uto-Aztecan	3258	5025	.	excluded: circular: Bayesian lexical estimate	circular: Bayesian lexical estimate
+NA-021	interval	split:inup1234|west2618,east2534,gree1280	inui1246	Inuit	650	1000	.	duplicate of NA-002 (same MRCA inui1246)	same node as NA-002
+MA-002	interval	split:chor1272|chol1281	chol1287	Cholan	1300	1900	.	primary	range as published
+SA-001	interval	stem:tain1254	anti1247	Antillean Arawakan	2445	2800	.	primary	range as published (ceramic association)
+SA-003	max	split:para1316|wayu1243	guaj1257	Guajiro-Paraujano	.	2520	.	primary	sampled-ancestor culture: crown maximum
+SA-004	min	stem:arub1238	uncl1528	Unclassified Antillean Arawakan	960	.	.	primary	stem minimum
+SA-005	max	split:pali1279|mara1408	.	.	.	1850	.	excluded: glottocode not in Glottolog: 	sampled-ancestor culture: crown maximum
+SA-006	min	stem:maip1246	maip1247	Maipure-Avane	1570	.	.	primary	stem minimum
+SA-008	max	crown:xing1249	xing1249	Xinguan Arawak	.	1020	.	primary	sampled-ancestor culture: crown maximum
+SA-011	min	stem:ashe1271	asha1242	Ashe-Asha	500	.	.	primary	stem minimum (soft_minimum 500)
+SA-015	min	stem:arua1264	negr1239	Negro-Roraima	349	.	.	primary	stem minimum (ethnonym)
+AU-01	interval	crown:wati1241	wati1241	Wati	1500	5000	.	primary	range as published (hard min 1500; inferential)
+AU-02	exclude	crown:pama1250	pama1250	Pama-Nyungan	4455	6966	.	excluded: circular: Bayesian estimate	circular: Bayesian estimate
+CR-02	exclude	.	.	.	.	.	.	excluded: creole	creole
+CR-03	exclude	.	.	.	.	.	.	excluded: creole	creole
+CR-05	exclude	.	.	.	.	.	.	excluded: creole	creole
+CR-11	exclude	.	.	.	.	.	.	excluded: creole	creole
+CR-12	max	split:afri1274|dutc1256	glob1241	Global Dutch	.	298	.	duplicate of IE-GER-07 (same MRCA glob1241)	same node as IE-GER-07; Afrikaans is partially restructured
+CR-14	interval	split:queb1247|stan1290-queb1247	stan1290	French	187	342	.	primary	colonial dialect split, not a creole
