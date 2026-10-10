@@ -11,14 +11,17 @@ The C engine never parses calendar strings.
 ## 1. Calibration types
 
 Each calibration names a labelled node or tip (`target_id`) and has a `type`
-with parameters `p1/p2/p3`, plus `is_hard` (1=hard bound, 0=soft) and a
-`source_key` for provenance. Exact parameter meanings:
+with parameters `p1/p2/p3`, plus `is_hard` and a `source_key` for
+provenance. `is_hard` matters only for `uniform_node`: `1` (or `.`) is a hard
+window, `0` a soft one with 2.5% of the mass in a half-normal tail beyond
+each end. Every other type is hard or soft by construction, and an `is_hard`
+value that contradicts it is an error. Exact parameter meanings:
 
 | `type` | `p1` | `p2` | `p3` | Support / shape |
 |---|---|---|---|---|
 | `fixed_tip` | age (years BP) | . | . | tip age fixed exactly |
-| `uniform_node` | min | max | . | node age ∼ Uniform(min, max) |
-| `normal_node` | mean | sd | . | node age ∼ Normal(mean, sd) (truncated ≥0) |
+| `uniform_node` | min | max | . | node age ∼ Uniform(min, max); soft tails if `is_hard=0` |
+| `normal_node` | mean | sd | . | node age ∼ Normal(mean, sd), in years (truncated ≥0) |
 | `lognormal_node` | log_mean | log_sd | . | node age ∼ Lognormal(log_mean, log_sd) |
 | `offset_lognormal_node` | offset | log_mean | log_sd | age = offset + Lognormal(log_mean, log_sd); offset is a hard minimum |
 | `hard_minimum` | min | . | . | age ≥ min (hard) |
@@ -32,6 +35,20 @@ calibration_id	target_id	type	p1	p2	p3	is_hard	source_key
 latin_tip	latin	fixed_tip	1900	.	.	1	HIST_LATIN_01
 romance_root	romance_root	offset_lognormal	1400	5.30	0.25	0	HIST_ROMANCE_02
 ```
+
+**Tips.** A tip that no calibration names is an extant language, fixed at age
+0. A tip with an uncertain age (an ancient or historical language) needs its
+own calibration: `fixed_tip` for a known date, or any node-type distribution
+for an uncertain one.
+
+**Sampling windows.** Densities with unbounded support are sampled within
+6 standard deviations (on the log scale for the lognormals), which leaves
+about 1e-9 of their mass outside: below what any run can resolve.
+
+**Widening** (`--cal-widen f`) multiplies the spread of every soft
+calibration: the half-width of a uniform window about its centre, the sd of a
+normal or soft bound, and the log-sd of a lognormal or offset lognormal.
+Fixed tips and hard bounds are left alone.
 
 **Never** treat a historical date as exact merely because the input gave one
 number: a single attested date is `fixed_tip` only for a tip; node dates use

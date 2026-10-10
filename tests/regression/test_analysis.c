@@ -618,7 +618,8 @@ TEST(test_analysis_drops_a_calibration)
     CHECK(gd_analysis_tree_run(&in, &dropped, &b, &err) == 0);
 
     /* Latin's age was fixed by that calibration; without it the node becomes
-     * one the sampler has to estimate. */
+     * one the sampler has to estimate -- not an extant tip at age 0, which is
+     * what an uncalibrated tip otherwise is. */
     size_t latin = gd_tree_find_label(a->tree, "Latin");
     CHECK(latin != GD_NODE_NONE);
     CHECK(gd_analysis_result_node(a, latin) == NULL);   /* fixed, not sampled */
@@ -884,6 +885,60 @@ TEST(test_analysis_counts_tips_of_a_polytomy)
     CHECK(nl == 4);
 }
 
+/* E0.4 and E0.5 through the table reader: is_hard is honoured for
+ * uniform_node, refused when it contradicts an intrinsically hard or soft
+ * type, and --cal-widen spreads an offset lognormal instead of moving it. */
+TEST(test_analysis_is_hard_and_widen_semantics)
+{
+    gd_error err = GD_ERROR_INIT;
+    gd_analysis_calibration *cals = NULL;
+    size_t n = 0;
+    const char *ok =
+        "calibration_id\ttarget_id\ttype\tp1\tp2\tp3\tis_hard\tsource_key\n"
+        "a\tRoot\tuniform_node\t2000\t3000\t.\t0\tx\n"
+        "b\tRoot\tuniform_node\t2000\t3000\t.\t1\tx\n"
+        "c\tRoot\tuniform_node\t2000\t3000\t.\t.\tx\n"
+        "d\tRoot\tnormal_node\t2000\t300\t.\t.\tx\n";
+    CHECK(gd_analysis_calibrations_read(ok, GD_LEN_NUL_TERMINATED, &cals, &n, &err) == 0);
+    bool h0 = cals[0].is_hard, h1 = cals[1].is_hard, h2 = cals[2].is_hard, h3 = cals[3].is_hard;
+    gd_analysis_calibrations_free(cals, n);
+    CHECK(!h0); CHECK(h1); CHECK(h2); CHECK(!h3);
+
+    const char *contradiction =
+        "calibration_id\ttarget_id\ttype\tp1\tp2\tp3\tis_hard\tsource_key\n"
+        "d\tRoot\tnormal_node\t2000\t300\t.\t1\tx\n";
+    gd_error_clear(&err);
+    CHECK(gd_analysis_calibrations_read(contradiction, GD_LEN_NUL_TERMINATED, &cals, &n, &err) != 0);
+    CHECK(strstr(err.message, "contradicts") != NULL);
+
+    /* Widening an offset lognormal must keep its median (offset + exp(p2))
+     * and widen its spread. Measured on the posterior of a root that carries
+     * only this calibration and no data signal worth the name. */
+    gd_analysis_tree_input in; tree_input(&in);
+    in.calibrations_tsv =
+        "calibration_id\ttarget_id\ttype\tp1\tp2\tp3\tis_hard\tsource_key\n"
+        "cal1\tLatin\tfixed_tip\t2050\t.\t.\t1\tstandard\n"
+        "cal5\tRoot\toffset_lognormal_node\t2100\t6.0\t0.1\t0\tstandard\n";
+    gd_analysis_tree_config tight; quick_config(&tight);
+    tight.n_warmup = 1000; tight.n_samples = 2000;
+    gd_analysis_tree_config loose = tight;
+    loose.calibrations.widen = 3.0;
+    gd_analysis_tree_result *a = NULL, *b = NULL;
+    gd_error_clear(&err);
+    CHECK(gd_analysis_tree_run(&in, &tight, &a, &err) == 0);
+    CHECK(gd_analysis_tree_run(&in, &loose, &b, &err) == 0);
+    const gd_analysis_node_age *ta = gd_analysis_result_node(a, a->tree->root);
+    const gd_analysis_node_age *tb = gd_analysis_result_node(b, b->tree->root);
+    double wa = ta->age.hpd_hi - ta->age.hpd_lo, wb = tb->age.hpd_hi - tb->age.hpd_lo;
+    double ma = ta->age.median, mb = tb->age.median;
+    gd_analysis_tree_result_destroy(a);
+    gd_analysis_tree_result_destroy(b);
+    CHECK(wb > 1.5 * wa);
+    /* Before the fix p2 was multiplied: the median jumped from ~2500 to
+     * 2100 + exp(18), i.e. by about 6.6e7 years. */
+    CHECK(fabs(mb - ma) < 0.5 * wb);
+}
+
 static void run_tests(void)
 {
     RUN(test_analysis_prepare_reports_dataset_size);
@@ -901,6 +956,7 @@ static void run_tests(void)
     RUN(test_analysis_reads_calibrations);
     RUN(test_analysis_drops_a_calibration);
     RUN(test_analysis_widens_calibrations);
+    RUN(test_analysis_is_hard_and_widen_semantics);
     RUN(test_analysis_pair_posterior);
     RUN(test_analysis_pair_decay_laws_differ);
     RUN(test_analysis_empty_buffer_is_empty_not_measured);

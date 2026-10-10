@@ -239,8 +239,15 @@ static void widen_window(gd_calibration *cal, double f)
     }
     case GD_CAL_NORMAL_NODE:
     case GD_CAL_LOGNORMAL_NODE:
+    case GD_CAL_SOFT_MINIMUM:
+    case GD_CAL_SOFT_MAXIMUM:
+        cal->p2 *= f;   /* the sd (log-sd for the lognormal) */
+        break;
     case GD_CAL_OFFSET_LOGNORMAL_NODE:
-        cal->p2 *= f;   /* the sd */
+        /* p1 is the hard offset and p2 the log-mean: the spread is p3.
+         * Multiplying p2 used to move the distribution instead of widening
+         * it (by a factor exp(p2 (f - 1)) in its median). */
+        cal->p3 *= f;
         break;
     default:
         break;
@@ -306,15 +313,36 @@ int gd_analysis_calibrations_read(const char *calibrations_tsv, size_t len,
                           "non-numeric parameter for calibration '%s'", c->id);
             goto done;
         }
-        c->is_hard = false;
-        if (cc_h != SIZE_MAX && strcmp(ct.rows[r][cc_h], ".") != 0) {
-            long hv;
-            if (gd_tsv_parse_int(ct.rows[r][cc_h], strlen(ct.rows[r][cc_h]), &hv) != 0) {
-                gd_error_setf(err, GD_E_BAD_NUMERIC,
-                              "non-integer is_hard for calibration '%s'", c->id);
-                goto done;
+        /* is_hard means something only for uniform_node, where it chooses
+         * between a hard window and a soft one with 2.5% tails. Every other
+         * type is hard or soft by construction, and a value contradicting
+         * that is refused rather than silently ignored, as it used to be. */
+        {
+            int given = 0; long hv = 0;
+            if (cc_h != SIZE_MAX && strcmp(ct.rows[r][cc_h], ".") != 0 &&
+                ct.rows[r][cc_h][0] != '\0') {
+                if (gd_tsv_parse_int(ct.rows[r][cc_h], strlen(ct.rows[r][cc_h]), &hv) != 0 ||
+                    (hv != 0 && hv != 1)) {
+                    gd_error_setf(err, GD_E_BAD_NUMERIC,
+                                  "is_hard must be 0 or 1 for calibration '%s'", c->id);
+                    goto done;
+                }
+                given = 1;
             }
-            c->is_hard = (hv != 0);
+            bool intrinsic_hard = (c->type == GD_CAL_FIXED_TIP ||
+                                   c->type == GD_CAL_HARD_MINIMUM ||
+                                   c->type == GD_CAL_HARD_MAXIMUM);
+            if (c->type == GD_CAL_UNIFORM_NODE) {
+                c->is_hard = given ? (hv != 0) : true;
+            } else {
+                if (given && (hv != 0) != intrinsic_hard) {
+                    gd_error_setf(err, GD_E_CALIBRATION,
+                                  "calibration '%s': is_hard=%ld contradicts type '%s', which is always %s",
+                                  c->id, hv, c->type_name, intrinsic_hard ? "hard" : "soft");
+                    goto done;
+                }
+                c->is_hard = intrinsic_hard;
+            }
         }
         c->source_key = dupstr(cc_s != SIZE_MAX ? ct.rows[r][cc_s] : ".");
         if (c->source_key == NULL) {
@@ -604,11 +632,35 @@ int gd_analysis_tree_prepare(const gd_analysis_tree_input *in,
      * its calibrations rather than to its data. */
     size_t drop = (job->cfg.calibrations.drop_index < ncal) ? 1 : 0;
     double widen = job->cfg.calibrations.widen;
-    job->cs = gd_calset_create(ncal - drop, err);
+    /* Withholding a tip's age must leave that tip free to be estimated. An
+     * uncalibrated tip is extant (age 0), so dropping the row outright would
+     * not withhold the date, it would replace it with "today". The dropped
+     * row is therefore replaced by a bare hard minimum of 0 on the same
+     * target, which marks the tip as dated-but-unknown. */
+    bool drop_tip = false;
+    if (drop) {
+        size_t tv = gd_tree_find_label(job->tree, cals[job->cfg.calibrations.drop_index].target);
+        drop_tip = (tv != GD_NODE_NONE && gd_tree_is_leaf(job->tree, tv));
+    }
+    job->cs = gd_calset_create(ncal - drop + (drop_tip ? 1 : 0), err);
     if (job->cs == NULL) goto done;
     size_t out_row = 0;
     for (size_t rr = 0; rr < ncal; rr++) {
-        if (drop && rr == job->cfg.calibrations.drop_index) continue;
+        if (drop && rr == job->cfg.calibrations.drop_index) {
+            if (!drop_tip) continue;
+            gd_calibration *free_tip = &job->cs->cals[out_row++];
+            free_tip->calibration_id = dupstr("withheld_tip_age");
+            free_tip->target_id      = dupstr(cals[rr].target);
+            free_tip->source_key     = dupstr(".");
+            if (free_tip->calibration_id == NULL || free_tip->target_id == NULL ||
+                free_tip->source_key == NULL) {
+                gd_error_set(err, GD_E_NOMEM, "out of memory"); goto done;
+            }
+            free_tip->type    = GD_CAL_HARD_MINIMUM;
+            free_tip->p1      = 0.0;
+            free_tip->is_hard = true;
+            continue;
+        }
         const gd_analysis_calibration *src = &cals[rr];
         gd_calibration *cal = &job->cs->cals[out_row++];
         cal->calibration_id = dupstr(src->id);

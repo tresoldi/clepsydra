@@ -20,6 +20,28 @@
 #define M_PI 3.14159265358979323846
 #endif
 
+/*
+ * A soft uniform window (uniform_node with is_hard = 0) is flat on [p1, p2]
+ * and falls off outside it in half-normal tails, each holding
+ * GD_CAL_SOFT_TAIL of the mass (the MCMCTree convention of 2.5% per side).
+ * With equal tail scales s on both sides the density is c on [p1, p2] and
+ * c exp(-z^2/2) beyond, so c (p2 - p1) = 1 - 2 tail and c s sqrt(pi/2) = tail.
+ */
+#define GD_CAL_SOFT_TAIL 0.025
+
+static double soft_uniform_scale(double p1, double p2)
+{
+    return GD_CAL_SOFT_TAIL * (p2 - p1) / ((1.0 - 2.0 * GD_CAL_SOFT_TAIL) * sqrt(0.5 * M_PI));
+}
+
+/*
+ * Densities with unbounded support still need a finite window for the
+ * sampler. It is cut where the tail beyond holds about 1e-9 of the mass
+ * (6 standard deviations, on the log scale for the lognormals), which is
+ * below anything an MCMC run can resolve.
+ */
+#define GD_CAL_SUPPORT_SD 6.0
+
 gd_calibration_set *gd_calset_create(size_t ncals, gd_error *err)
 {
     gd_calibration_set *cs = (gd_calibration_set *)gd_calloc_checked(1, sizeof(*cs), err);
@@ -201,6 +223,18 @@ int gd_calibrations_propagate(gd_calibration_set *cs, const gd_tree *tree,
         cs->node_hi[i] = 1e15;  /* effectively +inf */
     }
 
+    /* A tip no calibration mentions is an extant language: age 0. Leaving it
+     * free let the sampler move "modern" languages into the past, where
+     * they absorbed lexical change that belongs to the internal branches. A
+     * tip with an uncertain age says so with its own calibration. */
+    for (size_t i = 0; i < n; i++) {
+        if (!tree->nodes[i].is_leaf) continue;
+        bool targeted = false;
+        for (size_t c = 0; c < cs->ncals && !targeted; c++)
+            targeted = cs->cals[c].resolved && cs->cals[c].node_index == i;
+        if (!targeted) cs->node_hi[i] = 0.0;
+    }
+
     /* Apply calibrations. */
     for (size_t i = 0; i < cs->ncals; i++) {
         if (!cs->cals[i].resolved) continue;
@@ -213,20 +247,36 @@ int gd_calibrations_propagate(gd_calibration_set *cs, const gd_tree *tree,
                 cs->node_hi[idx] = p1;
                 break;
             case GD_CAL_UNIFORM_NODE:
-                if (p1 > cs->node_lo[idx]) cs->node_lo[idx] = p1;
-                if (p2 < cs->node_hi[idx]) cs->node_hi[idx] = p2;
+                if (cs->cals[i].is_hard) {
+                    if (p1 > cs->node_lo[idx]) cs->node_lo[idx] = p1;
+                    if (p2 < cs->node_hi[idx]) cs->node_hi[idx] = p2;
+                } else {
+                    double sc = soft_uniform_scale(p1, p2);
+                    double lo = p1 - GD_CAL_SUPPORT_SD * sc;
+                    double hi = p2 + GD_CAL_SUPPORT_SD * sc;
+                    if (lo > cs->node_lo[idx]) cs->node_lo[idx] = lo;
+                    if (hi < cs->node_hi[idx]) cs->node_hi[idx] = hi;
+                }
                 break;
             case GD_CAL_NORMAL_NODE:
+                /* The normal is in years, not log-years: its window is
+                 * mean +/- k sd. (It used to be exp(mean + 5 sd), which for a
+                 * 2000 +/- 200 calibration is exp(3000).) */
+                {
+                    double lo = p1 - GD_CAL_SUPPORT_SD * p2;
+                    double hi = p1 + GD_CAL_SUPPORT_SD * p2;
+                    if (lo > cs->node_lo[idx]) cs->node_lo[idx] = lo;
+                    if (hi < cs->node_hi[idx]) cs->node_hi[idx] = hi;
+                }
+                break;
             case GD_CAL_LOGNORMAL_NODE:
             case GD_CAL_OFFSET_LOGNORMAL_NODE:
-                /* Soft priors: use [offset, offset + mean + 5*sd] as a
-                 * practical bound for sampling. */
                 {
                     double offset = (cs->cals[i].type == GD_CAL_OFFSET_LOGNORMAL_NODE) ? p1 : 0.0;
                     double lm = (cs->cals[i].type == GD_CAL_OFFSET_LOGNORMAL_NODE) ? p2 : p1;
                     double ls = (cs->cals[i].type == GD_CAL_OFFSET_LOGNORMAL_NODE) ? cs->cals[i].p3 : p2;
                     double lo = offset;
-                    double hi = offset + exp(lm + 5.0 * ls);
+                    double hi = offset + exp(lm + GD_CAL_SUPPORT_SD * ls);
                     if (lo > cs->node_lo[idx]) cs->node_lo[idx] = lo;
                     if (hi < cs->node_hi[idx]) cs->node_hi[idx] = hi;
                 }
@@ -314,8 +364,17 @@ double gd_cal_logprior(const gd_calibration *cal, double age)
         case GD_CAL_UNIFORM_NODE:
             /* Degenerate/inverted bounds carry no density. */
             if (!(p2 > p1)) return -HUGE_VAL;
-            if (age < p1 || age > p2) return -HUGE_VAL;
-            return -log(p2 - p1);
+            if (cal->is_hard) {
+                if (age < p1 || age > p2) return -HUGE_VAL;
+                return -log(p2 - p1);
+            }
+            {
+                double base = log1p(-2.0 * GD_CAL_SOFT_TAIL) - log(p2 - p1);
+                double sc = soft_uniform_scale(p1, p2);
+                double z = (age < p1) ? (p1 - age) / sc
+                         : (age > p2) ? (age - p2) / sc : 0.0;
+                return base - 0.5 * z * z;
+            }
         case GD_CAL_NORMAL_NODE:
             /* A non-positive sd would divide by zero / take log of <= 0. */
             if (!(p2 > 0.0)) return -HUGE_VAL;

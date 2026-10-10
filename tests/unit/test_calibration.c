@@ -95,11 +95,12 @@ TEST(test_cal_propagate_feasible)
     CHECK(t != NULL);
     gd_calibration_set *cs = gd_calset_create(2, &err);
     CHECK(cs != NULL);
-    /* Root: uniform [2000, 5000]. */
+    /* Root: hard uniform [2000, 5000]. */
     cs->cals[0].target_id = dup_str("romance_root");
     cs->cals[0].type = GD_CAL_UNIFORM_NODE;
     cs->cals[0].p1 = 2000;
     cs->cals[0].p2 = 5000;
+    cs->cals[0].is_hard = true;
     /* Italian tip: fixed at 0 (modern). */
     cs->cals[1].target_id = dup_str("italian");
     cs->cals[1].type = GD_CAL_FIXED_TIP;
@@ -239,12 +240,80 @@ TEST(test_cal_logprior_normal)
 
 TEST(test_cal_logprior_uniform)
 {
-    gd_calibration cal = {NULL, NULL, GD_CAL_UNIFORM_NODE, 2000, 5000, 0, 0, NULL, 0, 0};
+    gd_calibration cal = {NULL, NULL, GD_CAL_UNIFORM_NODE, 2000, 5000, 0, 1, NULL, 0, 0};
     /* Inside: -log(3000). */
     CHECK_APPROX(gd_cal_logprior(&cal, 3000), -log(3000), 1e-12);
     /* Outside: -inf. */
     CHECK(gd_cal_logprior(&cal, 1000) == -HUGE_VAL);
     CHECK(gd_cal_logprior(&cal, 6000) == -HUGE_VAL);
+}
+
+/* E0.5: a soft uniform (is_hard = 0) is flat inside, has tails outside, and
+ * integrates to one with 2.5% of its mass beyond each end. */
+TEST(test_cal_logprior_soft_uniform)
+{
+    gd_calibration cal = {NULL, NULL, GD_CAL_UNIFORM_NODE, 2000, 5000, 0, 0, NULL, 0, 0};
+    CHECK_APPROX(gd_cal_logprior(&cal, 3000), log(0.95 / 3000.0), 1e-12);
+    CHECK_APPROX(gd_cal_logprior(&cal, 2000), gd_cal_logprior(&cal, 4999), 1e-12);
+    CHECK(gd_is_finite(gd_cal_logprior(&cal, 1900)));
+    CHECK(gd_cal_logprior(&cal, 1900) < gd_cal_logprior(&cal, 2000));
+    double below = 0.0, inside = 0.0, above = 0.0, h = 0.05;
+    for (double x = -2000.0 + 0.5 * h; x < 9000.0; x += h) {
+        double d = exp(gd_cal_logprior(&cal, x)) * h;
+        if (x < 2000.0) below += d; else if (x > 5000.0) above += d; else inside += d;
+    }
+    CHECK_APPROX(below, 0.025, 1e-6);
+    CHECK_APPROX(above, 0.025, 1e-6);
+    CHECK_APPROX(inside, 0.95, 1e-6);
+}
+
+/* E0.3: a normal_node is in years, so its sampling window is mean +/- 6 sd,
+ * not exp(mean + 5 sd). */
+TEST(test_cal_normal_node_window)
+{
+    gd_error err = GD_ERROR_INIT;
+    gd_tree *t = make_romance_tree(&err);
+    CHECK(t != NULL);
+    gd_calibration_set *cs = gd_calset_create(1, &err);
+    cs->cals[0].target_id = dup_str("romance_root");
+    cs->cals[0].type = GD_CAL_NORMAL_NODE;
+    cs->cals[0].p1 = 2000;
+    cs->cals[0].p2 = 200;
+    CHECK(gd_calibrations_resolve(cs, t, &err) == 0);
+    CHECK(gd_calibrations_propagate(cs, t, &err) == 0);
+    size_t root = gd_tree_find_label(t, "romance_root");
+    double lo = cs->node_lo[root], hi = cs->node_hi[root];
+    gd_calset_destroy(cs);
+    gd_tree_destroy(t);
+    CHECK_APPROX(lo, 800.0, 1e-9);
+    CHECK_APPROX(hi, 3200.0, 1e-9);
+}
+
+/* E0.2: a tip that no calibration mentions is extant: fixed at age 0. A tip
+ * with any calibration of its own is not touched. */
+TEST(test_cal_untargeted_tips_are_extant)
+{
+    gd_error err = GD_ERROR_INIT;
+    gd_tree *t = make_romance_tree(&err);
+    CHECK(t != NULL);
+    gd_calibration_set *cs = gd_calset_create(1, &err);
+    cs->cals[0].target_id = dup_str("romanian");
+    cs->cals[0].type = GD_CAL_HARD_MINIMUM;
+    cs->cals[0].p1 = 100;
+    cs->cals[0].is_hard = true;
+    CHECK(gd_calibrations_resolve(cs, t, &err) == 0);
+    CHECK(gd_calibrations_propagate(cs, t, &err) == 0);
+    size_t it = gd_tree_find_label(t, "italian");
+    size_t sp = gd_tree_find_label(t, "spanish");
+    size_t ro = gd_tree_find_label(t, "romanian");
+    double it_hi = cs->node_hi[it], sp_hi = cs->node_hi[sp];
+    double ro_lo = cs->node_lo[ro], ro_hi = cs->node_hi[ro];
+    gd_calset_destroy(cs);
+    gd_tree_destroy(t);
+    CHECK(it_hi == 0.0);
+    CHECK(sp_hi == 0.0);
+    CHECK(ro_lo == 100.0);
+    CHECK(ro_hi > 100.0);
 }
 
 TEST(test_cal_logprior_fixed_tip)
@@ -282,6 +351,9 @@ static void run_tests(void)
     RUN(test_cal_sample_prior_order);
     RUN(test_cal_logprior_normal);
     RUN(test_cal_logprior_uniform);
+    RUN(test_cal_logprior_soft_uniform);
+    RUN(test_cal_normal_node_window);
+    RUN(test_cal_untargeted_tips_are_extant);
     RUN(test_cal_logprior_fixed_tip);
     RUN(test_cal_mrca_extraction);
 }

@@ -22,6 +22,24 @@ columns and example numbers are expected throughout 0.x and are listed here.
   a language the forms file never mentions, or with two languages sharing no
   observed concept, is an error instead of returning the prior. `date-tree`
   fails when a tree tip has no observed form, naming the tip.
+- **Uncalibrated tips are extant** (E0.2). A tip that no calibration names is
+  fixed at age 0. It used to be free on `[0, 1e15]`, so a "modern" language
+  could drift into the past and absorb change that belongs to internal
+  branches. Leave-one-out on a tip date now replaces the withheld row with a
+  bare minimum of 0, so the tip is still estimated rather than made extant.
+- **`normal_node` support** (E0.3) is `mean ± 6 sd` in years. It was
+  `exp(mean + 5 sd)`, as if the mean were a log-mean. Lognormal windows are
+  cut at 6 log-sd (about 1e-9 of the mass) instead of 5.
+- **`--cal-widen` on `offset_lognormal_node`** (E0.4) multiplies the log-sd
+  `p3`. It multiplied the log-mean `p2`, which moved the calibration (by
+  orders of magnitude) instead of widening it. Soft minimum and maximum
+  bounds are now widened too.
+- **`is_hard` is honoured** (E0.5). It was read and ignored, so every
+  `uniform_node` was hard. `uniform_node` with `is_hard=0` is now a soft
+  window with 2.5% tails, and `1` or `.` stays hard. For every other type
+  `is_hard` must agree with the type or the table is refused. *Changes the
+  romance example's calibration-sensitivity outputs, whose two windows are
+  soft.*
 - **Language count and tip resolution** (E0.10). `n_languages` counts tips
   instead of assuming a binary tree (`(nnodes + 1) / 2`). A forms language
   that matches an internal node label is an error.
