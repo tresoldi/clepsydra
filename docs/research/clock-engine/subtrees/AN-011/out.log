@@ -1,0 +1,2 @@
+clepsydra date-tree: 6 tips/10 nodes, 210 concepts, 4 chains x (3000 warmup + 3000 samples)
+wrote posterior_nodes.tsv, diagnostics.tsv, posterior_concepts.tsv, run_manifest.tsv to /home/tiagot/work/chl/clepsydra/docs/research/clock-engine/subtrees/AN-011/out/

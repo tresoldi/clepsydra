@@ -1,0 +1,178 @@
+analysis	quantity	estimate	lo95	hi95	note
+main	n_nodes	15	.	.	
+main	F_families	6	.	.	aust1307;drav1251;indo1319;pama1250;tung1282;ural1272
+main	reml_sigma_f	0.4400	0.0000	1.4000	profile likelihood
+main	reml_tau	0.4100	0.2200	0.7900	profile likelihood
+main	reml_mu	-8.2857	-8.7556	-7.8159	ln rate per year
+main	bayes_sigma_f	0.4700	0.0300	1.3400	posterior median, HalfNormal(1.0) on sigma_f and tau
+main	bayes_tau	0.4600	0.2400	0.8400	posterior median, HalfNormal(1.0) on sigma_f and tau
+main	bayes_sigma_tot	0.7023	0.3982	1.4286	posterior median, HalfNormal(1.0) on sigma_f and tau
+main	bayes_mu	-8.3154	-8.8990	-7.6246	posterior median, HalfNormal(1.0) on sigma_f and tau
+main	depth_slope	-0.1456	-0.6315	0.3403	OLS of b on ln T (unweighted)
+prior0.5	n_nodes	15	.	.	
+prior0.5	F_families	6	.	.	aust1307;drav1251;indo1319;pama1250;tung1282;ural1272
+prior0.5	reml_sigma_f	0.4400	0.0000	1.4000	profile likelihood
+prior0.5	reml_tau	0.4100	0.2200	0.7900	profile likelihood
+prior0.5	reml_mu	-8.2857	-8.7556	-7.8159	ln rate per year
+prior0.5	bayes_sigma_f	0.3700	0.0200	0.9500	posterior median, HalfNormal(0.5) on sigma_f and tau
+prior0.5	bayes_tau	0.4400	0.2400	0.7700	posterior median, HalfNormal(0.5) on sigma_f and tau
+prior0.5	bayes_sigma_tot	0.6185	0.3720	1.0651	posterior median, HalfNormal(0.5) on sigma_f and tau
+prior0.5	bayes_mu	-8.3260	-8.8027	-7.7613	posterior median, HalfNormal(0.5) on sigma_f and tau
+prior0.5	depth_slope	-0.1456	-0.6315	0.3403	OLS of b on ln T (unweighted)
+main	width95_factor_at_2000y	5.8047	332.0498	11188.1298	posterior predictive for a new family's node, median 2000 y, s_L=0.143
+converged_only	n_nodes	13	.	.	
+converged_only	F_families	6	.	.	aust1307;drav1251;indo1319;pama1250;tung1282;ural1272
+converged_only	reml_sigma_f	0.4600	0.0000	1.4400	profile likelihood
+converged_only	reml_tau	0.4400	0.2300	0.9000	profile likelihood
+converged_only	reml_mu	-8.2981	-8.7924	-7.8037	ln rate per year
+converged_only	bayes_sigma_f	0.4700	0.0300	1.3500	posterior median, HalfNormal(1.0) on sigma_f and tau
+converged_only	bayes_tau	0.5000	0.2600	0.9500	posterior median, HalfNormal(1.0) on sigma_f and tau
+converged_only	bayes_sigma_tot	0.7428	0.4206	1.4714	posterior median, HalfNormal(1.0) on sigma_f and tau
+converged_only	bayes_mu	-8.3239	-8.9377	-7.6223	posterior median, HalfNormal(1.0) on sigma_f and tau
+converged_only	depth_slope	-0.1607	-0.6878	0.3664	OLS of b on ln T (unweighted)
+familymeans	bayes_sd_between_family_means	0.7906	0.3342	1.7281	one mean b per family; sigma_f not separable from tau here
+censored	ml_sigma_f	0.4579	0.0000	1.5000	ML, two-sided + 9 one-sided nodes; F=6
+censored	ml_tau	0.3497	.	.	
+censored	ml_mu	-8.3261	.	.	
+vs_pilot	mean_beta_engine_minus_pilot_T1	0.2253	-0.1913	1.4991	lo95/hi95 here are min and max over nodes
+vs_pilot	corr_beta_engine_pilot_T1	0.8109	.	.	15 two-sided nodes
+vs_pilot	sd_beta_engine	0.6424	.	.	raw SD over nodes; pilot T1: 0.6744
+lofo_climatological	n_nodes	15	.	.	
+lofo_climatological	n_families	6	.	.	
+lofo_climatological	log_score_node_mean	-1.3212	.	.	
+lofo_climatological	log_score_family_mean	-1.7723	.	.	
+lofo_climatological	interval_score_node_mean	5.9525	.	.	
+lofo_climatological	interval_score_family_mean	9.0372	.	.	
+lofo_climatological	cov50_node_mean	0.7130	.	.	
+lofo_climatological	cov50_family_mean	0.5678	.	.	
+lofo_climatological	cov80_node_mean	0.8376	.	.	
+lofo_climatological	cov80_family_mean	0.7050	.	.	
+lofo_climatological	cov95_node_mean	0.9333	.	.	
+lofo_climatological	cov95_family_mean	0.8333	.	.	
+lofo_climatological	pit_node_mean	0.5190	.	.	
+lofo_climatological	pit_family_mean	0.4911	.	.	
+lofo_climatological	width95_factor_node_mean	6.5175	.	.	
+lofo_climatological	width95_factor_family_mean	5.4128	.	.	
+lofo_climatological	sum_z2	18.4578	.	.	
+lofo_clock_bayes	n_nodes	15	.	.	
+lofo_clock_bayes	n_families	6	.	.	
+lofo_clock_bayes	log_score_node_mean	-1.1746	.	.	
+lofo_clock_bayes	log_score_family_mean	-1.3265	.	.	
+lofo_clock_bayes	interval_score_node_mean	4.0274	.	.	
+lofo_clock_bayes	interval_score_family_mean	3.9153	.	.	
+lofo_clock_bayes	cov50_node_mean	0.5796	.	.	
+lofo_clock_bayes	cov50_family_mean	0.3858	.	.	
+lofo_clock_bayes	cov80_node_mean	0.8706	.	.	
+lofo_clock_bayes	cov80_family_mean	0.7595	.	.	
+lofo_clock_bayes	cov95_node_mean	1.0000	.	.	
+lofo_clock_bayes	cov95_family_mean	1.0000	.	.	
+lofo_clock_bayes	pit_node_mean	0.5656	.	.	
+lofo_clock_bayes	pit_family_mean	0.4724	.	.	
+lofo_clock_bayes	width95_factor_node_mean	7.5344	.	.	
+lofo_clock_bayes	width95_factor_family_mean	7.1460	.	.	
+lofo_clock_bayes	sum_z2	8.3554	.	.	
+lofo_clock_reml	n_nodes	15	.	.	
+lofo_clock_reml	n_families	6	.	.	
+lofo_clock_reml	log_score_node_mean	-1.1874	.	.	
+lofo_clock_reml	log_score_family_mean	-1.3752	.	.	
+lofo_clock_reml	interval_score_node_mean	4.0454	.	.	
+lofo_clock_reml	interval_score_family_mean	4.0633	.	.	
+lofo_clock_reml	cov50_node_mean	0.5497	.	.	
+lofo_clock_reml	cov50_family_mean	0.3757	.	.	
+lofo_clock_reml	cov80_node_mean	0.7905	.	.	
+lofo_clock_reml	cov80_family_mean	0.7147	.	.	
+lofo_clock_reml	cov95_node_mean	1.0000	.	.	
+lofo_clock_reml	cov95_family_mean	1.0000	.	.	
+lofo_clock_reml	pit_node_mean	0.5820	.	.	
+lofo_clock_reml	pit_family_mean	0.4797	.	.	
+lofo_clock_reml	width95_factor_node_mean	7.8474	.	.	
+lofo_clock_reml	width95_factor_family_mean	7.8826	.	.	
+lofo_clock_reml	sum_z2	8.1863	.	.	
+lofo_family_size	n_nodes	15	.	.	
+lofo_family_size	n_families	6	.	.	
+lofo_family_size	log_score_node_mean	-1.0382	.	.	
+lofo_family_size	log_score_family_mean	-1.5327	.	.	
+lofo_family_size	interval_score_node_mean	4.4942	.	.	
+lofo_family_size	interval_score_family_mean	6.5014	.	.	
+lofo_family_size	cov50_node_mean	0.6302	.	.	
+lofo_family_size	cov50_family_mean	0.4154	.	.	
+lofo_family_size	cov80_node_mean	0.8818	.	.	
+lofo_family_size	cov80_family_mean	0.7045	.	.	
+lofo_family_size	cov95_node_mean	0.9043	.	.	
+lofo_family_size	cov95_family_mean	0.7609	.	.	
+lofo_family_size	pit_node_mean	0.5112	.	.	
+lofo_family_size	pit_family_mean	0.4655	.	.	
+lofo_family_size	width95_factor_node_mean	4.5115	.	.	
+lofo_family_size	width95_factor_family_mean	3.8319	.	.	
+lofo_family_size	sum_z2	17.0645	.	.	
+lofo_old_default	n_nodes	15	.	.	
+lofo_old_default	n_families	6	.	.	
+lofo_old_default	log_score_node_mean	-1.1211	.	.	
+lofo_old_default	log_score_family_mean	-1.3678	.	.	
+lofo_old_default	interval_score_node_mean	3.3092	.	.	
+lofo_old_default	interval_score_family_mean	3.3442	.	.	
+lofo_old_default	cov50_node_mean	0.6779	.	.	
+lofo_old_default	cov50_family_mean	0.4796	.	.	
+lofo_old_default	cov80_node_mean	0.7956	.	.	
+lofo_old_default	cov80_family_mean	0.6281	.	.	
+lofo_old_default	cov95_node_mean	0.9765	.	.	
+lofo_old_default	cov95_family_mean	0.9413	.	.	
+lofo_old_default	pit_node_mean	0.3628	.	.	
+lofo_old_default	pit_family_mean	0.3136	.	.	
+lofo_old_default	width95_factor_node_mean	5.2521	.	.	
+lofo_old_default	width95_factor_family_mean	5.3483	.	.	
+lofo_old_default	sum_z2	11.4355	.	.	
+lofo_skill	clock_bayes_minus_climatological	0.4458	-0.4850	1.8911	family-weighted mean log-score difference; family bootstrap, F=6
+lofo_skill	clock_bayes_minus_family_size	0.2062	-0.5828	1.3977	family-weighted mean log-score difference; family bootstrap, F=6
+lofo_skill	clock_bayes_minus_old_default	0.0413	-0.3145	0.3509	family-weighted mean log-score difference; family bootstrap, F=6
+lofo_one_sided_climatological	censored_log_score_node_mean	-0.8740	.	.	9 one-sided held-out nodes
+lofo_one_sided_clock_bayes	censored_log_score_node_mean	-0.5471	.	.	9 one-sided held-out nodes
+lofo_one_sided_clock_reml	censored_log_score_node_mean	-0.5523	.	.	9 one-sided held-out nodes
+lofo_one_sided_family_size	censored_log_score_node_mean	-0.6618	.	.	9 one-sided held-out nodes
+lofo_one_sided_old_default	censored_log_score_node_mean	-0.3020	.	.	9 one-sided held-out nodes
+pilot_main_T1	reml_sigma_f	0.0000	0.0000	1.0800	copied from docs/research/clock-pilot/results.tsv
+pilot_main_T1	reml_tau	0.6400	0.4100	1.0000	copied from docs/research/clock-pilot/results.tsv
+pilot_main_T1	bayes_sigma_f	0.3300	0.0100	1.1800	copied from docs/research/clock-pilot/results.tsv
+pilot_main_T1	bayes_tau	0.6400	0.4200	1.0400	copied from docs/research/clock-pilot/results.tsv
+pilot_main_T1	bayes_sigma_tot	0.7737	0.5025	1.3960	copied from docs/research/clock-pilot/results.tsv
+pilot_main_T1	bayes_mu	-8.5947	-9.1394	-7.9631	copied from docs/research/clock-pilot/results.tsv
+pilot_main_g1	reml_sigma_f	0.0000	0.0000	1.3000	copied from docs/research/clock-pilot/results.tsv
+pilot_main_g1	reml_tau	0.7700	0.5000	1.2000	copied from docs/research/clock-pilot/results.tsv
+pilot_main_g1	bayes_sigma_f	0.3700	0.0100	1.3100	copied from docs/research/clock-pilot/results.tsv
+pilot_main_g1	bayes_tau	0.7700	0.5100	1.2200	copied from docs/research/clock-pilot/results.tsv
+pilot_main_g1	bayes_sigma_tot	0.9122	0.6001	1.5852	copied from docs/research/clock-pilot/results.tsv
+pilot_main_g1	bayes_mu	-8.2791	-8.9024	-7.5467	copied from docs/research/clock-pilot/results.tsv
+pilot_main_T1	width95_factor_at_2000y	6.1093	319.6029	11928.5785	copied from docs/research/clock-pilot/results.tsv
+pilot_main_g1	width95_factor_at_2000y	8.1891	237.0780	15898.6340	copied from docs/research/clock-pilot/results.tsv
+pilot_lofo_climatological	log_score_family_mean	-1.7723	.	.	copied from docs/research/clock-pilot/results.tsv
+pilot_lofo_climatological	cov80_family_mean	0.7050	.	.	copied from docs/research/clock-pilot/results.tsv
+pilot_lofo_climatological	cov95_family_mean	0.8333	.	.	copied from docs/research/clock-pilot/results.tsv
+pilot_lofo_clock_bayes_T1	log_score_family_mean	-1.3549	.	.	copied from docs/research/clock-pilot/results.tsv
+pilot_lofo_clock_bayes_T1	cov80_family_mean	0.7704	.	.	copied from docs/research/clock-pilot/results.tsv
+pilot_lofo_clock_bayes_T1	cov95_family_mean	1.0000	.	.	copied from docs/research/clock-pilot/results.tsv
+pilot_lofo_clock_bayes_g1	log_score_family_mean	-1.5175	.	.	copied from docs/research/clock-pilot/results.tsv
+pilot_lofo_clock_bayes_g1	cov80_family_mean	0.8216	.	.	copied from docs/research/clock-pilot/results.tsv
+pilot_lofo_clock_bayes_g1	cov95_family_mean	1.0000	.	.	copied from docs/research/clock-pilot/results.tsv
+pilot_lofo_clock_reml_T1	log_score_family_mean	-1.3631	.	.	copied from docs/research/clock-pilot/results.tsv
+pilot_lofo_clock_reml_T1	cov80_family_mean	0.7474	.	.	copied from docs/research/clock-pilot/results.tsv
+pilot_lofo_clock_reml_T1	cov95_family_mean	1.0000	.	.	copied from docs/research/clock-pilot/results.tsv
+pilot_lofo_clock_reml_g1	log_score_family_mean	-1.5595	.	.	copied from docs/research/clock-pilot/results.tsv
+pilot_lofo_clock_reml_g1	cov80_family_mean	0.7624	.	.	copied from docs/research/clock-pilot/results.tsv
+pilot_lofo_clock_reml_g1	cov95_family_mean	1.0000	.	.	copied from docs/research/clock-pilot/results.tsv
+pilot_lofo_family_size	log_score_family_mean	-1.5327	.	.	copied from docs/research/clock-pilot/results.tsv
+pilot_lofo_family_size	cov80_family_mean	0.7045	.	.	copied from docs/research/clock-pilot/results.tsv
+pilot_lofo_family_size	cov95_family_mean	0.7609	.	.	copied from docs/research/clock-pilot/results.tsv
+pilot_lofo_old_default_T1	log_score_family_mean	-1.2314	.	.	copied from docs/research/clock-pilot/results.tsv
+pilot_lofo_old_default_T1	cov80_family_mean	0.7080	.	.	copied from docs/research/clock-pilot/results.tsv
+pilot_lofo_old_default_T1	cov95_family_mean	0.9868	.	.	copied from docs/research/clock-pilot/results.tsv
+pilot_lofo_skill	clock_bayes_T1_minus_climatological	0.4174	-0.2857	1.5561	copied from docs/research/clock-pilot/results.tsv
+pilot_lofo_skill	clock_bayes_T1_minus_family_size	0.1778	-0.5524	1.1522	copied from docs/research/clock-pilot/results.tsv
+pilot_lofo_skill	clock_bayes_T1_minus_old_default_T1	-0.1235	-0.2408	-0.0073	copied from docs/research/clock-pilot/results.tsv
+pilot_lofo_skill	clock_bayes_g1_minus_climatological	0.2549	-0.6034	1.7161	copied from docs/research/clock-pilot/results.tsv
+pilot_lofo_skill	clock_bayes_g1_minus_family_size	0.0152	-0.7296	1.2362	copied from docs/research/clock-pilot/results.tsv
+pilot_lofo_skill	clock_bayes_g1_minus_old_default_T1	-0.2861	-0.5939	0.1084	copied from docs/research/clock-pilot/results.tsv
+run	n_nodes_dated	24	.	.	converged: 22; unconverged: IE-GER-04,IE-CEL-02
+run	n_reruns	5	.	.	runs rerun with 2x samples
+run	dating_wall_hours	1.4476	.	.	sum of clepsydra wall times
+provenance	glottolog	glottolog-glottolog-cldf-4dbf078	.	.	sha256=e954bd77ac4e287f8c4588bd2216bdd662eeb86469b2c528f734319ba176a433
+provenance	clepsydra	clepsydra 0.2.0 8654480	.	.	from run_manifest.tsv

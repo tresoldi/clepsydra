@@ -1,0 +1,14 @@
+statistic	observed	rep_mean	rep_lo90	rep_hi90	ppp
+classes_per_concept	2.333	2.32	2.114	2.505	0.477
+singleton_share	0.5633	0.5853	0.5311	0.6307	0.760
+incompatible_share	0.04762	0.003452	0	0.01429	0.000
+sharing:L_Mangareva|L_Rapanui	0.5075	0.5805	0.5075	0.6482	0.960
+sharing:L_Mangareva|L_NorthMarquesan	0.575	0.556	0.5	0.62	0.307
+sharing:L_Mangareva|L_Hawaiian	0.5468	0.547	0.4828	0.6108	0.497
+sharing:L_Mangareva|L_Maori	0.5369	0.5419	0.4778	0.601	0.517
+sharing:L_Rapanui|L_NorthMarquesan	0.505	0.5572	0.4851	0.6287	0.900
+sharing:L_Rapanui|L_Hawaiian	0.5245	0.547	0.4706	0.6176	0.710
+sharing:L_Rapanui|L_Maori	0.549	0.5439	0.4706	0.6225	0.463
+sharing:L_NorthMarquesan|L_Hawaiian	0.5894	0.5481	0.4831	0.628	0.185
+sharing:L_NorthMarquesan|L_Maori	0.5507	0.5456	0.4783	0.6232	0.395
+sharing:L_Hawaiian|L_Maori	0.6095	0.6242	0.5429	0.7	0.630

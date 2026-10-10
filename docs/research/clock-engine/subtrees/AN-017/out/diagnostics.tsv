@@ -1,0 +1,7 @@
+param	type	mean	sd	rhat	ess_bulk	ess_tail	mcse_mean	acceptance
+log_rate	log_rate	-8.813	0.7998	1.001	2883	2977	0.01492	0.438
+log_sigma_c	log_sigma_c	-0.465	0.2325	1.002	1911	1692	0.005666	0.443
+logit_eps	logit_eps	-4.586	1.236	1.001	2084	2080	0.0288	0.438
+age:east2896	age	2902	2885	1.001	2863	2916	56.28	0.448
+age:target	age	2784	2750	1.001	2864	2951	53.77	0.431
+age:tahi1244	age	1175	1177	1.001	2890	3215	22.78	0.441

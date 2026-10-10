@@ -1,0 +1,7 @@
+statistic	observed	rep_mean	rep_lo90	rep_hi90	ppp
+classes_per_concept	1.48	1.474	1.32	1.65	0.455
+singleton_share	0.3784	0.3681	0.2741	0.4667	0.385
+incompatible_share	0	0	0	0	0.500
+sharing:L_Kodava|L_Malayalam	0.66	0.6453	0.53	0.76	0.427
+sharing:L_Kodava|L_Tamil	0.62	0.6444	0.53	0.76	0.600
+sharing:L_Malayalam|L_Tamil	0.84	0.8368	0.74	0.91	0.485

@@ -80,6 +80,16 @@ Four things follow from the research and shape everything below.
   - the lexical root is 0.54 ± 0.05 either way;
   - the clock sets ~100% of the calendar width, and the report says so.
 
+- **M1/M2 at pilot scale: done, and a no-go again**
+  (`docs/research/clock-engine.md`).
+  - The full engine was run on Arawan-sized Glottolog subtrees around each
+    of the 15 two-sided nodes, with no calendar information.
+  - It gives σ_tot = 0.70 (95% 0.40–1.43) against the pilot's 0.77. The
+    engine's node rates agree with the pilot's (r = 0.81). The crude
+    pairwise estimator was not what made the clock spread large.
+  - The 95% width at 2 ka is ×/÷ 5.8.
+  - Leave one family out, the clock beats the trivial baselines on point
+    estimate, but every skill interval includes zero.
 - **E2: in progress.**
   - Done:
     - E2.1: integrated concept rates, 24-point rule, pattern compression.

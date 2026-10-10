@@ -1,0 +1,2 @@
+node	mean_bp	median_bp	sd	hpd90_lo_bp	hpd90_hi_bp	rhat	ess_bulk	ess_tail	lexical_median	lexical_hpd90_lo	lexical_hpd90_hi	relative_median	relative_hpd90_lo	relative_hpd90_hi	prior_median_bp	prior_hpd90_lo_bp	prior_hpd90_hi_bp	prior_overlap
+target	4221.3	2576.7	6500.3	181.6	8671.4	1.005	546	775	0.3472	0.2106	0.7183	1.000	1.000	1.000	2050.0	7.6	19320.7	0.694

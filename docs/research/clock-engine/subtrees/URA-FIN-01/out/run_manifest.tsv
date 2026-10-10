@@ -1,0 +1,40 @@
+key	value
+program	clepsydra 0.2.0
+git_commit	8654480
+compiler	15.3.1 20260722 (Red Hat 15.3.1-1)
+platform	linux
+build_mode	native
+model	T1_novel_state
+input_checksum_tree	3fd7a929a03ce181
+input_checksum_forms	6db6b97b1c6535d6
+input_checksum_calibrations	3245354a6668c08e
+n_languages	8
+n_nodes	14
+n_concepts	313
+chains	4
+warmup	3000
+samples	3000
+seed	20261010
+rate_logmean_per_year	-8.8000
+rate_logsd	0.8000
+contamination_epsilon	sampled, Beta(1, 19); posterior centre 0.0034
+branch_rate_confounded	0
+missing_cognate_rows	0
+loan_rows_excluded	0 (threshold 0.50)
+incompatible_concepts	49 of 313 (excluded: no T1 history on this topology fits)
+scale_source	clock_prior
+rate_contraction	-0.008
+scale_from_prior	1
+lexical_root_median	1.3881
+lexical_root_hpd90	1.1524-1.6417
+root_lex_prior	lognormal(-1.200, 1.500)
+root_var_share_data	0.017
+root_var_share_clock	0.985
+sensitivity_root_age	clock=0.472;lexroot=0.009;calibrations=nan;likelihood=0.021
+sensitivity_lexical_root	clock=0.020;lexroot=0.073;calibrations=nan;likelihood=0.481
+converged	1
+n_unconverged_params	0
+max_rhat	1.0031
+min_ess_bulk	1142
+min_ess_tail	1365
+note	absolute ages depend on the rate prior and calibrations; see docs/scientific-methods.md

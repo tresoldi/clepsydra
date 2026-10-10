@@ -1,0 +1,5 @@
+statistic	observed	rep_mean	rep_lo90	rep_hi90	ppp
+classes_per_concept	1.247	1.244	1.171	1.318	0.463
+singleton_share	0.3962	0.3909	0.2915	0.4821	0.463
+incompatible_share	0	0	0	0	0.500
+sharing:L_115|L_38	0.7529	0.7556	0.6824	0.8294	0.537

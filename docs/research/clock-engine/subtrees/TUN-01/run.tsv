@@ -1,0 +1,3 @@
+run	samples	exit	wall_s
+out	3000	3	4.9
+out_rerun	6000	0	7.0

@@ -147,7 +147,12 @@ def load(g: Glottolog) -> tuple[list[Calib], list[dict]]:
         out.append(cal)
     if len(out) != len(cur):
         extra = set(cur) - {c.id for c in out}
-        raise SystemExit(f"curation rows not in selection: {sorted(extra)}")
+        # A row demoted below grade B after curation (D1.2: circular dates)
+        # leaves the selection; its curation row must already exclude it.
+        grade = {r["id"]: r["grade"] for r in rows}
+        stale = {i for i in extra if grade.get(i) in ("C", "U") and cur[i]["use"] == "exclude"}
+        if extra - stale:
+            raise SystemExit(f"curation rows not in selection: {sorted(extra - stale)}")
     return out, rows
 
 

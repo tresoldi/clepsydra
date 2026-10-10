@@ -1,0 +1,3 @@
+clepsydra date-tree: 2 tips/3 nodes, 170 concepts, 4 chains x (3000 warmup + 3000 samples)
+wrote posterior_nodes.tsv, diagnostics.tsv, posterior_concepts.tsv, run_manifest.tsv to /home/tiagot/work/chl/clepsydra/docs/research/clock-engine/subtrees/IE-CEL-02/out/
+error: NOT CONVERGED: 1 parameter(s) fail (max R-hat 1.018, min bulk ESS 191, min tail ESS 137; need R-hat < 1.01 and ESS >= 400). See diagnostics.tsv; run longer or more chains.
