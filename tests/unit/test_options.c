@@ -214,7 +214,7 @@ TEST(test_options_cover_the_configurable_fields)
      * than letting it be forgotten. */
     size_t n;
     (void)gd_options_tree(&n);
-    CHECK(n == 14);
+    CHECK(n == 17);
     (void)gd_options_pair(&n);
     CHECK(n == 6);
 }

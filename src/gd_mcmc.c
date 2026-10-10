@@ -19,6 +19,7 @@
 #include "gd_calibration.h"
 #include "gd_diagnostics.h"
 #include "gd_rng.h"
+#include "gd_tree_prior.h"
 #include "gd.h"
 
 #include <assert.h>
@@ -34,7 +35,7 @@
 #define GD_MCMC_ADAPT_T0      10.0
 #define GD_MCMC_FIX_TOL       1e-9
 #define GD_MCMC_CKPT_MAGIC    0x394d4447u    /* "GDM9" */
-#define GD_MCMC_CKPT_VERSION  3u
+#define GD_MCMC_CKPT_VERSION  4u
 #define GD_MCMC_CONFOUND_THRESH 0.6          /* |corr| beyond this => confounded */
 
 /* ------------------------------------------------------------- parameters */
@@ -72,10 +73,20 @@ struct gd_mcmc_chain {
 
     /* Block age-scaling move state. */
     int     have_block;
-    size_t  n_age;            /* number of free AGE params */
+    size_t  n_age;            /* free AGE params of internal nodes */
     size_t *age_params;       /* n_age indices into params[] */
+    bool   *scaled;           /* nnodes: does the scale move move this node? */
     double *age_scratch;      /* n_age; proposed ages */
     double  block_step, block_adapt_count, block_acc, block_prop;
+
+    /* Clock-preserving move state. */
+    int     have_clock;
+    double  clock_step, clock_adapt_count, clock_acc, clock_prop;
+
+    /* Proper prior on the ages (NULL under GD_TREE_PRIOR_NONE), and its
+     * current value, kept as part of cur_logprior. */
+    gd_tree_prior *tp;
+    double  cur_tp;
 
     size_t cap, n_stored;
     double *samples, *sample_ll, *pointwise, *pw_scratch;
@@ -123,7 +134,13 @@ void gd_mcmc_config_default(gd_mcmc_config *cfg)
     cfg->rate_logmean = -9.0;
     cfg->rate_logsd = 1.0;
     cfg->rate_step0 = 0.3;
-    cfg->age_step0_frac = 0.1;
+    cfg->tree_prior = GD_TREE_PRIOR_UNIFORM;
+    cfg->root_lex_logmean = -1.2;   /* exp(-1.2) = 0.30 replacements per concept */
+    cfg->root_lex_logsd = 1.5;
+    cfg->prior_only = false;
+    cfg->age_step0_frac = 0.3;
+    cfg->clock_move = true;
+    cfg->clock_step0 = 0.10;
     cfg->block_age_scaling = false;
     cfg->block_step0 = 0.10;
     cfg->sample_branch = false;
@@ -168,6 +185,12 @@ static int chain_eval_loglik(const gd_mcmc_chain *ch, double *pw, double *out,
 {
     gd_mcmc_state st;
     assert(ch != NULL && ch->model != NULL && ch->model->loglik != NULL);
+    if (ch->cfg.prior_only) {
+        if (pw != NULL)
+            for (size_t c = 0; c < ch->nconcepts; c++) pw[c] = 0.0;
+        *out = 0.0;
+        return 0;
+    }
     fill_state(ch, &st);
     return ch->model->loglik(ch->model->ctx, ch->tree, &st, pw, out, err);
 }
@@ -210,6 +233,13 @@ static double node_logprior(const gd_calibration_set *cal, size_t v, double age)
         }
     }
     return s;
+}
+
+/* The proper age prior at the chain's current root age and rate. */
+static double tree_lp(const gd_mcmc_chain *ch)
+{
+    if (ch->tp == NULL) return 0.0;
+    return gd_tree_prior_logpdf(ch->tp, ch->tree->nodes[ch->tree->root].age, ch->logr);
 }
 
 /* Sum of branch-multiplier log-priors at a given sigma_b. */
@@ -256,7 +286,7 @@ static double chain_total_logprior(const gd_mcmc_chain *ch)
     double lp = 0.0;
     for (size_t p = 0; p < ch->nparam; p++)
         lp += param_logprior(ch, &ch->params[p]);
-    return lp;
+    return lp + tree_lp(ch);
 }
 
 /* -------------------------------------------------------------- lifecycle */
@@ -265,8 +295,10 @@ void gd_mcmc_chain_destroy(gd_mcmc_chain *ch)
 {
     if (ch == NULL) return;
     if (ch->rng != NULL) gd_rng_destroy(ch->rng);
+    gd_tree_prior_destroy(ch->tp);
     free(ch->params);
     free(ch->age_params);
+    free(ch->scaled);
     free(ch->age_scratch);
     free(ch->branch_logmult);
     free(ch->concept_dev);
@@ -374,28 +406,76 @@ gd_mcmc_chain *gd_mcmc_chain_create(const gd_mcmc_model *model, gd_tree *tree,
         return NULL;
     }
 
-    /* Draw initial ages from the prior (dispersion across chains). */
-    double *agebuf = (double *)gd_malloc_array_checked(tree->nnodes, sizeof(double), err);
-    if (agebuf == NULL) { gd_error_set(err, GD_E_NOMEM, "mcmc: init"); gd_mcmc_chain_destroy(ch); return NULL; }
     /* The calibration set is the caller's: a chain reads it and never marks
      * it feasible on the caller's behalf (it used to, which let an
      * unpropagated or contradictory set through to sampling). */
     if (!cal->feasible) {
-        free(agebuf);
         gd_error_set(err, GD_E_CALIBRATION,
                      "mcmc: calibrations are not marked feasible; propagate them first");
         gd_mcmc_chain_destroy(ch); return NULL;
     }
-    if (gd_cal_sample_prior(ch->rng, cal, tree, agebuf, err) != 0) {
-        free(agebuf); gd_mcmc_chain_destroy(ch); return NULL;
+
+    /* Initial rate, drawn first: the initial root is drawn through it. */
+    if (cfg->sample_rate)
+        ch->logr = cfg->rate_logmean + gd_rng_normal(ch->rng, 0.0, cfg->rate_logsd);
+
+    /* The age prior. */
+    if (cfg->tree_prior == GD_TREE_PRIOR_UNIFORM) {
+        bool *is_free = (bool *)gd_malloc_array_checked(tree->nnodes, sizeof(bool), err);
+        double *fixed = (double *)gd_malloc_array_checked(tree->nnodes, sizeof(double), err);
+        if (is_free == NULL || fixed == NULL) {
+            free(is_free); free(fixed);
+            gd_error_set(err, GD_E_NOMEM, "mcmc: tree prior"); gd_mcmc_chain_destroy(ch); return NULL;
+        }
+        for (size_t v = 0; v < tree->nnodes; v++) {
+            is_free[v] = (cal->node_hi[v] - cal->node_lo[v] > GD_MCMC_FIX_TOL);
+            fixed[v] = cal->node_lo[v];
+        }
+        ch->tp = gd_tree_prior_create(tree, is_free, fixed, cfg->root_lex_logmean,
+                                      cfg->root_lex_logsd, err);
+        free(is_free); free(fixed);
+        if (ch->tp == NULL) { gd_mcmc_chain_destroy(ch); return NULL; }
+    } else {
+        /* The flat measure is proper only inside bounded calibration windows. */
+        for (size_t v = 0; v < tree->nnodes; v++) {
+            if (cal->node_hi[v] - cal->node_lo[v] > GD_MCMC_FIX_TOL && !isfinite(cal->node_hi[v])) {
+                gd_error_set(err, GD_E_RANGE,
+                             "mcmc: tree prior 'none' needs every free age bounded above; "
+                             "the posterior would be improper");
+                gd_mcmc_chain_destroy(ch); return NULL;
+            }
+        }
     }
-    for (size_t i = 0; i < tree->nnodes; i++) tree->nodes[i].age = agebuf[i];
-    free(agebuf);
+
+    /* Initial ages, root first. Each free age is drawn inside the window its
+     * parent and calibrations leave it; the root, under the proper prior, as
+     * L / rho with L from the lexical-root prior. Different streams start
+     * different chains in different places. */
+    for (size_t i = 0; i < tree->nnodes; i++) {
+        size_t v = tree->preorder[i];
+        double lo = cal->node_lo[v], hi = cal->node_hi[v];
+        if (!(hi - lo > GD_MCMC_FIX_TOL)) { tree->nodes[v].age = lo; continue; }
+        size_t par = tree->nodes[v].parent;
+        if (v != tree->root && par != GD_NODE_NONE && tree->nodes[par].age < hi)
+            hi = tree->nodes[par].age;
+        double a;
+        if (v == tree->root && ch->tp != NULL) {
+            double L = exp(cfg->root_lex_logmean
+                           + gd_rng_normal(ch->rng, 0.0, cfg->root_lex_logsd));
+            a = L / exp(ch->logr);
+            /* Keep it strictly inside the window; the likelihood decides the
+             * rest during warm-up. */
+            if (!(a > lo)) a = lo + (isfinite(hi) ? 0.5 * (hi - lo) : (lo > 0.0 ? lo : 1.0));
+            if (!(a < hi)) a = lo + (hi - lo) * (0.25 + 0.5 * gd_rng_uniform_closed_open(ch->rng));
+        } else {
+            a = lo + (hi - lo) * (0.05 + 0.9 * gd_rng_uniform_closed_open(ch->rng));
+        }
+        tree->nodes[v].age = a;
+    }
 
     /* Lay out the parameter vector and initialise values + steps. */
     size_t p = 0;
     if (cfg->sample_rate) {
-        ch->logr = cfg->rate_logmean + gd_rng_normal(ch->rng, 0.0, cfg->rate_logsd);
         ch->params[p].type = GD_MCMC_P_LOGRATE;
         ch->params[p].node = GD_NODE_NONE;
         ch->params[p].value = ch->logr;
@@ -436,7 +516,7 @@ gd_mcmc_chain *gd_mcmc_chain_create(const gd_mcmc_model *model, gd_tree *tree,
             ch->params[p].type = GD_MCMC_P_AGE;
             ch->params[p].node = i;
             ch->params[p].value = tree->nodes[i].age;
-            ch->params[p].step = cfg->age_step0_frac * (cal->node_hi[i] - cal->node_lo[i]);
+            ch->params[p].step = cfg->age_step0_frac;   /* dimensionless; see chain_sweep */
             p++;
         }
     }
@@ -453,12 +533,22 @@ gd_mcmc_chain *gd_mcmc_chain_create(const gd_mcmc_model *model, gd_tree *tree,
         }
     }
 
-    /* Collect free AGE parameters for the block age-scaling move. */
+    /* Collect the ages the scale moves act on: free internal nodes only. A
+     * free tip (an old list dated to a narrow window) would leave its window
+     * under any useful scale factor and get every scale move rejected; it is
+     * left to its own single-site updates. */
     ch->n_age = 0;
+    ch->scaled = (bool *)gd_calloc_checked(tree->nnodes ? tree->nnodes : 1, sizeof(bool), err);
+    if (ch->scaled == NULL) { gd_error_set(err, GD_E_NOMEM, "mcmc: scale set"); gd_mcmc_chain_destroy(ch); return NULL; }
     for (size_t q = 0; q < ch->nparam; q++)
-        if (ch->params[q].type == GD_MCMC_P_AGE) ch->n_age++;
+        if (ch->params[q].type == GD_MCMC_P_AGE && !tree->nodes[ch->params[q].node].is_leaf) {
+            ch->n_age++;
+            ch->scaled[ch->params[q].node] = true;
+        }
     ch->have_block = (cfg->block_age_scaling && ch->n_age >= 2) ? 1 : 0;
     ch->block_step = cfg->block_step0;
+    ch->have_clock = (cfg->clock_move && cfg->sample_rate && ch->n_age >= 1) ? 1 : 0;
+    ch->clock_step = cfg->clock_step0;
     if (ch->n_age > 0) {
         ch->age_params = (size_t *)gd_malloc_array_checked(ch->n_age, sizeof(size_t), err);
         ch->age_scratch = (double *)gd_malloc_array_checked(ch->n_age, sizeof(double), err);
@@ -468,12 +558,14 @@ gd_mcmc_chain *gd_mcmc_chain_create(const gd_mcmc_model *model, gd_tree *tree,
         }
         size_t a = 0;
         for (size_t q = 0; q < ch->nparam; q++)
-            if (ch->params[q].type == GD_MCMC_P_AGE) ch->age_params[a++] = q;
+            if (ch->params[q].type == GD_MCMC_P_AGE && ch->scaled[ch->params[q].node])
+                ch->age_params[a++] = q;
     }
 
     if (chain_eval_loglik(ch, NULL, &ch->cur_loglik, err) != 0) {
         gd_mcmc_chain_destroy(ch); return NULL;
     }
+    ch->cur_tp = tree_lp(ch);
     ch->cur_logprior = chain_total_logprior(ch);
     /* A chain that starts at zero density cannot be trusted to find its way:
      * every proposal compares against -inf (or NaN), and the first accepted
@@ -506,6 +598,98 @@ static int accept_move(gd_mcmc_chain *ch, double log_alpha)
     return log(gd_rng_uniform_open(ch->rng)) < log_alpha;
 }
 
+/*
+ * Scale every free age by s = exp(delta). With `clock` set the log-rate moves
+ * by -delta at the same time, so rho * t is unchanged on every branch: a move
+ * along the rate-age ridge that the likelihood barely sees. Rejected if any
+ * order or calibration window is violated. The Jacobian of scaling m ages is
+ * s^m (the log-rate shift has unit Jacobian), so the ratio carries m * delta.
+ */
+static int scale_move(gd_mcmc_chain *ch, int adapting, int clock, gd_error *err)
+{
+    double *step = clock ? &ch->clock_step : &ch->block_step;
+    double *adapt_count = clock ? &ch->clock_adapt_count : &ch->block_adapt_count;
+    double delta = gd_rng_normal(ch->rng, 0.0, *step);
+    double s = exp(delta);
+    bool feasible = true;
+    for (size_t a = 0; a < ch->n_age; a++)
+        ch->age_scratch[a] = ch->tree->nodes[ch->params[ch->age_params[a]].node].age;
+    for (size_t a = 0; a < ch->n_age && feasible; a++) {
+        size_t v = ch->params[ch->age_params[a]].node;
+        gd_node *node = &ch->tree->nodes[v];
+        double na = ch->age_scratch[a] * s;
+        double lo = ch->cal->node_lo[v], hi = ch->cal->node_hi[v];
+        for (size_t k = 0; k < node->nchildren; k++) {
+            size_t c = node->children[k];
+            double cage = ch->scaled[c] ? ch->tree->nodes[c].age * s : ch->tree->nodes[c].age;
+            if (cage > lo) lo = cage;
+        }
+        if (v != ch->tree->root) {
+            size_t par = node->parent;
+            double page = ch->scaled[par] ? ch->tree->nodes[par].age * s : ch->tree->nodes[par].age;
+            if (page < hi) hi = page;
+        }
+        if (!(na > lo && na < hi)) feasible = false;
+    }
+    int accepted = 0;
+    if (feasible) {
+        double dprior = 0.0;
+        for (size_t a = 0; a < ch->n_age; a++) {
+            size_t v = ch->params[ch->age_params[a]].node;
+            double np = ch->age_scratch[a] * s;
+            dprior += node_logprior(ch->cal, v, np)
+                    - node_logprior(ch->cal, v, ch->age_scratch[a]);
+            ch->tree->nodes[v].age = np;
+        }
+        double old_logr = ch->logr;
+        if (clock) {
+            ch->logr = old_logr - delta;
+            dprior += norm_logpdf(ch->logr, ch->cfg.rate_logmean, ch->cfg.rate_logsd)
+                    - norm_logpdf(old_logr, ch->cfg.rate_logmean, ch->cfg.rate_logsd);
+        }
+        double new_tp = tree_lp(ch);
+        dprior += new_tp - ch->cur_tp;
+        double new_ll;
+        if (chain_eval_loglik(ch, NULL, &new_ll, err) != 0) {
+            ch->logr = old_logr;
+            for (size_t a = 0; a < ch->n_age; a++)
+                ch->tree->nodes[ch->params[ch->age_params[a]].node].age = ch->age_scratch[a];
+            return GD_E_INTERNAL;
+        }
+        double log_alpha = (new_ll - ch->cur_loglik) + dprior
+                         + (double)ch->n_age * delta;   /* Jacobian s^m */
+        if (accept_move(ch, log_alpha)) {
+            for (size_t a = 0; a < ch->n_age; a++)
+                ch->params[ch->age_params[a]].value =
+                    ch->tree->nodes[ch->params[ch->age_params[a]].node].age;
+            if (clock) {
+                for (size_t p = 0; p < ch->nparam; p++)
+                    if (ch->params[p].type == GD_MCMC_P_LOGRATE) ch->params[p].value = ch->logr;
+            }
+            ch->cur_loglik = new_ll;
+            ch->cur_logprior += dprior;
+            ch->cur_tp = new_tp;
+            accepted = 1;
+        } else {
+            ch->logr = old_logr;
+            for (size_t a = 0; a < ch->n_age; a++)   /* exact restore */
+                ch->tree->nodes[ch->params[ch->age_params[a]].node].age =
+                    ch->age_scratch[a];
+        }
+    }
+    if (clock) { ch->clock_prop += 1.0; ch->clock_acc += (double)accepted; }
+    else       { ch->block_prop += 1.0; ch->block_acc += (double)accepted; }
+    if (adapting) {
+        *adapt_count += 1.0;
+        double gamma = 1.0 / pow(*adapt_count + GD_MCMC_ADAPT_T0, 0.6);
+        double logs = log(*step) + gamma * ((double)accepted - GD_MCMC_TARGET_ACCEPT);
+        if (logs < -30.0) logs = -30.0;
+        if (logs > 30.0) logs = 30.0;
+        *step = exp(logs);
+    }
+    return 0;
+}
+
 static int chain_sweep(gd_mcmc_chain *ch, int adapting, gd_error *err)
 {
     for (size_t p = 0; p < ch->nparam; p++) {
@@ -522,20 +706,40 @@ static int chain_sweep(gd_mcmc_chain *ch, int adapting, gd_error *err)
                 double ca = ch->tree->nodes[node->children[k]].age;
                 if (ca > lo) lo = ca;
             }
-            if (v != ch->tree->root) {
+            bool is_root = (v == ch->tree->root);
+            if (!is_root) {
                 double pa = ch->tree->nodes[node->parent].age;
                 if (pa < hi) hi = pa;
             }
+            /* The window [lo, hi] does not depend on this node's own age, so
+             * both proposals below are valid Metropolis-Hastings moves:
+             *   non-root: a' = a + N(0, step * (hi - lo)), symmetric;
+             *   root:     a' - lo = (a - lo) exp(N(0, step)), with Hastings
+             *             factor (a' - lo) / (a - lo).
+             * The steps are dimensionless, so they adapt the same way on a
+             * 500-year family and a 9000-year one, and nothing depends on a
+             * numerical upper bound. */
+            double old_age = node->age;
+            double log_hastings = 0.0;
+            if (is_root) {
+                double h = old_age - lo;
+                double hn = h * exp(gd_rng_normal(ch->rng, 0.0, pp->step));
+                prop = lo + hn;
+                log_hastings = log(hn) - log(h);
+            } else {
+                prop = old_age + gd_rng_normal(ch->rng, 0.0, pp->step * (hi - lo));
+            }
             if (prop > lo && prop < hi) {
-                double old_age = node->age;
                 double old_pr = node_logprior(ch->cal, v, old_age);
                 node->age = prop;
                 double new_ll;
                 if (chain_eval_loglik(ch, NULL, &new_ll, err) != 0) { node->age = old_age; return GD_E_INTERNAL; }
-                double dprior = node_logprior(ch->cal, v, prop) - old_pr;
-                if (accept_move(ch, (new_ll - ch->cur_loglik) + dprior)) {
+                double new_tp = is_root ? tree_lp(ch) : ch->cur_tp;
+                double dprior = node_logprior(ch->cal, v, prop) - old_pr
+                              + (new_tp - ch->cur_tp);
+                if (accept_move(ch, (new_ll - ch->cur_loglik) + dprior + log_hastings)) {
                     pp->value = prop; ch->cur_loglik = new_ll;
-                    ch->cur_logprior += dprior; accepted = 1;
+                    ch->cur_logprior += dprior; ch->cur_tp = new_tp; accepted = 1;
                 } else {
                     node->age = old_age;
                 }
@@ -557,11 +761,15 @@ static int chain_sweep(gd_mcmc_chain *ch, int adapting, gd_error *err)
              * proposal to the assembled buffer, evaluate, restore on reject. */
             double new_ll;
             double dprior = 0.0;
+            double new_tp = ch->cur_tp;
             switch (pp->type) {
                 case GD_MCMC_P_LOGRATE:
                     ch->logr = prop;
+                    /* The lexical root rho * a_root moves with the rate. */
+                    new_tp = tree_lp(ch);
                     dprior = norm_logpdf(prop, ch->cfg.rate_logmean, ch->cfg.rate_logsd)
-                           - norm_logpdf(old_v, ch->cfg.rate_logmean, ch->cfg.rate_logsd);
+                           - norm_logpdf(old_v, ch->cfg.rate_logmean, ch->cfg.rate_logsd)
+                           + (new_tp - ch->cur_tp);
                     break;
                 case GD_MCMC_P_LOGIT_EPS:
                     ch->epsilon = sigmoid(prop);
@@ -587,7 +795,7 @@ static int chain_sweep(gd_mcmc_chain *ch, int adapting, gd_error *err)
             if (chain_eval_loglik(ch, NULL, &new_ll, err) != 0) return GD_E_INTERNAL;
             if (accept_move(ch, (new_ll - ch->cur_loglik) + dprior)) {
                 pp->value = prop; ch->cur_loglik = new_ll;
-                ch->cur_logprior += dprior; accepted = 1;
+                ch->cur_logprior += dprior; ch->cur_tp = new_tp; accepted = 1;
             } else {
                 /* Restore the assembled buffer. */
                 switch (pp->type) {
@@ -606,76 +814,14 @@ static int chain_sweep(gd_mcmc_chain *ch, int adapting, gd_error *err)
     }
 
     /* --- block age-scaling move --- */
-    /* Scale every free age by a shared s = exp(delta); reject if it violates
-     * any parent/child order or calibration bound. This decorrelates nested
-     * ages (docs/inference.md §2.2). Jacobian of scaling m ages is s^m, so the
-     * acceptance ratio carries + m*delta. */
     if (ch->have_block) {
-        double delta = gd_rng_normal(ch->rng, 0.0, ch->block_step);
-        double s = exp(delta);
-        /* Save current ages; feasibility of the scaled ages against each free
-         * node's (max child, min(parent, node_hi)) window and node_lo, using
-         * scaled ages for free neighbours and current ages for fixed ones. */
-        bool feasible = true;
-        for (size_t a = 0; a < ch->n_age; a++)
-            ch->age_scratch[a] = ch->tree->nodes[ch->params[ch->age_params[a]].node].age;
-        for (size_t a = 0; a < ch->n_age && feasible; a++) {
-            size_t v = ch->params[ch->age_params[a]].node;
-            gd_node *node = &ch->tree->nodes[v];
-            double na = ch->age_scratch[a] * s;
-            double lo = ch->cal->node_lo[v], hi = ch->cal->node_hi[v];
-            for (size_t k = 0; k < node->nchildren; k++) {
-                size_t c = node->children[k];
-                double cage = (ch->cal->node_hi[c] - ch->cal->node_lo[c] > GD_MCMC_FIX_TOL)
-                              ? ch->tree->nodes[c].age * s : ch->tree->nodes[c].age;
-                if (cage > lo) lo = cage;
-            }
-            if (v != ch->tree->root) {
-                size_t par = node->parent;
-                double page = (ch->cal->node_hi[par] - ch->cal->node_lo[par] > GD_MCMC_FIX_TOL)
-                              ? ch->tree->nodes[par].age * s : ch->tree->nodes[par].age;
-                if (page < hi) hi = page;
-            }
-            if (!(na > lo && na < hi)) feasible = false;
-        }
-        int accepted = 0;
-        if (feasible) {
-            double dprior = 0.0;
-            for (size_t a = 0; a < ch->n_age; a++) {
-                size_t v = ch->params[ch->age_params[a]].node;
-                double np = ch->age_scratch[a] * s;
-                dprior += node_logprior(ch->cal, v, np)
-                        - node_logprior(ch->cal, v, ch->age_scratch[a]);
-                ch->tree->nodes[v].age = np;
-            }
-            double new_ll;
-            if (chain_eval_loglik(ch, NULL, &new_ll, err) != 0) return GD_E_INTERNAL;
-            double log_alpha = (new_ll - ch->cur_loglik) + dprior
-                             + (double)ch->n_age * delta;   /* Jacobian s^m */
-            if (accept_move(ch, log_alpha)) {
-                for (size_t a = 0; a < ch->n_age; a++)
-                    ch->params[ch->age_params[a]].value =
-                        ch->tree->nodes[ch->params[ch->age_params[a]].node].age;
-                ch->cur_loglik = new_ll;
-                ch->cur_logprior += dprior;
-                accepted = 1;
-            } else {
-                for (size_t a = 0; a < ch->n_age; a++)   /* exact restore */
-                    ch->tree->nodes[ch->params[ch->age_params[a]].node].age =
-                        ch->age_scratch[a];
-            }
-        }
-        ch->block_prop += 1.0;
-        ch->block_acc += (double)accepted;
-        if (adapting) {
-            ch->block_adapt_count += 1.0;
-            double gamma = 1.0 / pow(ch->block_adapt_count + GD_MCMC_ADAPT_T0, 0.6);
-            double logs = log(ch->block_step)
-                        + gamma * ((double)accepted - GD_MCMC_TARGET_ACCEPT);
-            if (logs < -30.0) logs = -30.0;
-            if (logs > 30.0) logs = 30.0;
-            ch->block_step = exp(logs);
-        }
+        int rc = scale_move(ch, adapting, 0, err);
+        if (rc != 0) return rc;
+    }
+    /* --- clock-preserving move --- */
+    if (ch->have_clock) {
+        int rc = scale_move(ch, adapting, 1, err);
+        if (rc != 0) return rc;
     }
     return 0;
 }
@@ -795,7 +941,8 @@ static size_t ckpt_body_size(const gd_mcmc_chain *ch)
 {
     return 4 + 4 + 4 + 8 + 16                 /* magic, ver, nparam, iter, rng */
          + ch->nparam * (8 + 8 + 8 + 8)       /* value, step, adapt, acc */
-         + 8 + 8;                             /* block_step, block_adapt_count */
+         + 8 + 8                              /* block_step, block_adapt_count */
+         + 8 + 8;                             /* clock_step, clock_adapt_count */
 }
 
 int gd_mcmc_chain_serialize(const gd_mcmc_chain *ch, unsigned char **buf,
@@ -834,6 +981,8 @@ int gd_mcmc_chain_serialize(const gd_mcmc_chain *ch, unsigned char **buf,
     }
     d = ch->block_step;        memcpy(q, &d, 8); q += 8;
     d = ch->block_adapt_count; memcpy(q, &d, 8); q += 8;
+    d = ch->clock_step;        memcpy(q, &d, 8); q += 8;
+    d = ch->clock_adapt_count; memcpy(q, &d, 8); q += 8;
     u64 = fnv1a(out, body); memcpy(q, &u64, 8);
     *buf = out; *len = total;
     return 0;
@@ -872,6 +1021,8 @@ int gd_mcmc_chain_restore(gd_mcmc_chain *ch, const unsigned char *buf,
     }
     memcpy(&d, q, 8); q += 8; ch->block_step = d;
     memcpy(&d, q, 8); q += 8; ch->block_adapt_count = d;
+    memcpy(&d, q, 8); q += 8; ch->clock_step = d;
+    memcpy(&d, q, 8); q += 8; ch->clock_adapt_count = d;
     /* Programmer invariant, and the reason the last q += 8 is not dead: the
      * cursor must land exactly on the end of the body that ckpt_body_size
      * predicted. A serializer and a deserializer that disagree about the
@@ -880,6 +1031,7 @@ int gd_mcmc_chain_restore(gd_mcmc_chain *ch, const unsigned char *buf,
     assert((size_t)(q - buf) == body);
     rebuild_assembled(ch);
     if (chain_eval_loglik(ch, NULL, &ch->cur_loglik, err) != 0) return GD_E_INTERNAL;
+    ch->cur_tp = tree_lp(ch);
     ch->cur_logprior = chain_total_logprior(ch);
     return 0;
 }

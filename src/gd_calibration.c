@@ -215,10 +215,13 @@ int gd_calibrations_propagate(gd_calibration_set *cs, const gd_tree *tree,
         cs->nnodes = n;
     }
 
-    /* Initialize: [0, +inf) for all nodes. */
+    /* Initialize: [0, +inf) for all nodes. Unbounded means unbounded: the
+     * sampler's prior on ages (gd_tree_prior.h) keeps the posterior proper,
+     * so no numerical ceiling stands in for one. (It used to be 1e15, and the
+     * uncalibrated root of a small family duly ran to ~9e14.) */
     for (size_t i = 0; i < n; i++) {
         cs->node_lo[i] = 0.0;
-        cs->node_hi[i] = 1e15;  /* effectively +inf */
+        cs->node_hi[i] = HUGE_VAL;
     }
 
     /* A tip no calibration mentions is an extant language: age 0. Leaving it

@@ -73,7 +73,51 @@ Adaptation **only during warm-up**; **freeze** before retained samples. Run
 chains with independent deterministic seeds derived from a master seed; 4
 chains by default.
 
-### 2.3 Node-age parameterization
+### 2.3 The prior on node ages (0.3, roadmap E1)
+
+Before 0.3 there was none: uncalibrated ages were flat on the ordered region
+inside a hidden `[0, 1e15]` box. That tilts the root towards the box by
+`root^(m-1)`, and with the contamination floor of T1 the unbounded posterior
+is improper. On Arawan the uncalibrated root ran to about 9e14 years.
+
+The prior is now generative and proper (`src/gd_tree_prior.h`):
+
+- `log rho ~ N(rate_logmean, rate_logsd²)`, the clock prior;
+- `log L ~ N(root_lex_logmean, root_lex_logsd²)`, where `L = rho · a_root` is
+  the **lexical root**: expected replacements per concept along a root-to-tip
+  path. The defaults are `-1.2` (0.30) and `1.5` (95% from 0.016 to 5.7);
+- the other free ages are uniform on the ordered region below the root. This
+  is the MrBayes uniform-clock construction, the λ→0 limit of a birth–death
+  prior conditioned on the root. Its density is `1/V(a_root)`, where `V` is
+  the volume of the region. With dated tips or pinned internal nodes, `V` is a
+  polynomial in `a_root` above the oldest fixed age below the root, built
+  once by a post-order recursion and checked against Monte Carlo in
+  `test_tree_prior.c`.
+
+Calibrations multiply in as factors. Because the cognates identify `L` and
+not `rho`, a run with no calendar anchor has a calendar root that is exactly
+the lexical posterior divided by the clock prior. `--root-lex-logmean`,
+`--root-lex-logsd` and `--prior-only` are the user's handles on this. The
+prior-only run reproduces the analytic marginals (`log a_root ~ N(μ_L − μ_ρ,
+σ_L² + σ_ρ²)`, uniform ratios), and an SBC with the root free under this prior
+passes per parameter (`test_mcmc_tree.c`). The pre-0.3 flat measure remains
+as `GD_TREE_PRIOR_NONE` for tests whose truth is drawn that way. It is
+refused unless every free age is bounded above.
+
+**Moves.** A non-root age moves by `N(0, step·(hi − lo))` inside the window
+that its parent, children and calibrations leave it. The root moves on the
+log scale of its height above its oldest child, with the Hastings factor
+`(a' − lo)/(a − lo)`. Both steps are dimensionless and adapted in warm-up.
+Two scale moves act on the free internal ages; free tips (a list dated to a
+narrow window) are left to their own updates:
+- the block move scales them by `e^δ`;
+- the **clock-preserving move** also shifts `log rho` by `−δ`, which leaves
+  every lexical branch length unchanged and moves the chain along the
+  rate–age ridge.
+
+On Arawan these moves took the bulk ESS of the root from 9 to over 3,000.
+
+### 2.3.1 Node-age parameterization (original specification)
 
 Maintain `age(parent) > age(child)` on every positive-duration edge. Either:
 - **transformed node proportions** within feasible intervals (the feasible

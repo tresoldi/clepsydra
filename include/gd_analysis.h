@@ -129,6 +129,11 @@ typedef struct gd_analysis_tree_config {
     double   epsilon;           /* 0.05 contamination weight */
     bool     relaxed;           /* relaxed branch clock (M9); 0 = strict */
     bool     block_age_scaling; /* 1: decorrelate nested ages (deep trees) */
+    /* Prior on the lexical root L = rho * a_root, in expected replacements
+     * per concept along a root-to-tip path (gd_tree_prior.h). */
+    double   root_lex_logmean;  /* -1.2, i.e. 0.30 */
+    double   root_lex_logsd;    /* 1.5 */
+    bool     prior_only;        /* 0: sample with the likelihood switched off */
     double   hpd_level;         /* 0.90 */
 
     /*

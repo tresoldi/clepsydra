@@ -93,7 +93,7 @@ TEST(test_mcmc_sbc_strict_clock_tree)
     const double logrsd = 0.4;
     const size_t NREP = 120;
     const size_t NCON = 50;
-    const size_t L = 40;           /* retained draws per replicate */
+    const size_t L = 39;           /* retained draws per replicate: L + 1 = 40 ranks, 5 per bin */
     const size_t B = 8;            /* uniformity bins */
     size_t bins[8];
     for (size_t i = 0; i < B; i++) bins[i] = 0;
@@ -158,6 +158,10 @@ TEST(test_mcmc_sbc_strict_clock_tree)
         cfg.sample_rate = true;
         cfg.rate_logmean = logrmean;
         cfg.rate_logsd = logrsd;
+        /* Truth is drawn flat below a fixed root, so the sampler is given that
+         * same (bounded, hence proper) measure. */
+        cfg.tree_prior = GD_TREE_PRIOR_NONE;
+        cfg.clock_move = false;
 
         gd_mcmc_chain *ch = gd_mcmc_chain_create(&model, sm.t, cs, &cfg, 0, &err);
         CHECK(ch != NULL);
@@ -727,6 +731,14 @@ TEST(test_mcmc_result_accessors_agree_with_the_raw_layout)
     CHECK(bad_n == GD_E_INVALID_ARG);
 }
 
+static int dead_loglik(void *ctx, gd_tree *tree, const gd_mcmc_state *st,
+                       double *pointwise, double *out, gd_error *err)
+{
+    (void)ctx; (void)tree; (void)st; (void)pointwise; (void)err;
+    *out = -HUGE_VAL;
+    return 0;
+}
+
 /* E0.12: a chain never marks the caller's calibration set feasible, and it
  * refuses to start from a state of zero density. */
 TEST(test_mcmc_refuses_infeasible_and_zero_density_starts)
@@ -747,17 +759,182 @@ TEST(test_mcmc_refuses_infeasible_and_zero_density_starts)
     CHECK(still_infeasible);
     CHECK(err.code == GD_E_CALIBRATION);
 
-    /* A fixed rate of zero makes every concept's likelihood degenerate. */
+    /* A likelihood that is -inf at every state. */
+    gd_mcmc_model dead = model;
+    dead.loglik = dead_loglik;
     gd_error_clear(&err);
-    cfg.sample_rate = false;
-    cfg.fixed_rate = 1e-300;
-    cfg.fixed_epsilon = 0.0;
-    ch = gd_mcmc_chain_create(&model, sm.t, cs, &cfg, 0u, &err);
+    ch = gd_mcmc_chain_create(&dead, sm.t, cs, &cfg, 0u, &err);
     int refused = (ch == NULL);
     gd_mcmc_chain_destroy(ch);
     gd_calset_destroy(cs);
     sbc_model_free(&sm);
     CHECK(refused);
+}
+
+/* ------------------------------------------------- E1: the proper prior */
+
+/* Tips fixed at 0, every internal node free and unbounded above. */
+static gd_calibration_set *make_free_bounds(const gd_tree *t, gd_error *err)
+{
+    gd_calibration_set *cs = gd_calset_create(0, err);
+    if (cs == NULL) return NULL;
+    size_t n = t->nnodes;
+    cs->nnodes = n;
+    cs->node_lo = (double *)malloc(n * sizeof(double));
+    cs->node_hi = (double *)malloc(n * sizeof(double));
+    for (size_t i = 0; i < n; i++) {
+        cs->node_lo[i] = 0.0;
+        cs->node_hi[i] = t->nodes[i].is_leaf ? 0.0 : HUGE_VAL;
+    }
+    cs->feasible = true;
+    return cs;
+}
+
+static double phi_cdf(double z) { return 0.5 * erfc(-z / sqrt(2.0)); }
+
+/*
+ * Prior-only sampling reproduces the prior's analytic marginals:
+ *   log a_root = log L - log rho ~ N(muL - mu_rho, sdL^2 + sd_rho^2)
+ *   r1 / a_root ~ Uniform(0, 1)   (balanced quartet, uniform below the root)
+ * This is the test that "posterior = prior" can be detected against.
+ */
+TEST(test_mcmc_prior_only_matches_analytic_prior)
+{
+    gd_error err = GD_ERROR_INIT;
+    sbc_model sm; gd_calibration_set *cs0 = NULL;
+    CHECK(build_dataset(&sm, &cs0, 3000.0, log(0.0005), 1700.0, 1300.0, 20, 11u, &err) == 0);
+    gd_calset_destroy(cs0);
+    gd_calibration_set *cs = make_free_bounds(sm.t, &err);
+    gd_mcmc_model model; gd_mcmc_t1_model(sm.m, &model);
+    gd_mcmc_config cfg; gd_mcmc_config_default(&cfg);
+    cfg.prior_only = true;
+    cfg.rate_logmean = log(2e-4); cfg.rate_logsd = 0.5;
+    cfg.root_lex_logmean = log(0.4); cfg.root_lex_logsd = 0.8;
+    cfg.n_warmup = 2000; cfg.n_samples = 20000; cfg.seed = 3u;
+    gd_mcmc_chain *ch = gd_mcmc_chain_create(&model, sm.t, cs, &cfg, 0u, &err);
+    CHECK(ch != NULL);
+    CHECK(gd_mcmc_chain_run(ch, &err) == 0);
+    size_t root = sm.t->root, r1 = gd_tree_find_label(sm.t, "r1");
+    size_t p_root = (size_t)-1, p_r1 = (size_t)-1;
+    for (size_t p = 0; p < gd_mcmc_chain_param_count(ch); p++) {
+        if (gd_mcmc_chain_param_node(ch, p) == root) p_root = p;
+        if (gd_mcmc_chain_param_node(ch, p) == r1) p_r1 = p;
+    }
+    CHECK(p_root != (size_t)-1 && p_r1 != (size_t)-1);
+    double mu = log(0.4) - log(2e-4), sd = sqrt(0.8 * 0.8 + 0.5 * 0.5);
+    size_t N = gd_mcmc_chain_nsamples(ch);
+    double m = 0, v = 0, below[3] = {0, 0, 0}, ratio_mean = 0, ratio_lo = 0;
+    const double z[3] = { -1.0, 0.0, 1.0 };
+    for (size_t d = 0; d < N; d++) {
+        double lr = log(gd_mcmc_chain_sample(ch, d, p_root));
+        m += lr; v += lr * lr;
+        for (int k = 0; k < 3; k++) if (lr < mu + z[k] * sd) below[k] += 1.0;
+        double q = gd_mcmc_chain_sample(ch, d, p_r1) / gd_mcmc_chain_sample(ch, d, p_root);
+        ratio_mean += q;
+        if (q < 0.25) ratio_lo += 1.0;
+    }
+    m /= (double)N; v = v / (double)N - m * m;
+    gd_mcmc_chain_destroy(ch);
+    gd_calset_destroy(cs);
+    sbc_model_free(&sm);
+    printf("    prior-only log root: mean %.3f (want %.3f), sd %.3f (want %.3f)\n",
+           m, mu, sqrt(v), sd);
+    CHECK_APPROX(m, mu, 0.08);
+    CHECK_APPROX(sqrt(v), sd, 0.06);
+    for (int k = 0; k < 3; k++) CHECK_APPROX(below[k] / (double)N, phi_cdf(z[k]), 0.04);
+    CHECK_APPROX(ratio_mean / (double)N, 0.5, 0.03);
+    CHECK_APPROX(ratio_lo / (double)N, 0.25, 0.03);
+}
+
+/*
+ * SBC with the root free under the proper prior: truth drawn from exactly the
+ * generative model the sampler assumes (rho, L, a_root = L / rho, internal
+ * ages uniform below the root), data simulated, refit. Ranks are binned per
+ * parameter, so opposite biases cannot cancel.
+ */
+TEST(test_mcmc_sbc_free_root_proper_prior)
+{
+    const double lrm = log(3e-4), lrs = 0.3, lxm = log(0.5), lxs = 0.5;
+    const size_t NREP = 200, NCON = 60, Ld = 39, B = 8;   /* Ld + 1 ranks, 5 per bin */
+    size_t bins[4][8];
+    memset(bins, 0, sizeof bins);
+    for (size_t rep = 0; rep < NREP; rep++) {
+        gd_error err = GD_ERROR_INIT;
+        gd_rng *rng = gd_rng_create(7000u + rep, 13u, &err);
+        sbc_model sm;
+        memset(&sm, 0, sizeof sm);
+        sm.t = make_quartet(1000.0);
+        size_t n = sm.t->nnodes, root = sm.t->root;
+        size_t r1 = gd_tree_find_label(sm.t, "r1"), r2 = gd_tree_find_label(sm.t, "r2");
+        double logr = lrm + gd_rng_normal(rng, 0.0, lrs);
+        double L = exp(lxm + gd_rng_normal(rng, 0.0, lxs));
+        double R = L / exp(logr);
+        double a1 = R * gd_rng_uniform_open(rng), a2 = R * gd_rng_uniform_open(rng);
+        sm.t->nodes[root].age = R;
+        sm.t->nodes[r1].age = a1;
+        sm.t->nodes[r2].age = a2;
+        sm.ncon = NCON;
+        sm.store = (int *)malloc(NCON * n * sizeof(int));
+        sm.concepts = (gd_cognate_data *)malloc(NCON * sizeof(gd_cognate_data));
+        int *sim = (int *)malloc(n * sizeof(int));
+        for (size_t c = 0; c < NCON; c++) {
+            CHECK(gd_t1_simulate(rng, sm.t, exp(logr), sim, &err) == 0);
+            int *row = sm.store + c * n;
+            for (size_t i = 0; i < n; i++) row[i] = sm.t->nodes[i].is_leaf ? sim[i] : -1;
+            sm.concepts[c].labels = row;
+            sm.concepts[c].nnodes = n;
+        }
+        free(sim);
+        sm.ws = gd_t1_ws_create(sm.t, &err);
+        gd_t1_options_default(&sm.opt);
+        sm.opt.epsilon = 0.0;
+        sm.opt.incompatible = GD_INCOMPATIBLE_EXCLUDE;
+        sm.m = gd_mcmc_t1_create(sm.ws, sm.concepts, NCON, &sm.opt, &err);
+        gd_mcmc_model model; gd_mcmc_t1_model(sm.m, &model);
+        gd_calibration_set *cs = make_free_bounds(sm.t, &err);
+        gd_mcmc_config cfg; gd_mcmc_config_default(&cfg);
+        cfg.seed = 900u + rep;
+        cfg.n_warmup = 600; cfg.n_samples = Ld; cfg.thin = 6;
+        cfg.rate_logmean = lrm; cfg.rate_logsd = lrs;
+        cfg.root_lex_logmean = lxm; cfg.root_lex_logsd = lxs;
+        gd_mcmc_chain *ch = gd_mcmc_chain_create(&model, sm.t, cs, &cfg, 0, &err);
+        CHECK(ch != NULL);
+        CHECK(gd_mcmc_chain_run(ch, &err) == 0);
+        size_t pc[4] = { (size_t)-1, (size_t)-1, (size_t)-1, (size_t)-1 };
+        for (size_t p = 0; p < gd_mcmc_chain_param_count(ch); p++) {
+            size_t node = gd_mcmc_chain_param_node(ch, p);
+            if (node == GD_NODE_NONE) pc[0] = p;
+            else if (node == root) pc[1] = p;
+            else if (node == r1) pc[2] = p;
+            else if (node == r2) pc[3] = p;
+        }
+        double truth[4] = { logr, R, a1, a2 };
+        for (int k = 0; k < 4; k++) {
+            CHECK(pc[k] != (size_t)-1);
+            size_t rank = 0;
+            for (size_t d = 0; d < Ld; d++)
+                if (gd_mcmc_chain_sample(ch, d, pc[k]) < truth[k]) rank++;
+            size_t b = rank * B / (Ld + 1);
+            bins[k][b < B ? b : B - 1]++;
+        }
+        gd_mcmc_chain_destroy(ch);
+        gd_calset_destroy(cs);
+        sbc_model_free(&sm);
+        gd_rng_destroy(rng);
+    }
+    const char *names[4] = { "log_rate", "root", "r1", "r2" };
+    for (int k = 0; k < 4; k++) {
+        double e = (double)NREP / (double)B, chisq = 0.0;
+        printf("    SBC %-8s:", names[k]);
+        for (size_t i = 0; i < B; i++) {
+            double d = (double)bins[k][i] - e;
+            chisq += d * d / e;
+            printf(" %zu", bins[k][i]);
+        }
+        printf("  chisq=%.2f\n", chisq);
+        /* dof 7: the 0.999 quantile is 24.3; four tests, so ~0.4% family-wise. */
+        CHECK(chisq < 24.3);
+    }
 }
 
 static void run_tests(void)
@@ -774,6 +951,8 @@ static void run_tests(void)
     RUN(test_mcmc_progress_does_not_change_draws);
     RUN(test_mcmc_progress_can_cancel);
     RUN(test_mcmc_sbc_strict_clock_tree);
+    RUN(test_mcmc_prior_only_matches_analytic_prior);
+    RUN(test_mcmc_sbc_free_root_proper_prior);
 }
 
 TEST_MAIN()

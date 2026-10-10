@@ -11,6 +11,23 @@ columns and example numbers are expected throughout 0.x and are listed here.
 
 ### Changed (breaking)
 
+- **A proper prior on node ages** (E1.1, E1.3, E1.4, E1.7; `docs/inference.md`
+  §2.3). Uncalibrated ages were flat inside a hidden `[0, 1e15]` box: the
+  root was tilted towards it, and the posterior was improper. On Arawan the
+  root ran to about 9e14 years. The prior is now a log-normal lexical root
+  `L = rho · a_root` (`--root-lex-logmean -1.2`, `--root-lex-logsd 1.5`)
+  with ages uniform below the root, normalised exactly with dated tips. The
+  `1e15` sentinel is gone. Moves:
+  - age steps are window-relative, and the root's is on the log scale;
+  - the scale moves leave free tips alone;
+  - a new clock-preserving move shifts the rate against the ages.
+
+  `--prior-only 1` samples the prior. **Every example's dates change.** The
+  Romance root is 2,668 BP; the five-IE root falls from about 7,975 to 6,279
+  BP, because the old tilt pushed deep roots towards the box; the
+  Sino-Tibetan root presses on the top of its soft 4,500–9,000 window. All
+  examples now pass the convergence check, five-IE included, and on Arawan
+  the bulk ESS of the root went from 9 to over 3,000.
 - **`date-pair` rate prior is per year** (E0.7), the same unit as
   `date-tree`. It was per kiloyear. Subtract log(1000) = 6.9078 from an old
   `--rate-logmean`. The default is -8.9 (about the old -2.0 per kiloyear).

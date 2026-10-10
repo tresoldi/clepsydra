@@ -398,6 +398,9 @@ void gd_analysis_tree_config_default(gd_analysis_tree_config *cfg)
     cfg->epsilon = 0.05;
     cfg->relaxed = false;
     cfg->block_age_scaling = true;
+    cfg->root_lex_logmean = -1.2;   /* exp(-1.2) = 0.30 replacements per concept */
+    cfg->root_lex_logsd = 1.5;
+    cfg->prior_only = false;
     cfg->hpd_level = 0.90;
     cfg->calibrations.drop_index = GD_ANALYSIS_KEEP_ALL;
     cfg->calibrations.widen = 1.0;
@@ -762,6 +765,9 @@ int gd_analysis_tree_job_run(gd_analysis_tree_job *job,
     mc.sample_branch = job->cfg.relaxed ? 1 : 0;
     mc.fixed_epsilon = job->cfg.epsilon;
     mc.block_age_scaling = job->cfg.block_age_scaling;
+    mc.root_lex_logmean = job->cfg.root_lex_logmean;
+    mc.root_lex_logsd = job->cfg.root_lex_logsd;
+    mc.prior_only = job->cfg.prior_only;
     mc.on_progress = job->cfg.on_progress;
     mc.progress_user = job->cfg.progress_user;
     mc.progress_every = job->cfg.progress_every;

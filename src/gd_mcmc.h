@@ -41,6 +41,11 @@
 
 #include "gd_mcmc_model.h"
 
+typedef enum {
+    GD_TREE_PRIOR_UNIFORM = 0,
+    GD_TREE_PRIOR_NONE    = 1
+} gd_tree_prior_kind;
+
 
 typedef struct gd_mcmc_config {
     uint64_t seed;
@@ -55,8 +60,33 @@ typedef struct gd_mcmc_config {
     double   fixed_rate;
     double   rate_logmean, rate_logsd, rate_step0;
 
-    /* Node ages: initial RW sd = age_step0_frac * (node_hi - node_lo). */
+    /*
+     * Prior on node ages (docs/roadmap.md E1). GD_TREE_PRIOR_UNIFORM, the
+     * default, is proper: a log-normal "lexical root" L = rho * a_root and
+     * uniform ages below the root (gd_tree_prior.h). GD_TREE_PRIOR_NONE is
+     * the pre-0.3 flat measure on the ordered region; it is refused unless
+     * every free age is bounded by calibrations, since otherwise the
+     * posterior is improper.
+     */
+    gd_tree_prior_kind tree_prior;
+    double   root_lex_logmean;  /* default -1.2: 0.30 replacements per concept */
+    double   root_lex_logsd;    /* default 1.5 */
+
+    /* Likelihood switched off: the sampler then draws from the prior the
+     * posterior is built on, exactly (E1.5). */
+    bool     prior_only;
+
+    /* Node-age proposals: a non-root age moves by N(0, step * window), where
+     * the window is the interval its parent, children and calibrations leave
+     * it; the root moves on the log scale of its height above its oldest
+     * child. age_step0_frac is the initial step for both. */
     double   age_step0_frac;
+
+    /* Clock-preserving move: scale every free age by exp(delta) and the rate
+     * by exp(-delta), which leaves lexical branch lengths unchanged. It is
+     * what moves a chain along the rate-age ridge. Needs sample_rate. */
+    bool     clock_move;
+    double   clock_step0;       /* default 0.10 (log scale) */
 
     /* Block age-scaling move (docs/inference.md §2.2): once per sweep, scale
      * every free node age by a shared factor exp(N(0, block_step0)), which
