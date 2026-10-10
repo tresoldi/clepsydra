@@ -1138,6 +1138,48 @@ TEST(test_mcmc_subtree_move_keeps_prior)
     }
 }
 
+/*
+ * Parallel chains (GD_THREADS) give the same draws as sequential ones, bit for
+ * bit: each chain's random stream depends only on (seed, chain), and each runs
+ * on its own tree copy and model clone. Relaxed clock and concept rates on, so
+ * every move type is exercised. Without threads both runs are sequential.
+ */
+TEST(test_mcmc_parallel_chains_match_sequential)
+{
+    gd_error err = GD_ERROR_INIT;
+    sbc_model sm; gd_calibration_set *cs0 = NULL;
+    CHECK(build_dataset(&sm, &cs0, 3000.0, log(0.0005), 1700.0, 1300.0, 60, 17u, &err) == 0);
+    gd_calset_destroy(cs0);
+    gd_calibration_set *cs = make_free_bounds(sm.t, &err);
+    gd_mcmc_model model; gd_mcmc_t1_model(sm.m, &model);
+    gd_mcmc_config cfg; gd_mcmc_config_default(&cfg);
+    cfg.rate_logmean = log(5e-4); cfg.rate_logsd = 0.5;
+    cfg.sample_branch = true; cfg.sample_rate_mix = true;
+    cfg.n_warmup = 300; cfg.n_samples = 300; cfg.seed = 99u;
+    cfg.store_pointwise = true;
+    cfg.threads = 1;
+    gd_mcmc_result *a = gd_mcmc_run(&model, sm.t, cs, &cfg, 4, &err);
+    CHECK(a != NULL);
+    double end_a = sm.t->nodes[sm.t->root].age;
+    cfg.threads = 0;
+    gd_mcmc_result *b = gd_mcmc_run(&model, sm.t, cs, &cfg, 4, &err);
+    CHECK(b != NULL);
+    double end_b = sm.t->nodes[sm.t->root].age;
+    CHECK(a->n_param == b->n_param && a->n_draws == b->n_draws);
+    size_t n = a->n_chains * a->n_draws * a->n_param, diff = 0;
+    for (size_t i = 0; i < n; i++) if (a->samples[i] != b->samples[i]) diff++;
+    for (size_t i = 0; i < a->n_chains * a->n_draws; i++) if (a->loglik[i] != b->loglik[i]) diff++;
+    for (size_t i = 0; i < a->n_chains * a->n_draws * a->n_concepts; i++)
+        if (a->pointwise[i] != b->pointwise[i]) diff++;
+    printf("    parallel vs sequential: %zu differing values of %zu; final root age %s\n",
+           diff, n, end_a == end_b ? "equal" : "differs");
+    CHECK(diff == 0);
+    CHECK(end_a == end_b);
+    gd_mcmc_result_destroy(a); gd_mcmc_result_destroy(b);
+    gd_calset_destroy(cs);
+    sbc_model_free(&sm);
+}
+
 static void run_tests(void)
 {
     RUN(test_mcmc_reproducible);
@@ -1153,6 +1195,7 @@ static void run_tests(void)
     RUN(test_mcmc_progress_can_cancel);
     RUN(test_mcmc_sbc_strict_clock_tree);
     RUN(test_mcmc_prior_only_matches_analytic_prior);
+    RUN(test_mcmc_parallel_chains_match_sequential);
     RUN(test_mcmc_yule_prior_ratios);
     RUN(test_mcmc_subtree_move_keeps_prior);
     RUN(test_mcmc_sbc_proper_prior_scenarios);

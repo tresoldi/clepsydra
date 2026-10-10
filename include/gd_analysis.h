@@ -127,6 +127,7 @@ typedef struct gd_analysis_tree_config {
     size_t   n_warmup;          /* 2000 */
     size_t   n_samples;         /* 2000 */
     size_t   n_chains;          /* 4 */
+    size_t   threads;           /* 0: all chains at once (threaded builds); 1: in turn */
     uint64_t seed;              /* 42 */
     double   rate_logmean;      /* -8.80 = Swadesh/year */
     double   rate_logsd;        /* 0.80 */

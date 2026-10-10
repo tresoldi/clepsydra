@@ -72,6 +72,50 @@ void gd_tree_destroy(gd_tree *t)
     gd_free(t);
 }
 
+gd_tree *gd_tree_copy(const gd_tree *src, gd_error *err)
+{
+    if (src == NULL) {
+        gd_error_set(err, GD_E_INVALID_ARG, "tree: copy of NULL");
+        return NULL;
+    }
+    gd_tree *t = gd_tree_create(src->nnodes, err);
+    if (t == NULL) {
+        return NULL;
+    }
+    t->root = src->root;
+    for (size_t i = 0; i < src->nnodes; i++) {
+        const gd_node *a = &src->nodes[i];
+        gd_node *b = &t->nodes[i];
+        b->parent = a->parent;
+        b->branch_length = a->branch_length;
+        b->is_leaf = a->is_leaf;
+        b->age = a->age;
+        if (a->label != NULL) {
+            b->label = gd_strdup_n(a->label, strlen(a->label), err);
+            if (b->label == NULL) {
+                gd_tree_destroy(t);
+                return NULL;
+            }
+        }
+        for (size_t k = 0; k < a->nchildren; k++) {
+            if (gd_tree_add_child(t, i, a->children[k], err) != 0) {
+                gd_tree_destroy(t);
+                return NULL;
+            }
+        }
+    }
+    /* gd_tree_add_child clears the child's leaf flag; restore them all. */
+    for (size_t i = 0; i < src->nnodes; i++) {
+        t->nodes[i].is_leaf = src->nodes[i].is_leaf;
+    }
+    if ((src->postorder != NULL && gd_tree_build_traversals(t, err) != 0) ||
+        (src->lca_built && gd_tree_build_lca(t, err) != 0)) {
+        gd_tree_destroy(t);
+        return NULL;
+    }
+    return t;
+}
+
 /* Add a child to a parent node, growing the children array as needed. */
 int gd_tree_add_child(gd_tree *t, size_t parent_idx, size_t child_idx,
                       gd_error *err)

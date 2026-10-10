@@ -60,6 +60,12 @@ columns and example numbers are expected throughout 0.x and are listed here.
 
 ### Added
 
+- **Parallel chains.** In threaded builds (the default `THREADS=1`; WASM
+  is never threaded) each chain runs in its own POSIX thread, on its own
+  tree copy and likelihood clone. `--threads N` caps how many run at once.
+  Draws are bit-identical to a sequential run (tested), and
+  ThreadSanitizer is clean. That needed `gd_lgamma`, because C99's `lgamma`
+  writes the global `signgam`. Four Arawan chains run 2.9× faster.
 - **Non-centred move for the relaxed clock.** Branch log-multipliers are
   N(−σ_b²/2, σ_b), a funnel in which single-site moves stall as σ_b shrinks:
   on Arawan the relaxed fit gave R-hat 1.16 and bulk ESS 22 for σ_b. A

@@ -128,3 +128,23 @@ int gd_sign(double x)
     }
     return 0;
 }
+
+double gd_lgamma(double x)
+{
+    if (!(x > 0.0)) {
+        return NAN;
+    }
+    if (isinf(x)) {
+        return HUGE_VAL;
+    }
+    /* Gamma(x) = Gamma(x + k) / (x (x+1) ... (x+k-1)). */
+    double prod = 1.0;
+    while (x < 15.0) {
+        prod *= x;
+        x += 1.0;
+    }
+    double r = 1.0 / x, r2 = r * r;
+    double series = r * (1.0 / 12.0 - r2 * (1.0 / 360.0 - r2 * (1.0 / 1260.0
+                  - r2 * (1.0 / 1680.0 - r2 * (1.0 / 1188.0)))));
+    return (x - 0.5) * log(x) - x + 0.91893853320467274178 + series - log(prod);
+}

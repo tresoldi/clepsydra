@@ -55,6 +55,11 @@ typedef struct gd_mcmc_config {
     size_t   thin;              /* >= 1 */
     bool     adapt;
     bool     store_pointwise;
+    /* Chains run concurrently, at most this many at once, when the build has
+     * threads (GD_THREADS), the model can clone itself and no progress
+     * callback is set; 0 = all chains at once, 1 = one after another. Draws
+     * are identical either way. */
+    size_t   threads;
 
     /* Global strict-clock rate (log r ~ N(rate_logmean, rate_logsd^2)). */
     bool     sample_rate;

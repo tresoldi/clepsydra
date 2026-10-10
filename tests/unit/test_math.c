@@ -105,9 +105,31 @@ TEST(test_is_finite)
     CHECK(gd_is_finite(NAN) == 0);
 }
 
+/* gd_lgamma agrees with libm's lgamma (single-threaded here) across scales,
+ * including the shift region below 15 and integers, as the CRP uses them. */
+TEST(test_lgamma_matches_libm)
+{
+    double worst = 0.0;
+    for (double x = 1e-6; x < 1e5; x *= 1.07) {
+        double a = gd_lgamma(x), b = lgamma(x);
+        double d = fabs(a - b) / (1.0 + fabs(b));
+        if (d > worst) worst = d;
+    }
+    for (int n = 1; n <= 500; n++) {
+        double d = fabs(gd_lgamma((double)n) - lgamma((double)n)) / (1.0 + lgamma((double)n));
+        if (d > worst) worst = d;
+    }
+    printf("    gd_lgamma vs lgamma: worst relative difference %.2e\n", worst);
+    CHECK(worst < 1e-13);
+    CHECK(fabs(gd_lgamma(1.0)) < 1e-13 && fabs(gd_lgamma(2.0)) < 1e-13);
+    CHECK(isnan(gd_lgamma(0.0)));
+    CHECK(isnan(gd_lgamma(-1.5)));
+}
+
 static void run_tests(void)
 {
     RUN(test_logsumexp_basic);
+    RUN(test_lgamma_matches_libm);
     RUN(test_logsumexp_single);
     RUN(test_logsumexp_empty);
     RUN(test_logsumexp_neginf);

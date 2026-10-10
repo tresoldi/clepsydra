@@ -35,6 +35,14 @@ LDLIBS    = -lm
 GIT_COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)
 CPPFLAGS += -DGD_GIT_COMMIT='"$(GIT_COMMIT)"'
 
+# MCMC chains run in parallel POSIX threads (gd_mcmc_config.threads). THREADS=0
+# builds a single-threaded library; the WebAssembly build never defines it.
+THREADS ?= 1
+ifeq ($(THREADS),1)
+CPPFLAGS += -DGD_THREADS
+LDLIBS   += -pthread
+endif
+
 SRC_DIR   = src
 OBJ_DIR   = obj
 SAN_OBJ   = obj_san
@@ -244,7 +252,7 @@ analyze: analyze-gcc analyze-clang
 analyze-gcc:
 	@echo "=== gcc -fanalyzer ==="
 	@out=$$(for f in $(ANALYZE_SRCS); do \
-		gcc -std=c99 $(INCLUDE) -Isrc -fanalyzer -O2 $(ANALYZE_HARDENING) \
+		gcc -std=c99 -DGD_THREADS $(INCLUDE) -Isrc -fanalyzer -O2 $(ANALYZE_HARDENING) \
 		    -c $$f -o /dev/null 2>&1; \
 	done); \
 	if echo "$$out" | grep -q 'warning:'; then \
@@ -256,7 +264,7 @@ analyze-gcc:
 analyze-clang:
 	@echo "=== clang --analyze ==="
 	@out=$$(for f in $(ANALYZE_SRCS); do \
-		clang -std=c99 $(INCLUDE) -Isrc --analyze \
+		clang -std=c99 -DGD_THREADS $(INCLUDE) -Isrc --analyze \
 		    -Xanalyzer -analyzer-output=text $$f -o /dev/null 2>&1; \
 	done); \
 	if echo "$$out" | grep -q 'warning:'; then \
@@ -410,7 +418,7 @@ $(BUILD)/clepsydra.pc: | $(BUILD)
 	@printf 'URL: https://github.com/tresoldi/clepsydra\n'   >> $@
 	@printf 'Version: %s\n' '$(VERSION)'                    >> $@
 	@printf 'Libs: -L$${libdir} -lclepsydra\n'               >> $@
-	@printf 'Libs.private: -lm\n'                            >> $@
+	@printf 'Libs.private: -lm $(filter -pthread,$(LDLIBS))\n' >> $@
 	@printf 'Cflags: -I$${includedir}\n'                      >> $@
 
 clean:

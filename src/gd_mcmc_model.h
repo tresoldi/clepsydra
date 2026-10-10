@@ -54,12 +54,19 @@ typedef struct gd_mcmc_state {
  * Likelihood callback. The sampler writes the current node ages into `tree`,
  * the other parameters into `st`, and expects the total data log-likelihood in
  * *out_total; if `pointwise != NULL`, fill n_pointwise per-concept log-liks.
+ *
+ * Optional parallel support: `clone` returns an independent context bound to
+ * `tree` (a copy of the run's tree), sharing only read-only data with `ctx`;
+ * `clone_free` releases one. With both set, gd_mcmc_run may run each chain in
+ * its own thread on its own tree copy. NULL: the chains run one after another.
  */
 typedef struct gd_mcmc_model {
     void  *ctx;
     size_t n_pointwise;
     int  (*loglik)(void *ctx, gd_tree *tree, const gd_mcmc_state *st,
                    double *pointwise, double *out_total, gd_error *err);
+    void *(*clone)(void *ctx, gd_tree *tree, gd_error *err);
+    void  (*clone_free)(void *clone);
 } gd_mcmc_model;
 
 #endif /* GD_MCMC_MODEL_H */

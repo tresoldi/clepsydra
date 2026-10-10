@@ -30,6 +30,7 @@ clepsydra date-tree --tree T.nwk --forms forms.tsv --calibrations cal.tsv --out 
 | `--out` | output directory (created) | — |
 | `--warmup` / `--samples` | adapting / retained iterations per chain | 2000 / 2000 |
 | `--chains` | independent chains (per-chain seeds off `--seed`) | 4 |
+| `--threads` | chains run at once; 0 = all of them, 1 = one after another. The draws are the same whatever the value. With `--progress 1` the chains run one after another | 0 |
 | `--rate-logmean` / `--rate-logsd` | prior on `log r` (per **year**) | −8.80 / 0.80 |
 | `--epsilon` | contamination weight for incompatible (homoplastic/loan) concepts | 0.05 |
 | `--relaxed` | `1` adds per-branch rate multipliers + `σ_b` | 0 |

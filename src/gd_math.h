@@ -41,6 +41,11 @@ double gd_safe_log1p(double x);
 /* Stable expm1. */
 double gd_safe_expm1(double x);
 
+/* log Gamma(x) for x > 0, without touching global state: C99's lgamma
+ * writes `signgam`, a data race once chains run in threads. Shifts x up to
+ * 15, then Stirling's series to x^-9 (next term < 3e-16). NaN for x <= 0. */
+double gd_lgamma(double x);
+
 /* Is x finite and not NaN? (isfinite wrapper, C99). A predicate. */
 bool   gd_is_finite(double x);
 

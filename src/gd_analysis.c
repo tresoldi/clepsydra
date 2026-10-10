@@ -531,6 +531,7 @@ void gd_analysis_tree_config_default(gd_analysis_tree_config *cfg)
     cfg->n_warmup = 2000;
     cfg->n_samples = 2000;
     cfg->n_chains = 4;
+    cfg->threads = 0;
     cfg->seed = 42;
     cfg->rate_logmean = -8.80;
     cfg->rate_logsd = 0.80;
@@ -978,6 +979,7 @@ int gd_analysis_tree_job_run(gd_analysis_tree_job *job,
     mc.rate_mix_prior_logsd = job->cfg.concept_rate_prior_logsd;
     mc.yule_kappa = job->cfg.yule_kappa;
     mc.on_progress = job->cfg.on_progress;
+    mc.threads = job->cfg.threads;
     mc.progress_user = job->cfg.progress_user;
     mc.progress_every = job->cfg.progress_every;
 

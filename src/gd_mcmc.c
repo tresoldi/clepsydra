@@ -15,7 +15,9 @@
  */
 #include "gd_mcmc.h"
 #include "gd_memory.h"
+#include "gd_math.h"
 #include "gd_tree.h"
+#include "gd_tree_build.h"
 #include "gd_calibration.h"
 #include "gd_diagnostics.h"
 #include "gd_rng.h"
@@ -26,6 +28,9 @@
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
+#ifdef GD_THREADS
+#include <pthread.h>
+#endif
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -125,7 +130,7 @@ static double halfnormal_logpdf(double x, double sd)
 static double beta_logpdf(double x, double a, double b)
 {
     if (!(x > 0.0) || !(x < 1.0)) return -HUGE_VAL;
-    double lbeta = lgamma(a) + lgamma(b) - lgamma(a + b);
+    double lbeta = gd_lgamma(a) + gd_lgamma(b) - gd_lgamma(a + b);
     return (a - 1.0) * log(x) + (b - 1.0) * log1p(-x) - lbeta;
 }
 
@@ -144,6 +149,7 @@ void gd_mcmc_config_default(gd_mcmc_config *cfg)
     cfg->thin = 1;
     cfg->adapt = true;
     cfg->store_pointwise = false;
+    cfg->threads = 0;
     cfg->sample_rate = true;
     cfg->fixed_rate = 1e-4;
     cfg->rate_logmean = -9.0;
@@ -1455,6 +1461,93 @@ static void compute_confounding(gd_mcmc_result *res, gd_tree *tree,
     }
 }
 
+/* One chain of a parallel run: its own tree copy, model clone and chain. */
+typedef struct {
+    const gd_mcmc_model *model;
+    gd_tree *src;
+    gd_calibration_set *cal;
+    const gd_mcmc_config *cfg;
+    size_t c;
+    gd_tree *tree;
+    void *ctx;
+    gd_mcmc_model local;
+    gd_mcmc_chain *ch;
+    gd_error err;
+    int rc;
+} chain_job;
+
+static void chain_jobs_free(chain_job *jobs, size_t n, const gd_mcmc_model *model)
+{
+    if (jobs == NULL) return;
+    for (size_t c = 0; c < n; c++) {
+        gd_mcmc_chain_destroy(jobs[c].ch);
+        if (jobs[c].ctx != NULL) model->clone_free(jobs[c].ctx);
+        gd_tree_destroy(jobs[c].tree);
+    }
+    free(jobs);
+}
+
+#ifdef GD_THREADS
+static void *chain_job_main(void *arg)
+{
+    chain_job *j = (chain_job *)arg;
+    j->rc = GD_E_INTERNAL;
+    j->tree = gd_tree_copy(j->src, &j->err);
+    if (j->tree == NULL) return NULL;
+    j->ctx = j->model->clone(j->model->ctx, j->tree, &j->err);
+    if (j->ctx == NULL) return NULL;
+    j->local = *j->model;
+    j->local.ctx = j->ctx;
+    j->ch = gd_mcmc_chain_create(&j->local, j->tree, j->cal, j->cfg, j->c, &j->err);
+    if (j->ch == NULL) return NULL;
+    j->rc = gd_mcmc_chain_run(j->ch, &j->err);
+    return NULL;
+}
+
+/* Run the chains in batches of `nthreads`; report the first failure. */
+static int run_chains_parallel(chain_job *jobs, const gd_mcmc_model *model, gd_tree *tree,
+                               gd_calibration_set *cal, const gd_mcmc_config *cfg,
+                               size_t n_chains, size_t nthreads, gd_error *err)
+{
+    pthread_t *th = (pthread_t *)gd_malloc_array_checked(nthreads, sizeof(pthread_t), err);
+    if (th == NULL) return GD_E_NOMEM;
+    for (size_t c = 0; c < n_chains; c++) {
+        jobs[c].model = model; jobs[c].src = tree; jobs[c].cal = cal; jobs[c].cfg = cfg;
+        jobs[c].c = c;
+        gd_error e0 = GD_ERROR_INIT; jobs[c].err = e0;
+    }
+    int rc = 0;
+    for (size_t b = 0; b < n_chains && rc == 0; b += nthreads) {
+        size_t e = (b + nthreads < n_chains) ? b + nthreads : n_chains;
+        size_t started = b;
+        for (size_t c = b; c < e; c++) {
+            if (pthread_create(&th[c - b], NULL, chain_job_main, &jobs[c]) != 0) {
+                rc = gd_error_set(err, GD_E_INTERNAL, "mcmc_run: cannot start a chain thread");
+                break;
+            }
+            started = c + 1;
+        }
+        for (size_t c = b; c < started; c++) pthread_join(th[c - b], NULL);
+        for (size_t c = b; c < started && rc == 0; c++) {
+            if (jobs[c].rc != 0) {
+                *err = jobs[c].err;
+                rc = jobs[c].rc;
+            }
+        }
+    }
+    free(th);
+    return rc;
+}
+#else
+static int run_chains_parallel(chain_job *jobs, const gd_mcmc_model *model, gd_tree *tree,
+                               gd_calibration_set *cal, const gd_mcmc_config *cfg,
+                               size_t n_chains, size_t nthreads, gd_error *err)
+{
+    (void)jobs; (void)model; (void)tree; (void)cal; (void)cfg; (void)n_chains; (void)nthreads;
+    return gd_error_set(err, GD_E_INTERNAL, "mcmc_run: built without threads");
+}
+#endif
+
 gd_mcmc_result *gd_mcmc_run(const gd_mcmc_model *model, gd_tree *tree,
                             gd_calibration_set *cal, const gd_mcmc_config *cfg,
                             size_t n_chains, gd_error *err)
@@ -1511,11 +1604,39 @@ gd_mcmc_result *gd_mcmc_run(const gd_mcmc_model *model, gd_tree *tree,
         gd_mcmc_result_destroy(res); return NULL;
     }
 
+    size_t nthreads = cfg->threads == 0 ? n_chains : cfg->threads;
+    bool parallel = false;
+#ifdef GD_THREADS
+    /* A progress callback is the caller's code, written for one chain at a
+     * time (and its cancel stops "the" run): with one, stay sequential. */
+    parallel = nthreads > 1 && n_chains > 1 && model->clone != NULL &&
+               model->clone_free != NULL && cfg->on_progress == NULL;
+#endif
+    chain_job *jobs = NULL;
+    if (parallel) {
+        jobs = (chain_job *)gd_calloc_checked(n_chains, sizeof(chain_job), err);
+        if (jobs == NULL) { gd_mcmc_result_destroy(res); return NULL; }
+        int rc = run_chains_parallel(jobs, model, tree, cal, cfg, n_chains, nthreads, err);
+        if (rc != 0) {
+            chain_jobs_free(jobs, n_chains, model);
+            gd_mcmc_result_destroy(res); return NULL;
+        }
+        /* Leave the caller's tree as the sequential path does: holding the
+         * last chain's final ages. */
+        for (size_t v = 0; v < tree->nnodes; v++)
+            tree->nodes[v].age = jobs[n_chains - 1].tree->nodes[v].age;
+    }
+
     for (size_t c = 0; c < n_chains; c++) {
-        gd_mcmc_chain *ch = gd_mcmc_chain_create(model, tree, cal, cfg, c, err);
-        if (ch == NULL) { gd_mcmc_result_destroy(res); return NULL; }
-        if (gd_mcmc_chain_run(ch, err) != 0) {
-            gd_mcmc_chain_destroy(ch); gd_mcmc_result_destroy(res); return NULL;
+        gd_mcmc_chain *ch;
+        if (parallel) {
+            ch = jobs[c].ch;
+        } else {
+            ch = gd_mcmc_chain_create(model, tree, cal, cfg, c, err);
+            if (ch == NULL) { gd_mcmc_result_destroy(res); return NULL; }
+            if (gd_mcmc_chain_run(ch, err) != 0) {
+                gd_mcmc_chain_destroy(ch); gd_mcmc_result_destroy(res); return NULL;
+            }
         }
         for (size_t draw = 0; draw < nd; draw++) {
             double *dst = res->samples + (c * nd + draw) * np;
@@ -1532,8 +1653,9 @@ gd_mcmc_result *gd_mcmc_run(const gd_mcmc_model *model, gd_tree *tree,
             double a = gd_mcmc_chain_acceptance(ch, p);
             res->acc_rate[p] += (isnan(a) ? 0.0 : a) / (double)n_chains;
         }
-        gd_mcmc_chain_destroy(ch);
+        if (!parallel) gd_mcmc_chain_destroy(ch);
     }
+    if (parallel) chain_jobs_free(jobs, n_chains, model);
 
     /* ndraws_all == n_chains * nd, already checked above. */
     double *col = (double *)gd_malloc_array_checked(ndraws_all, sizeof(double), err);

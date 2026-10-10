@@ -547,12 +547,12 @@ static double crp_logp_from_keys(const t1_key *keys, size_t nk, double alpha)
     while (s < nk) {
         size_t e = s + 1;
         while (e < nk && keys[e].label == keys[s].label) e++;
-        lp += lgamma((double)(e - s));
+        lp += gd_lgamma((double)(e - s));
         nblocks++;
         s = e;
     }
     lp += (double)nblocks * log(alpha);
-    lp -= lgamma(alpha + (double)nk) - lgamma(alpha);
+    lp -= gd_lgamma(alpha + (double)nk) - gd_lgamma(alpha);
     return lp;
 }
 
@@ -577,12 +577,12 @@ double gd_t1_noise_loglik(const gd_cognate_data *data, double alpha)
         }
         if (first) {
             nblocks++;
-            lp += lgamma((double)count);
+            lp += gd_lgamma((double)count);
         }
     }
     if (nobs == 0) return 0.0;
     lp += (double)nblocks * log(alpha);
-    lp -= lgamma(alpha + (double)nobs) - lgamma(alpha);
+    lp -= gd_lgamma(alpha + (double)nobs) - gd_lgamma(alpha);
     return lp;
 }
 
@@ -1388,10 +1388,34 @@ void gd_mcmc_t1_destroy(gd_mcmc_t1 *m)
     free(m);
 }
 
+/* A private adapter on its own workspace over `tree`, for a parallel chain.
+ * Shares only the concept data (read-only) with the original. */
+static void *t1_model_clone(void *vctx, gd_tree *tree, gd_error *err)
+{
+    const gd_mcmc_t1 *m = (const gd_mcmc_t1 *)vctx;
+    gd_t1_ws *ws = gd_t1_ws_create(tree, err);
+    if (ws == NULL) return NULL;
+    gd_mcmc_t1 *c = gd_mcmc_t1_create(ws, m->concepts, m->nconcepts, &m->opt, err);
+    if (c == NULL) { gd_t1_ws_destroy(ws); return NULL; }
+    c->use_cache = m->use_cache;
+    return c;
+}
+
+static void t1_model_clone_free(void *vc)
+{
+    gd_mcmc_t1 *c = (gd_mcmc_t1 *)vc;
+    if (c == NULL) return;
+    gd_t1_ws *ws = c->ws;
+    gd_mcmc_t1_destroy(c);
+    gd_t1_ws_destroy(ws);
+}
+
 void gd_mcmc_t1_model(gd_mcmc_t1 *m, gd_mcmc_model *out)
 {
     if (m == NULL || out == NULL) return;
     out->ctx = m;
     out->n_pointwise = m->nconcepts;
     out->loglik = t1_model_loglik;
+    out->clone = t1_model_clone;
+    out->clone_free = t1_model_clone_free;
 }

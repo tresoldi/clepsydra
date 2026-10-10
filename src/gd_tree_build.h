@@ -23,6 +23,11 @@ gd_tree *gd_tree_create(size_t nnodes, gd_error *err);
 /* Free a tree and everything it owns. NULL is accepted. */
 void     gd_tree_destroy(gd_tree *t);
 
+/* A deep copy with the same node indices, labels, ages and branch lengths;
+ * traversals are rebuilt, and LCA support too when the source had it. Used to
+ * give each parallel MCMC chain a tree of its own to move ages in. */
+gd_tree *gd_tree_copy(const gd_tree *src, gd_error *err);
+
 /* Add a child to a parent node, growing the children array as needed. */
 int gd_tree_add_child(gd_tree *t, size_t parent_idx, size_t child_idx,
                       gd_error *err);

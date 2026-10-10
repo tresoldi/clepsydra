@@ -499,4 +499,6 @@ void gd_mcmc_t2_model(gd_mcmc_t2 *m, gd_mcmc_model *out)
     out->ctx = m;
     out->n_pointwise = m->nclasses;
     out->loglik = t2_model_loglik;
+    out->clone = NULL;
+    out->clone_free = NULL;
 }
