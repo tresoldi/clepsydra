@@ -1005,7 +1005,7 @@ static int t1_model_loglik(void *vctx, gd_tree *tree, const gd_mcmc_state *st,
                                           m->nconcepts, &opt, per, &tot, err);
         if (rc != 0) return rc;
     }
-    if (pw != NULL) for (size_t c = 0; c < m->nconcepts; c++) pw[c] = m->per[c].log_lik;
+    if (pw != NULL && per != NULL) for (size_t c = 0; c < m->nconcepts; c++) pw[c] = per[c].log_lik;
     *out = tot;
     return 0;
 }
