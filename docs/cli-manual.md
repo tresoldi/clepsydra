@@ -234,6 +234,49 @@ clepsydra calib-sensitivity --tree examples/romance_tree/tree.nwk \
     --out /tmp/rom_cs --mode loco
 ```
 
+## `average` — model averaging by stacking
+
+```
+clepsydra average --runs DIR1,DIR2[,...] --out DIR [--labels A,B,...]
+```
+
+`average` combines `date-tree` runs that fit **different models to the same
+data**, for example a strict and a relaxed clock, or log-normal and gamma
+concept rates. Each run needs `--write-draws 1 --write-pointwise 1`.
+
+**How it works.**
+1. For every run it computes the leave-one-concept-out expected log
+   predictive density, `elpd_loo`, by Pareto-smoothed importance sampling
+   (PSIS-LOO; Vehtari, Gelman & Gabry 2017).
+2. It chooses **stacking weights**: the mixture of the runs' predictive
+   distributions that best predicts held-out concepts (Yao et al. 2018).
+   Unlike posterior model probabilities, stacking does not force all the
+   weight onto one model when every model is wrong in a different way.
+3. It pools the runs' draws with those weights.
+
+**Requirements.** The runs must score the same concepts; `average` checks
+the pointwise headers. Each run needs at least 100 draws.
+
+**`models.tsv`** has one row per run, with these columns:
+- `elpd_loo` and its `se`;
+- `p_loo`, the effective number of parameters;
+- `elpd_diff` and `se_diff`, against the best run (`se_diff` is computed
+  from the pointwise differences);
+- `pareto_k_max` and the number of concepts with k > 0.7. Above 0.7 that
+  concept's estimate is unreliable, and `average` warns;
+- `stacking_weight`.
+
+**`nodes.tsv`** has two rows per node, `calendar_bp` and `lexical` (ρ·a).
+The columns are:
+- the model-averaged `median`, and `q05`/`q95`, an equal-tailed 90%
+  interval of the weighted pool;
+- `between_model_share`, the fraction of the node's log-age variance that
+  comes from disagreement between the models. This is the printed
+  model-uncertainty term of roadmap E2.8;
+- each run's own median.
+
+Exit status is 0 on success and 1 on bad input.
+
 ## Notes
 
 - The engine never calls `exit()`/`abort()`; malformed inputs print an error and

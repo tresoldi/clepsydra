@@ -1,8 +1,9 @@
 /*
  * main.c — CLI entry point for Clepsydra.
  *
- * Commands: version, date-tree (T1 fixed-topology chronology), date-pair (P1
- * pairwise divergence), calib-sensitivity (calibration-sensitivity workflows).
+ * Commands: version, date-tree (T1 fixed-topology chronology), date-trees (over
+ * a tree sample), date-pair (P1 pairwise divergence), calib-sensitivity
+ * (calibration-sensitivity workflows), average (stacking over runs).
  * See cli/commands.c and docs/cli-manual.md.
  */
 #include "gd.h"
@@ -18,7 +19,9 @@ static void usage(const char *prog)
     fprintf(stderr, "Commands:\n");
     fprintf(stderr, "  date-tree          fixed-topology T1 chronology (MCMC)\n");
     fprintf(stderr, "  date-pair          P1 pairwise divergence date\n");
+    fprintf(stderr, "  date-trees         date over a posterior sample of trees, pooled\n");
     fprintf(stderr, "  calib-sensitivity  leave-one-calibration-out / widen sensitivity\n");
+    fprintf(stderr, "  average            stacking (PSIS-LOO) average of date-tree runs\n");
     fprintf(stderr, "  version\n");
     fprintf(stderr, "Run a command with no options for its usage.\n");
 }
@@ -37,6 +40,7 @@ int main(int argc, char **argv)
     if (strcmp(argv[1], "date-trees") == 0) return cmd_date_trees(argc, argv);
     if (strcmp(argv[1], "date-pair") == 0) return cmd_date_pair(argc, argv);
     if (strcmp(argv[1], "calib-sensitivity") == 0) return cmd_calib_sensitivity(argc, argv);
+    if (strcmp(argv[1], "average") == 0) return cmd_average(argc, argv);
     fprintf(stderr, "Unknown command: %s\n", argv[1]);
     usage(argv[0]);
     return 1;

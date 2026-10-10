@@ -99,7 +99,11 @@ Four things follow from the research and shape everything below.
     - E2.4: codings and loans.
     - E2.6: outlier calibrations.
     - E2.7: `ancestor_tip`.
-    - E2.8: gamma mixing. Lomax and strict/relaxed spike-and-slab remain open.
+    - E2.8: gamma mixing, and the `average` command. It stacks runs on
+      PSIS-LOO, which covers strict/relaxed and the mixing families, and
+      prints a between-model variance share. A spike-and-slab on σ_b is
+      no longer needed for this. Branch × concept Lomax frailty stays out:
+      it is inconsistent under branch subdivision.
     - E2.9: `tip_error`, with the empirical prior from D1.3.
     - E2.10: the adequacy panel.
   - The gate's simulator (D3, `tools/simworld`) is running.

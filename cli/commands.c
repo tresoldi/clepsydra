@@ -1240,3 +1240,290 @@ out:
     free(tbuf); free(fbuf); free(cbuf); free(kbuf);
     return status;
 }
+
+/* ---------------------------------------------------------------- average */
+
+/* A numeric TSV with a header row: column names and a row-major matrix. */
+typedef struct {
+    char  **name;
+    size_t  ncol, nrow;
+    double *v;
+} num_table;
+
+static void num_table_free(num_table *t)
+{
+    if (t->name != NULL) for (size_t j = 0; j < t->ncol; j++) free(t->name[j]);
+    free(t->name); free(t->v);
+    t->name = NULL; t->v = NULL;
+}
+
+static int num_table_read(const char *path, num_table *t)
+{
+    memset(t, 0, sizeof *t);
+    char *buf = read_file(path, NULL);
+    if (buf == NULL) { fprintf(stderr, "error: cannot read %s\n", path); return 1; }
+    char *line = buf, *nl = strchr(line, '\n');
+    if (nl == NULL) { fprintf(stderr, "error: %s has no rows\n", path); free(buf); return 1; }
+    *nl = '\0';
+    size_t ncol = 1;
+    for (char *c = line; *c; c++) if (*c == '\t') ncol++;
+    t->name = (char **)calloc(ncol, sizeof(char *));
+    if (t->name == NULL) { free(buf); return 1; }
+    t->ncol = ncol;
+    char *f = line;
+    for (size_t j = 0; j < ncol; j++) {
+        char *e = strchr(f, '\t');
+        if (e != NULL) *e = '\0';
+        size_t l = strlen(f);
+        if (l > 0 && f[l - 1] == '\r') f[--l] = '\0';
+        t->name[j] = (char *)malloc(l + 1);
+        if (t->name[j] == NULL) { free(buf); num_table_free(t); return 1; }
+        memcpy(t->name[j], f, l + 1);
+        f = (e != NULL) ? e + 1 : f + l;
+    }
+    size_t cap = 0, nrow = 0;
+    for (char *r = nl + 1; *r; ) {
+        char *e = strchr(r, '\n');
+        if (e != NULL) *e = '\0';
+        if (*r != '\0') {
+            if (nrow == cap) {
+                cap = cap ? cap * 2 : 256;
+                double *g = (double *)realloc(t->v, cap * ncol * sizeof(double));
+                if (g == NULL) { free(buf); num_table_free(t); return 1; }
+                t->v = g;
+            }
+            char *p = r;
+            for (size_t j = 0; j < ncol; j++) {
+                char *end;
+                double x = strtod(p, &end);
+                if (end == p) {
+                    fprintf(stderr, "error: %s row %zu column %zu is not a number\n", path, nrow + 2, j + 1);
+                    free(buf); num_table_free(t); return 1;
+                }
+                t->v[nrow * ncol + j] = x;
+                p = (*end == '\t') ? end + 1 : end;
+            }
+            nrow++;
+        }
+        if (e == NULL) break;
+        r = e + 1;
+    }
+    t->nrow = nrow;
+    free(buf);
+    return 0;
+}
+
+static size_t col_index(const num_table *t, const char *name)
+{
+    for (size_t j = 0; j < t->ncol; j++) if (strcmp(t->name[j], name) == 0) return j;
+    return (size_t)-1;
+}
+
+typedef struct { double v, w; } wv_pair;
+
+static int wv_cmp(const void *a, const void *b)
+{
+    double x = ((const wv_pair *)a)->v, y = ((const wv_pair *)b)->v;
+    return (x > y) - (x < y);
+}
+
+/* Weighted quantile of sorted (value, weight) pairs, weights summing to 1. */
+static double wquantile(const wv_pair *p, size_t n, double q)
+{
+    double acc = 0.0;
+    for (size_t i = 0; i < n; i++) {
+        acc += p[i].w;
+        if (acc >= q) return p[i].v;
+    }
+    return n ? p[n - 1].v : NAN;
+}
+
+static void usage_average(void)
+{
+    fprintf(stderr,
+        "Usage: clepsydra average --runs DIR1,DIR2[,...] --out DIR [--labels A,B,...]\n"
+        "  Stacking (PSIS-LOO) average of date-tree runs on the same data, each run\n"
+        "  with --write-draws 1 --write-pointwise 1. Writes models.tsv (elpd_loo,\n"
+        "  Pareto k, stacking weight) and nodes.tsv (model-averaged ages and the\n"
+        "  between-model share of each node's log-age variance).\n");
+}
+
+int cmd_average(int argc, char **argv)
+{
+    const char *runs_arg = opt_arg(argc, argv, "--runs", NULL);
+    const char *out_dir = opt_arg(argc, argv, "--out", NULL);
+    const char *labels_arg = opt_arg(argc, argv, "--labels", NULL);
+    if (runs_arg == NULL || out_dir == NULL) { usage_average(); return 1; }
+    static const char *const extra[] = { "--runs", "--out", "--labels" };
+    if (reject_unknown_opts(argc, argv, NULL, 0, extra, sizeof extra / sizeof extra[0]) != 0) return 1;
+
+    char *runs = (char *)malloc(strlen(runs_arg) + 1);
+    char *labs = labels_arg ? (char *)malloc(strlen(labels_arg) + 1) : NULL;
+    if (runs == NULL || (labels_arg && labs == NULL)) { free(runs); free(labs); return 1; }
+    memcpy(runs, runs_arg, strlen(runs_arg) + 1);
+    if (labs) memcpy(labs, labels_arg, strlen(labels_arg) + 1);
+    enum { MAXM = 32 };
+    const char *dir[MAXM], *lab[MAXM];
+    size_t M = 0, nl = 0;
+    for (char *p = runs; p && *p && M < MAXM; ) {
+        char *c = strchr(p, ',');
+        if (c) *c = '\0';
+        dir[M++] = p;
+        p = c ? c + 1 : NULL;
+    }
+    for (char *p = labs; p && *p && nl < MAXM; ) {
+        char *c = strchr(p, ',');
+        if (c) *c = '\0';
+        lab[nl++] = p;
+        p = c ? c + 1 : NULL;
+    }
+    int status = 1;
+    num_table pw[MAXM], dr[MAXM];
+    memset(pw, 0, sizeof pw); memset(dr, 0, sizeof dr);
+    double *elpd = NULL, *kk = NULL, *ll = NULL;
+    char **nodes = NULL; size_t nnodes = 0;
+    wv_pair *pool = NULL;
+    FILE *fm = NULL, *fn = NULL;
+    if (M < 2) { fprintf(stderr, "error: --runs needs at least two run directories\n"); goto out; }
+    if (labs != NULL && nl != M) { fprintf(stderr, "error: --labels must name every run\n"); goto out; }
+    for (size_t m = 0; m < M; m++) {
+        if (labs == NULL) lab[m] = dir[m];
+        char path[4096];
+        snprintf(path, sizeof path, "%s/pointwise.tsv", dir[m]);
+        if (num_table_read(path, &pw[m]) != 0) goto out;
+        snprintf(path, sizeof path, "%s/draws.tsv", dir[m]);
+        if (num_table_read(path, &dr[m]) != 0) goto out;
+        if (pw[m].ncol != pw[0].ncol) { fprintf(stderr, "error: %s scores a different set of concepts\n", dir[m]); goto out; }
+        for (size_t j = 0; j < pw[m].ncol; j++)
+            if (strcmp(pw[m].name[j], pw[0].name[j]) != 0) {
+                fprintf(stderr, "error: %s scores a different set of concepts (%s vs %s)\n",
+                        dir[m], pw[m].name[j], pw[0].name[j]);
+                goto out;
+            }
+        if (pw[m].nrow < 100) { fprintf(stderr, "error: %s has fewer than 100 draws\n", dir[m]); goto out; }
+    }
+    /* Concept columns follow "chain" and "draw". */
+    size_t N = pw[0].ncol - 2;
+    elpd = (double *)malloc(M * N * sizeof(double));
+    kk = (double *)malloc(M * N * sizeof(double));
+    if (elpd == NULL || kk == NULL) goto out;
+    double w[MAXM], tot[MAXM], se[MAXM], ploo[MAXM], kmax[MAXM];
+    size_t kbad[MAXM];
+    for (size_t m = 0; m < M; m++) {
+        size_t S = pw[m].nrow;
+        free(ll);
+        ll = (double *)malloc(S * N * sizeof(double));
+        if (ll == NULL) goto out;
+        for (size_t s = 0; s < S; s++)
+            for (size_t i = 0; i < N; i++) ll[s * N + i] = pw[m].v[s * pw[m].ncol + 2 + i];
+        if (gd_psis_loo(ll, S, N, elpd + m * N, kk + m * N) != 0) goto out;
+        double sum = 0.0, ss = 0.0, lppd = 0.0;
+        kmax[m] = 0.0; kbad[m] = 0;
+        for (size_t i = 0; i < N; i++) {
+            double e = elpd[m * N + i];
+            sum += e; ss += e * e;
+            double mx = -HUGE_VAL, acc = 0.0;
+            for (size_t s = 0; s < S; s++) if (ll[s * N + i] > mx) mx = ll[s * N + i];
+            for (size_t s = 0; s < S; s++) acc += exp(ll[s * N + i] - mx);
+            lppd += mx + log(acc / (double)S);
+            double k = kk[m * N + i];
+            if (k > kmax[m]) kmax[m] = k;
+            if (k > 0.7) kbad[m]++;
+        }
+        tot[m] = sum;
+        double var = ss / (double)N - (sum / (double)N) * (sum / (double)N);
+        se[m] = sqrt((double)N * (var > 0 ? var : 0));
+        ploo[m] = lppd - sum;
+    }
+    if (gd_stacking_weights(elpd, M, N, w) == 0) goto out;
+
+    /* Nodes: age:<name> columns present in every run. */
+    nodes = (char **)calloc(dr[0].ncol, sizeof(char *));
+    if (nodes == NULL) goto out;
+    for (size_t j = 0; j < dr[0].ncol; j++) {
+        if (strncmp(dr[0].name[j], "age:", 4) != 0) continue;
+        bool all = true;
+        for (size_t m = 1; m < M; m++) if (col_index(&dr[m], dr[0].name[j]) == (size_t)-1) all = false;
+        if (all) nodes[nnodes++] = dr[0].name[j];
+    }
+    size_t S_all = 0;
+    for (size_t m = 0; m < M; m++) S_all += dr[m].nrow;
+    pool = (wv_pair *)malloc(S_all * sizeof(wv_pair));
+    if (pool == NULL) goto out;
+
+    if (mkdir_p(out_dir) != 0) { fprintf(stderr, "error: cannot create %s\n", out_dir); goto out; }
+    char path[4096];
+    snprintf(path, sizeof path, "%s/models.tsv", out_dir);
+    fm = fopen(path, "w");
+    snprintf(path, sizeof path, "%s/nodes.tsv", out_dir);
+    fn = fopen(path, "w");
+    if (fm == NULL || fn == NULL) { fprintf(stderr, "error: cannot write in %s\n", out_dir); goto out; }
+    fprintf(fm, "model\trun\telpd_loo\tse\tp_loo\telpd_diff\tse_diff\tpareto_k_max\tn_k_over_0.7\tstacking_weight\n");
+    size_t best = 0;
+    for (size_t m = 1; m < M; m++) if (tot[m] > tot[best]) best = m;
+    for (size_t m = 0; m < M; m++) {
+        /* The difference's SE comes from the pointwise differences, which
+         * are strongly correlated between models on the same concepts. */
+        double d1 = 0.0, d2 = 0.0;
+        for (size_t i = 0; i < N; i++) {
+            double d = elpd[m * N + i] - elpd[best * N + i];
+            d1 += d; d2 += d * d;
+        }
+        double dv = d2 / (double)N - (d1 / (double)N) * (d1 / (double)N);
+        fprintf(fm, "%s\t%s\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%zu\t%.4f\n", lab[m], dir[m], tot[m], se[m],
+                ploo[m], tot[m] - tot[best], sqrt((double)N * (dv > 0 ? dv : 0)), kmax[m], kbad[m], w[m]);
+    }
+    fprintf(fn, "node\tscale\tmedian\tq05\tq95\tbetween_model_share");
+    for (size_t m = 0; m < M; m++) fprintf(fn, "\tmedian_%s", lab[m]);
+    fprintf(fn, "\n");
+    for (size_t a = 0; a < nnodes; a++) {
+        for (int lex = 0; lex < 2; lex++) {
+            size_t n = 0;
+            double gm = 0.0, within = 0.0, mmean[MAXM], mmed[MAXM];
+            bool ok = true;
+            for (size_t m = 0; m < M && ok; m++) {
+                size_t c = col_index(&dr[m], nodes[a]), cr = col_index(&dr[m], "log_rate");
+                if (lex && cr == (size_t)-1) { ok = false; break; }
+                size_t S = dr[m].nrow, n0 = n;
+                double s1 = 0.0, s2 = 0.0;
+                for (size_t s = 0; s < S; s++) {
+                    double x = dr[m].v[s * dr[m].ncol + c];
+                    if (lex) x *= exp(dr[m].v[s * dr[m].ncol + cr]);
+                    pool[n].v = x; pool[n].w = w[m] / (double)S; n++;
+                    double lx = log(x > 0 ? x : 1e-300);
+                    s1 += lx; s2 += lx * lx;
+                }
+                mmean[m] = s1 / (double)S;
+                within += w[m] * (s2 / (double)S - mmean[m] * mmean[m]);
+                gm += w[m] * mmean[m];
+                qsort(pool + n0, S, sizeof(wv_pair), wv_cmp);
+                double acc = 0.0;
+                mmed[m] = pool[n0 + S - 1].v;
+                for (size_t s = 0; s < S; s++) { acc += 1.0 / (double)S; if (acc >= 0.5) { mmed[m] = pool[n0 + s].v; break; } }
+            }
+            if (!ok) continue;
+            double between = 0.0;
+            for (size_t m = 0; m < M; m++) between += w[m] * (mmean[m] - gm) * (mmean[m] - gm);
+            qsort(pool, n, sizeof(wv_pair), wv_cmp);
+            fprintf(fn, "%s\t%s\t%.6g\t%.6g\t%.6g\t%.3f", nodes[a] + 4, lex ? "lexical" : "calendar_bp",
+                    wquantile(pool, n, 0.5), wquantile(pool, n, 0.05), wquantile(pool, n, 0.95),
+                    (within + between) > 0 ? between / (within + between) : 0.0);
+            for (size_t m = 0; m < M; m++) fprintf(fn, "\t%.6g", mmed[m]);
+            fprintf(fn, "\n");
+        }
+    }
+    fprintf(stderr, "clepsydra average: %zu models, %zu concepts; stacking weights:", M, N);
+    for (size_t m = 0; m < M; m++) fprintf(stderr, " %s=%.3f", lab[m], w[m]);
+    fprintf(stderr, "\n");
+    for (size_t m = 0; m < M; m++)
+        if (kbad[m] > 0)
+            fprintf(stderr, "  warning: %s has %zu concept(s) with Pareto k > 0.7; its elpd_loo is unreliable\n",
+                    lab[m], kbad[m]);
+    status = 0;
+out:
+    if (fm) fclose(fm);
+    if (fn) fclose(fn);
+    for (size_t m = 0; m < M; m++) { num_table_free(&pw[m]); num_table_free(&dr[m]); }
+    free(elpd); free(kk); free(ll); free(nodes); free(pool); free(runs); free(labs);
+    return status;
+}

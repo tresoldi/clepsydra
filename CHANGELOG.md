@@ -60,6 +60,17 @@ columns and example numbers are expected throughout 0.x and are listed here.
 
 ### Added
 
+- **`average`: model averaging by stacking** (E2.8). It combines
+  `date-tree` runs that fit different models to the same data. It computes
+  PSIS-LOO for each run (`gd_loo.h`, now public), with Pareto-k
+  diagnostics and `se_diff` from pointwise differences. It then chooses
+  stacking weights and writes model-averaged node ages with a
+  between-model share of the log-age variance.
+  - Tests: the GPD fit recovers known shapes. PSIS-LOO matches exact LOO
+    in a conjugate model (−70.28 against −70.30). Stacking hits a
+    closed-form optimum.
+  - On Romance, the relaxed clock beats the strict one by 10.9 ± 4.6
+    elpd and takes all the weight.
 - **Checkpoints bound to their inputs, resumable mid-sampling** (E3.3).
   A chain checkpoint (version 7) records a 64-bit binding hash and refuses
   to restore when anything differs. The hash covers the parameter layout,

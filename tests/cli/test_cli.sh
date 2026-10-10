@@ -51,5 +51,15 @@ printf 'clade_id\tmembers\nibero\tSpanish,Portuguese\n' > "$TMP/clades.tsv"
 expect 0 "date-trees on a two-tree sample" -- "$CLE" date-trees --trees "$TMP/two.trees" --forms "$EX/data/forms.tsv" --calibrations "$EX/calibrations.tsv" --clades "$TMP/clades.tsv" --out "$TMP/t" --burnin 0 --ntrees 2 --warmup 200 --samples 200 --chains 2 --concept-rates 0 --allow-unconverged 1
 grep -q '^ibero	Spanish,Portuguese	1.000' "$TMP/t/posterior_clades.tsv" || { echo "  FAIL date-trees clade row"; fail=$((fail + 1)); }
 
+# average: two runs of the same model (different seeds) are combined; their
+# stacking weights sum to 1. A run without pointwise output is refused.
+for sd in 1 2; do
+  "$CLE" date-tree $TREE --out "$TMP/av$sd" --warmup 60 --samples 60 --chains 2 --seed $sd --concept-rates 0 --compare-prior 0 --allow-unconverged 1 --write-draws 1 --write-pointwise 1 2>/dev/null
+done
+expect 0 "average two runs" -- "$CLE" average --runs "$TMP/av1,$TMP/av2" --labels a,b --out "$TMP/avg"
+awk -F'\t' 'NR>1 { s += $NF } END { exit !(s > 0.999 && s < 1.001) }' "$TMP/avg/models.tsv" || { echo "  FAIL average weights"; fail=$((fail + 1)); }
+grep -q '^root	calendar_bp	' "$TMP/avg/nodes.tsv" || { echo "  FAIL average nodes"; fail=$((fail + 1)); }
+expect 1 "average refuses a run without pointwise output" -- "$CLE" average --runs "$TMP/av1,$TMP/d" --out "$TMP/avg2"
+
 if [ "$fail" -ne 0 ]; then echo "$fail of $n CLI checks failed"; exit 1; fi
 echo "$n/$n CLI checks passed"
