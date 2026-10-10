@@ -440,6 +440,11 @@ int gd_report_pair(const gd_analysis_pair_result *res,
     if ((rc = kv_num(t, "divergence_sd_bp", res->sd, 1, err)) != GD_E_OK) goto fail;
     if ((rc = kv_num(t, "et90_lo_bp", res->et_lo_90, 1, err)) != GD_E_OK) goto fail;
     if ((rc = kv_num(t, "et90_hi_bp", res->et_hi_90, 1, err)) != GD_E_OK) goto fail;
+    if ((rc = kv_num(t, "age_a_bp", res->age_a, 1, err)) != GD_E_OK) goto fail;
+    if ((rc = kv_num(t, "age_b_bp", res->age_b, 1, err)) != GD_E_OK) goto fail;
+    if ((rc = kv_num(t, "separation_median_y", res->sep_median, 1, err)) != GD_E_OK) goto fail;
+    if ((rc = kv_num(t, "separation_et90_lo_y", res->sep_et_lo_90, 1, err)) != GD_E_OK) goto fail;
+    if ((rc = kv_num(t, "separation_et90_hi_y", res->sep_et_hi_90, 1, err)) != GD_E_OK) goto fail;
     if ((rc = kv_uint(t, "absolute_anchored", res->absolute_anchored ? 1u : 0u, err)) != GD_E_OK) goto fail;
     if ((rc = kv_num(t, "prior_dominance", res->prior_dominance, 3, err)) != GD_E_OK) goto fail;
 

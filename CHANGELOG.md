@@ -9,6 +9,27 @@ and `docs/c99-alignment-plan.md`.
 Work on `docs/roadmap.md`. Breaking changes to defaults, the CLI, output
 columns and example numbers are expected throughout 0.x and are listed here.
 
+### Changed (breaking)
+
+- **`date-pair` rate prior is per year** (E0.7), the same unit as
+  `date-tree`. It was per kiloyear. Subtract log(1000) = 6.9078 from an old
+  `--rate-logmean`. The default is -8.9 (about the old -2.0 per kiloyear).
+
+### Added
+
+- **`date-pair --age-a/--age-b`** (E0.6): the sampling dates of the two
+  lists, in years BP. They were hard-coded to 0, so an old list (Paumari
+  1833, Arua 1869) could only be dated by correcting the output by hand.
+  `posterior_pair.tsv` gains `age_a_bp`, `age_b_bp` and the lineage
+  separation `2T - age_a - age_b` (median and 90% interval): for an
+  ancestor-descendant pair this is the time elapsed between the lists. The
+  decay laws assume contemporaneous lists and refuse tip ages.
+
+### Known gaps
+
+- The committed browser engine (`web/`) predates these changes; it is
+  rebuilt with `web/build-wasm.sh`, which needs emsdk.
+
 ### Fixed
 
 - **Missing cognate ids were counted as matches** (roadmap E0.1). A `.`, `?`

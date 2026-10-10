@@ -309,7 +309,7 @@ function renderPair(r, ds) {
   }
   if (!r.absolute_anchored) {
     caveat += " No tip age was supplied, so the scale comes from the rate " +
-      "prior (per kiloyear) rather than from an anchored calendar date.";
+      "prior rather than from an anchored calendar date.";
   }
   caveat += " Data: " + esc(ds.source) + ".";
   $("pair-caveat").innerHTML = caveat;

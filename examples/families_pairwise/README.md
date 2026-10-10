@@ -33,7 +33,7 @@ CC-BY-4.0; see `../DATA_SOURCE.md` for full citations and regeneration.
 
 `run.sh` prints shared concepts, retention fraction, and the P1 divergence
 median. The divergences are **lexical time scaled by the rate prior** (per
-kiloyear); `absolute_anchored = 0` in every `output/<family>/posterior_pair.tsv`,
+year); `absolute_anchored = 0` in every `output/<family>/posterior_pair.tsv`,
 because a bare pair carries no tip-age anchor. Do not read these as calendar
 dates — that is the honest reporting the tool enforces.
 

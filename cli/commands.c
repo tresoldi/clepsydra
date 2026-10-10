@@ -736,7 +736,10 @@ static void usage_pair(void)
       "  %-20s      swadesh|starostin|vasilyev|two-component\n"
       "  Default is the hierarchical constant-rate model (P1). --decay selects an\n"
       "  alternative retention law (Starostin accelerating, Vasilyev two-component)\n"
-      "  for model comparison. Rate prior is per-KILOYEAR; T reported in years BP.\n",
+      "  for model comparison. The rate prior is per YEAR, as in date-tree.\n"
+      "  T is reported in years BP; with --age-a/--age-b the lineage separation\n"
+      "  2T - age_a - age_b is reported too (for an ancestor-descendant pair it\n"
+      "  is the time elapsed between the two lists).\n",
       "--decay");
 }
 

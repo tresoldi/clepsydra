@@ -949,8 +949,10 @@ void gd_analysis_pair_config_default(gd_analysis_pair_config *cfg)
     memset(cfg, 0, sizeof *cfg);
     cfg->t_lo = 100.0;
     cfg->t_hi = 8000.0;
-    cfg->rate_logmean = -2.0;   /* per kiloyear */
+    cfg->rate_logmean = -8.9;   /* per year (about -2.0 per kiloyear) */
     cfg->rate_logsd = 0.6;
+    cfg->age_a = 0.0;
+    cfg->age_b = 0.0;
     cfg->model = GD_PAIR_P1;
 }
 
@@ -1016,7 +1018,8 @@ int gd_analysis_pair_run(const gd_analysis_pair_input *in,
         if (ca == NULL || cb == NULL) continue;
         matches[m] = (strcmp(ca, cb) == 0) ? 1 : 0;
         nmatch += (size_t)matches[m];
-        refs[m].log_rate_mean = cfg->rate_logmean;   /* per kiloyear */
+        /* P1 works per kiloyear internally; the config is per year. */
+        refs[m].log_rate_mean = cfg->rate_logmean + log(1000.0);
         refs[m].log_rate_sd = cfg->rate_logsd;
         m++;
     }
@@ -1030,6 +1033,24 @@ int gd_analysis_pair_run(const gd_analysis_pair_input *in,
      * uses the deterministic decay-law posterior (M12) instead. */
     double unit;                /* multiplier from the result's unit to years */
     int prc;
+    if (!(cfg->age_a >= 0.0) || !(cfg->age_b >= 0.0) ||
+        !isfinite(cfg->age_a) || !isfinite(cfg->age_b)) {
+        gd_error_set(err, GD_E_INVALID_ARG, "tip ages must be finite and >= 0");
+        goto done;
+    }
+    double age_max = (cfg->age_a > cfg->age_b) ? cfg->age_a : cfg->age_b;
+    if (!(cfg->t_hi > age_max)) {
+        gd_error_setf(err, GD_E_INVALID_ARG,
+                      "--t-hi (%.0f) must exceed the older tip age (%.0f)",
+                      cfg->t_hi, age_max);
+        goto done;
+    }
+    if (cfg->model != GD_PAIR_P1 && (cfg->age_a > 0.0 || cfg->age_b > 0.0)) {
+        gd_error_setf(err, GD_E_INVALID_ARG,
+                      "decay law '%s' assumes contemporaneous lists; use P1 with tip ages",
+                      gd_pair_model_name(cfg->model));
+        goto done;
+    }
     if (cfg->model != GD_PAIR_P1) {
         gd_decay_params dp; gd_decay_params_default(&dp);
         prc = gd_decay_posterior(pair_decay_model(cfg->model), &dp, matches, NULL,
@@ -1038,7 +1059,8 @@ int gd_analysis_pair_run(const gd_analysis_pair_input *in,
     } else {
         /* d = 2T with T in kyr: P1 works in the rate's time unit, so the bounds
          * go in as kyr and the summaries are rescaled to years below. */
-        prc = gd_p1_posterior(refs, m, matches, NULL, 0.0, 0.0,
+        prc = gd_p1_posterior(refs, m, matches, NULL,
+                              cfg->age_a / 1000.0, cfg->age_b / 1000.0,
                               cfg->t_lo / 1000.0, cfg->t_hi / 1000.0,
                               0.0, 0.3, 0.0, 1.0, 19.0,
                               GD_SENSITIVITY_STANDARD, 512, 24, &result, err);
@@ -1061,6 +1083,13 @@ int gd_analysis_pair_run(const gd_analysis_pair_input *in,
     r->et_lo_90 = result.et_lo_90 * unit;
     r->et_hi_90 = result.et_hi_90 * unit;
     r->absolute_anchored = result.absolute_anchored;
+    /* The separation is an increasing affine map of T, so its quantiles are
+     * the mapped quantiles of T. */
+    r->age_a = cfg->age_a;
+    r->age_b = cfg->age_b;
+    r->sep_median   = 2.0 * r->median   - cfg->age_a - cfg->age_b;
+    r->sep_et_lo_90 = 2.0 * r->et_lo_90 - cfg->age_a - cfg->age_b;
+    r->sep_et_hi_90 = 2.0 * r->et_hi_90 - cfg->age_a - cfg->age_b;
     r->prior_dominance = result.prior_dominance;
 
     /* Carry the posterior grid out in years, rather than discarding it. */

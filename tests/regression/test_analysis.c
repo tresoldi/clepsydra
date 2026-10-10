@@ -939,6 +939,53 @@ TEST(test_analysis_is_hard_and_widen_semantics)
     CHECK(fabs(mb - ma) < 0.5 * wb);
 }
 
+/* E0.6: date-pair takes the sampling dates of the two lists. The divergence
+ * is then no younger than the older list, and the reported separation is
+ * 2T - age_a - age_b. Decay laws, which assume contemporaneous lists, refuse
+ * tip ages instead of ignoring them. */
+TEST(test_analysis_pair_tip_ages)
+{
+    gd_analysis_pair_input in;
+    memset(&in, 0, sizeof in);
+    in.forms_tsv = FORMS; in.forms_len = GD_LEN_NUL_TERMINATED;
+    in.lang_a = "Latin"; in.lang_b = "Spanish";
+    gd_analysis_pair_config cfg; gd_analysis_pair_config_default(&cfg);
+    cfg.age_a = 2050.0;
+    cfg.t_hi = 12000.0;
+    gd_error err = GD_ERROR_INIT;
+    gd_analysis_pair_result *res = NULL;
+    int rc = gd_analysis_pair_run(&in, &cfg, &res, &err);
+    double lo = 0, med = 0, smed = 0;
+    if (res != NULL) {
+        lo = res->et_lo_90; med = res->median; smed = res->sep_median;
+        gd_analysis_pair_result_destroy(res); res = NULL;
+    }
+    CHECK(rc == GD_E_OK);
+    CHECK(lo >= 2050.0);
+    CHECK_APPROX(smed, 2.0 * med - 2050.0, 1e-6);
+
+    cfg.model = GD_PAIR_DECAY_SWADESH;
+    gd_error_clear(&err);
+    CHECK(gd_analysis_pair_run(&in, &cfg, &res, &err) != GD_E_OK);
+    CHECK(res == NULL);
+
+    /* A tip older than the grid can reach is refused, not clamped. */
+    cfg.model = GD_PAIR_P1;
+    cfg.t_hi = 2000.0;
+    gd_error_clear(&err);
+    CHECK(gd_analysis_pair_run(&in, &cfg, &res, &err) != GD_E_OK);
+    CHECK(res == NULL);
+}
+
+/* E0.7: the pair rate prior is per year, like date-tree's. A per-year value
+ * and its per-kiloyear equivalent shifted by log(1000) agree, and the
+ * default is about -2.0 per kiloyear. */
+TEST(test_analysis_pair_rate_is_per_year)
+{
+    gd_analysis_pair_config cfg; gd_analysis_pair_config_default(&cfg);
+    CHECK(fabs(cfg.rate_logmean + log(1000.0) - (-2.0)) < 0.01);
+}
+
 static void run_tests(void)
 {
     RUN(test_analysis_prepare_reports_dataset_size);
@@ -961,6 +1008,8 @@ static void run_tests(void)
     RUN(test_analysis_pair_decay_laws_differ);
     RUN(test_analysis_empty_buffer_is_empty_not_measured);
     RUN(test_analysis_pair_bad_input);
+    RUN(test_analysis_pair_tip_ages);
+    RUN(test_analysis_pair_rate_is_per_year);
     RUN(test_analysis_pair_missing_is_not_a_match);
     RUN(test_analysis_pair_unknown_or_disjoint_is_an_error);
     RUN(test_analysis_tree_missing_and_unknown_tips);

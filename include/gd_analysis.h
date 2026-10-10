@@ -278,14 +278,26 @@ typedef struct gd_analysis_pair_input {
  * value) is the hierarchical constant-rate posterior, and the GD_PAIR_DECAY_*
  * members select an alternative retention law to compare against it.
  *
- * The rate prior is per KILOYEAR (P1's own unit); `t_lo`/`t_hi` and every
- * reported time are in years BP.
+ * The rate prior is the log replacement rate PER YEAR, the same unit as
+ * date-tree (it was per kiloyear before 0.3; subtract log(1000) = 6.9078 from
+ * an old value). `t_lo`/`t_hi`, the tip ages and every reported time are in
+ * years BP.
+ *
+ * `age_a`/`age_b` are the sampling dates of the two lists (0 = modern). With
+ * dated lists the divergence time T is at least the older of the two, and
+ * the lexical evidence measures the lineage separation 2T - age_a - age_b,
+ * which the result also reports. For a list that samples the other's own
+ * ancestor, that separation is the elapsed time between the two lists.
+ * The alternative decay laws assume contemporaneous lists and refuse tip
+ * ages.
  */
 typedef struct gd_analysis_pair_config {
     double        t_lo;          /* 100 */
     double        t_hi;          /* 8000 */
-    double        rate_logmean;  /* -2.0, per kiloyear */
+    double        rate_logmean;  /* -8.9 per year (about -2.0 per kiloyear) */
     double        rate_logsd;    /* 0.6 */
+    double        age_a;         /* 0, years BP */
+    double        age_b;         /* 0, years BP */
     gd_pair_model model;         /* GD_PAIR_P1 */
 } gd_analysis_pair_config;
 
@@ -322,6 +334,11 @@ typedef struct gd_analysis_pair_result {
 
     /* Years BP. */
     double mean, median, sd, et_lo_90, et_hi_90;
+
+    /* Lineage separation 2T - age_a - age_b, in years: the total time along
+     * the path between the two lists, which is what the cognates measure. */
+    double age_a, age_b;
+    double sep_median, sep_et_lo_90, sep_et_hi_90;
 
     bool   absolute_anchored;
     double prior_dominance;

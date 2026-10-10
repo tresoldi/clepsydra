@@ -202,7 +202,7 @@ TEST(test_report_pair_is_a_key_value_table)
 
     /* Every row is key then value, and the numbers carry the precision the
      * shipped file has always used. */
-    CHECK(gd_table_nrows(t) == 13);
+    CHECK(gd_table_nrows(t) == 18);
     CHECK_STREQ(gd_table_text_at(t, 0, 0), "model");
     CHECK_STREQ(gd_table_text_at(t, 0, 1), "p1");
     CHECK_STREQ(gd_table_text_at(t, 1, 1), "Latin");

@@ -98,10 +98,16 @@ static const gd_option PAIR_OPTIONS[] = {
         "upper bound of the divergence-time grid, years BP"),
     GD_OPT_ROW(gd_analysis_pair_config, rate_logmean, GD_OPT_DOUBLE, double, "rate_logmean",
         "--rate-logmean", -GD_INF, GD_INF, false, false,
-        "prior mean of the log rate, per kiloyear"),
+        "prior mean of the log rate, per year (as date-tree)"),
     GD_OPT_ROW(gd_analysis_pair_config, rate_logsd, GD_OPT_DOUBLE, double, "rate_logsd",
         "--rate-logsd", 0.0, GD_INF, true, false,
         "prior sd of the log rate; must be positive"),
+    GD_OPT_ROW(gd_analysis_pair_config, age_a, GD_OPT_DOUBLE, double, "age_a",
+        "--age-a", 0.0, GD_INF, false, false,
+        "sampling date of language A's list, years BP (0 = modern)"),
+    GD_OPT_ROW(gd_analysis_pair_config, age_b, GD_OPT_DOUBLE, double, "age_b",
+        "--age-b", 0.0, GD_INF, false, false,
+        "sampling date of language B's list, years BP (0 = modern)"),
 };
 
 const gd_option *gd_options_tree(size_t *n)

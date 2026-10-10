@@ -216,7 +216,7 @@ TEST(test_options_cover_the_configurable_fields)
     (void)gd_options_tree(&n);
     CHECK(n == 14);
     (void)gd_options_pair(&n);
-    CHECK(n == 4);
+    CHECK(n == 6);
 }
 
 TEST(test_options_reject_null_arguments)

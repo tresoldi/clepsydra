@@ -73,16 +73,24 @@ Deterministic pairwise divergence date for two languages (no MCMC).
 
 ```
 clepsydra date-pair --forms forms.tsv --lang-a A --lang-b B --out DIR \
-    [--t-lo 100] [--t-hi 8000] [--rate-logmean -2.0] [--rate-logsd 0.6]
+    [--t-lo 100] [--t-hi 8000] [--rate-logmean -8.9] [--rate-logsd 0.6] \
+    [--age-a 0] [--age-b 0]
 ```
 
 `--t-lo/--t-hi` bound the divergence time in years BP; the rate prior
-(`--rate-logmean/-logsd`) is per **kiloyear** here. Concepts present in both
-languages count as a cognate match iff they share a `cognate_id`.
+(`--rate-logmean/-logsd`) is the log replacement rate **per year**, as in
+`date-tree` (before 0.3 it was per kiloyear: subtract 6.9078 from an old
+value). `--age-a/--age-b` are the sampling dates of the two lists in years BP
+(0 = modern); the decay laws refuse them. Concepts present in both languages
+count as a cognate match iff they share a `cognate_id`; a missing cognate id
+(`.`, `?`, empty, or `status` missing/excluded/absent) is not a match.
 
 **Output** `DIR/posterior_pair.tsv`: shared-concept and cognate-match counts,
 retention fraction, divergence mean/median/sd and 90% equal-tail interval (years
-BP), the `absolute_anchored` flag, and the prior-dominance diagnostic.
+BP), the two tip ages and the lineage separation `2T - age_a - age_b` (median
+and 90% interval, in years; for an ancestor-descendant pair it is the time
+elapsed between the lists), the `absolute_anchored` flag, and the
+prior-dominance diagnostic.
 
 ## `calib-sensitivity` — calibration-sensitivity workflows
 

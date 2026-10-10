@@ -24,7 +24,7 @@ Spanish and Portuguese share ~84% of basic vocabulary; the P1 posterior places
 their divergence near ~570 BP with a 90% equal-tail interval of roughly
 400–780 BP. `absolute_anchored = 0` reports honestly that, without a tip-age
 anchor, the scale rests on the rate prior (`--rate-logmean/-logsd`, per
-kiloyear). See `../DATA_SOURCE.md` for data licence/attribution.
+year). See `../DATA_SOURCE.md` for data licence/attribution.
 
 Swap in any two languages present in `data/forms.tsv` with `--lang-a/--lang-b`,
 or point at another example's `data/forms.tsv` for a different pair.
