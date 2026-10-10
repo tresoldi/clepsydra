@@ -386,12 +386,81 @@ TEST(test_m9_robust_to_injected_loans)
     CHECK(fabs(logr_loans - log(0.0005)) < 0.6);
 }
 
+/*
+ * Prior-only sampling of the relaxed clock must return its hierarchical prior,
+ * sigma_b ~ HalfNormal(0.3) and b_i | sigma_b ~ N(-sigma_b^2/2, sigma_b), and
+ * mix while doing so. That is Neal's funnel, where single-site moves on
+ * sigma_b stall near zero: the non-centred joint move is what makes this pass.
+ */
+TEST(test_m9_prior_only_funnel)
+{
+    gd_error err = GD_ERROR_INIT;
+    gd_tree *t = make_quartet();
+    CHECK(t != NULL);
+    size_t n = t->nnodes;
+    int *store = (int *)malloc(4 * n * sizeof(int));
+    gd_cognate_data concepts[4];
+    for (size_t c = 0; c < 4; c++) {
+        for (size_t i = 0; i < n; i++) store[c * n + i] = t->nodes[i].is_leaf ? (int)(i % 2) : -1;
+        concepts[c].labels = store + c * n; concepts[c].nnodes = n;
+    }
+    gd_t1_ws *ws = gd_t1_ws_create(t, &err);
+    gd_t1_options opt; gd_t1_options_default(&opt);
+    opt.incompatible = GD_INCOMPATIBLE_EXCLUDE;
+    gd_mcmc_t1 *m = gd_mcmc_t1_create(ws, concepts, 4, &opt, &err);
+    gd_mcmc_model model; gd_mcmc_t1_model(m, &model);
+    gd_calibration_set *cs = bounds_all_fixed(t, &err);
+    gd_mcmc_config cfg; gd_mcmc_config_default(&cfg);
+    cfg.prior_only = true; cfg.sample_branch = true; cfg.sigma_b_prior_sd = 0.30;
+    cfg.rate_logmean = log(5e-4); cfg.rate_logsd = 0.5;
+    cfg.n_warmup = 2000; cfg.n_samples = 10000; cfg.seed = 21u;
+    gd_mcmc_result *res = gd_mcmc_run(&model, t, cs, &cfg, 4, &err);
+    CHECK(res != NULL);
+    size_t total = res->n_chains * res->n_draws, np = res->n_param, p_sig = (size_t)-1, p_b = (size_t)-1;
+    for (size_t p = 0; p < np; p++) {
+        if (res->param_type[p] == GD_MCMC_P_LOG_SIGMA_B) p_sig = p;
+        if (res->param_type[p] == GD_MCMC_P_BRANCH_LOGMULT && p_b == (size_t)-1) p_b = p;
+    }
+    CHECK(p_sig != (size_t)-1 && p_b != (size_t)-1);
+    /* HalfNormal(0.3) quartiles: 0.3 * Phi^-1(0.625, 0.75, 0.875). */
+    const double q[3] = { 0.3 * 0.318639, 0.3 * 0.674490, 0.3 * 1.150349 };
+    double below[3] = {0, 0, 0}, btail = 0.0;
+    for (size_t i = 0; i < total; i++) {
+        double s = exp(res->samples[i * np + p_sig]);
+        for (int k = 0; k < 3; k++) if (s < q[k]) below[k] += 1.0;
+        if (res->samples[i * np + p_b] < -0.3) btail += 1.0;
+    }
+    /* Reference P(b < -0.3) by direct simulation of the prior. */
+    gd_rng *rng = gd_rng_create(77u, 1u, &err);
+    double ref = 0.0; const size_t NREF = 400000;
+    for (size_t i = 0; i < NREF; i++) {
+        double s = fabs(gd_rng_normal(rng, 0.0, 0.3));
+        if (gd_rng_normal(rng, -0.5 * s * s, s) < -0.3) ref += 1.0;
+    }
+    ref /= (double)NREF;
+    printf("    sigma_b quartile fractions %.3f %.3f %.3f (want 0.25 0.50 0.75); "
+           "P(b<-0.3) %.4f (want %.4f); R-hat %.3f, bulk ESS %.0f\n",
+           below[0] / (double)total, below[1] / (double)total, below[2] / (double)total,
+           btail / (double)total, ref, res->rhat[p_sig], res->ess[p_sig]);
+    for (int k = 0; k < 3; k++) CHECK_APPROX(below[k] / (double)total, 0.25 * (double)(k + 1), 0.03);
+    CHECK_APPROX(btail / (double)total, ref, 0.01);
+    CHECK(res->rhat[p_sig] < 1.01);
+    CHECK(res->ess[p_sig] > 2000.0);
+    gd_rng_destroy(rng);
+    gd_mcmc_result_destroy(res);
+    gd_calset_destroy(cs);
+    gd_mcmc_t1_destroy(m); gd_t1_ws_destroy(ws);
+    free(store);
+    gd_tree_destroy(t);
+}
+
 static void run_tests(void)
 {
     RUN(test_m9_branch_rate_recovery);
     RUN(test_m9_confounding_when_ages_free);
     RUN(test_m9_sigma_b_shrinks_to_strict);
     RUN(test_m9_robust_to_injected_loans);
+    RUN(test_m9_prior_only_funnel);
 }
 
 TEST_MAIN()

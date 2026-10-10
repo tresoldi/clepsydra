@@ -35,7 +35,7 @@
 #define GD_MCMC_ADAPT_T0      10.0
 #define GD_MCMC_FIX_TOL       1e-9
 #define GD_MCMC_CKPT_MAGIC    0x394d4447u    /* "GDM9" */
-#define GD_MCMC_CKPT_VERSION  5u
+#define GD_MCMC_CKPT_VERSION  6u
 #define GD_MCMC_CONFOUND_THRESH 0.6          /* |corr| beyond this => confounded */
 
 /* ------------------------------------------------------------- parameters */
@@ -91,6 +91,12 @@ struct gd_mcmc_chain {
     size_t *sub_root, *sub_start, *sub_nodes;
     double *sub_scratch;
     double  sub_step, sub_adapt_count, sub_acc, sub_prop;
+
+    /* Non-centred sigma_b move (relaxed clock): sigma_b and every branch
+     * multiplier move together with the standardised deviations fixed. */
+    size_t  funnel_param;     /* index of LOG_SIGMA_B; nparam if absent */
+    double *funnel_scratch;   /* nparam: old branch values */
+    double  funnel_step, funnel_adapt_count, funnel_acc, funnel_prop;
 
     /* Proper prior on the ages (NULL under GD_TREE_PRIOR_NONE), and its
      * current value, kept as part of cur_logprior. */
@@ -346,6 +352,7 @@ void gd_mcmc_chain_destroy(gd_mcmc_chain *ch)
     free(ch->sub_root); free(ch->sub_start); free(ch->sub_nodes); free(ch->sub_scratch);
     free(ch->tip_hazard);
     free(ch->age_scratch);
+    free(ch->funnel_scratch);
     free(ch->branch_logmult);
     free(ch->concept_dev);
     free(ch->samples); free(ch->sample_ll); free(ch->pointwise);
@@ -686,6 +693,15 @@ gd_mcmc_chain *gd_mcmc_chain_create(const gd_mcmc_model *model, gd_tree *tree,
                 ch->age_params[a++] = q;
     }
 
+    ch->funnel_param = ch->nparam;
+    ch->funnel_step = 0.30;
+    for (size_t q = 0; q < ch->nparam; q++)
+        if (ch->params[q].type == GD_MCMC_P_LOG_SIGMA_B) ch->funnel_param = q;
+    if (ch->funnel_param < ch->nparam) {
+        ch->funnel_scratch = (double *)gd_malloc_array_checked(ch->nparam, sizeof(double), err);
+        if (ch->funnel_scratch == NULL) { gd_mcmc_chain_destroy(ch); return NULL; }
+    }
+
     if (chain_eval_loglik(ch, NULL, &ch->cur_loglik, err) != 0) {
         gd_mcmc_chain_destroy(ch); return NULL;
     }
@@ -810,6 +826,66 @@ static int scale_move(gd_mcmc_chain *ch, int adapting, int clock, gd_error *err)
         if (logs < -30.0) logs = -30.0;
         if (logs > 30.0) logs = 30.0;
         *step = exp(logs);
+    }
+    return 0;
+}
+
+/*
+ * The relaxed clock's funnel: branch log-multipliers b_i ~ N(-s^2/2, s), so as
+ * s shrinks they are pinned together and single-site moves on s and on each
+ * b_i stall (Neal's funnel). This move changes log s by delta and maps every
+ * b_i through its standardised deviation z_i = (b_i + s^2/2) / s, which it
+ * keeps: b_i' = -s'^2/2 + s' z_i. For fixed delta the map is triangular with
+ * diagonal (1, e^delta, ..., e^delta), so the Jacobian is n_b * delta.
+ */
+static int funnel_move(gd_mcmc_chain *ch, int adapting, gd_error *err)
+{
+    gd_param *ps = &ch->params[ch->funnel_param];
+    double delta = gd_rng_normal(ch->rng, 0.0, ch->funnel_step);
+    double old_ls = ps->value, new_ls = old_ls + delta;
+    double s0 = exp(old_ls), s1 = exp(new_ls);
+    double m0 = -0.5 * s0 * s0, m1 = -0.5 * s1 * s1;
+    double dprior = (halfnormal_logpdf(s1, ch->cfg.sigma_b_prior_sd) + new_ls)
+                  - (halfnormal_logpdf(s0, ch->cfg.sigma_b_prior_sd) + old_ls);
+    size_t nb = 0;
+    for (size_t p = 0; p < ch->nparam; p++) {
+        gd_param *pp = &ch->params[p];
+        if (pp->type != GD_MCMC_P_BRANCH_LOGMULT) continue;
+        double b0 = pp->value, b1 = m1 + s1 * (b0 - m0) / s0;
+        ch->funnel_scratch[p] = b0;
+        ch->branch_logmult[pp->node] = b1;
+        dprior += norm_logpdf(b1, m1, s1) - norm_logpdf(b0, m0, s0);
+        nb++;
+    }
+    double new_ll;
+    int accepted = 0;
+    if (chain_eval_loglik(ch, NULL, &new_ll, err) != 0) {
+        for (size_t p = 0; p < ch->nparam; p++)
+            if (ch->params[p].type == GD_MCMC_P_BRANCH_LOGMULT)
+                ch->branch_logmult[ch->params[p].node] = ch->funnel_scratch[p];
+        return GD_E_INTERNAL;
+    }
+    if (accept_move(ch, (new_ll - ch->cur_loglik) + dprior + (double)nb * delta)) {
+        ps->value = new_ls; ch->sigma_b = s1;
+        for (size_t p = 0; p < ch->nparam; p++)
+            if (ch->params[p].type == GD_MCMC_P_BRANCH_LOGMULT)
+                ch->params[p].value = ch->branch_logmult[ch->params[p].node];
+        ch->cur_loglik = new_ll;
+        ch->cur_logprior += dprior;
+        accepted = 1;
+    } else {
+        for (size_t p = 0; p < ch->nparam; p++)
+            if (ch->params[p].type == GD_MCMC_P_BRANCH_LOGMULT)
+                ch->branch_logmult[ch->params[p].node] = ch->funnel_scratch[p];
+    }
+    ch->funnel_prop += 1.0; ch->funnel_acc += (double)accepted;
+    if (adapting) {
+        ch->funnel_adapt_count += 1.0;
+        double gamma = 1.0 / pow(ch->funnel_adapt_count + GD_MCMC_ADAPT_T0, 0.6);
+        double logs = log(ch->funnel_step) + gamma * ((double)accepted - GD_MCMC_TARGET_ACCEPT);
+        if (logs < -30.0) logs = -30.0;
+        if (logs > 30.0) logs = 30.0;
+        ch->funnel_step = exp(logs);
     }
     return 0;
 }
@@ -1028,6 +1104,11 @@ static int chain_sweep(gd_mcmc_chain *ch, int adapting, gd_error *err)
         int rc = scale_move(ch, adapting, 1, err);
         if (rc != 0) return rc;
     }
+    /* --- non-centred relaxed-clock spread --- */
+    if (ch->funnel_param < ch->nparam) {
+        int rc = funnel_move(ch, adapting, err);
+        if (rc != 0) return rc;
+    }
     /* --- subtree-scaling moves --- */
     for (size_t k = 0; k < ch->n_sub; k++) {
         int rc = subtree_move(ch, k, adapting, err);
@@ -1153,7 +1234,8 @@ static size_t ckpt_body_size(const gd_mcmc_chain *ch)
          + ch->nparam * (8 + 8 + 8 + 8)       /* value, step, adapt, acc */
          + 8 + 8                              /* block_step, block_adapt_count */
          + 8 + 8                              /* clock_step, clock_adapt_count */
-         + 8 + 8;                             /* sub_step, sub_adapt_count */
+         + 8 + 8                              /* sub_step, sub_adapt_count */
+         + 8 + 8;                             /* funnel_step, funnel_adapt_count */
 }
 
 int gd_mcmc_chain_serialize(const gd_mcmc_chain *ch, unsigned char **buf,
@@ -1196,6 +1278,8 @@ int gd_mcmc_chain_serialize(const gd_mcmc_chain *ch, unsigned char **buf,
     d = ch->clock_adapt_count; memcpy(q, &d, 8); q += 8;
     d = ch->sub_step;          memcpy(q, &d, 8); q += 8;
     d = ch->sub_adapt_count;   memcpy(q, &d, 8); q += 8;
+    d = ch->funnel_step;       memcpy(q, &d, 8); q += 8;
+    d = ch->funnel_adapt_count; memcpy(q, &d, 8); q += 8;
     u64 = fnv1a(out, body); memcpy(q, &u64, 8);
     *buf = out; *len = total;
     return 0;
@@ -1238,6 +1322,8 @@ int gd_mcmc_chain_restore(gd_mcmc_chain *ch, const unsigned char *buf,
     memcpy(&d, q, 8); q += 8; ch->clock_adapt_count = d;
     memcpy(&d, q, 8); q += 8; ch->sub_step = d;
     memcpy(&d, q, 8); q += 8; ch->sub_adapt_count = d;
+    memcpy(&d, q, 8); q += 8; ch->funnel_step = d;
+    memcpy(&d, q, 8); q += 8; ch->funnel_adapt_count = d;
     /* Programmer invariant, and the reason the last q += 8 is not dead: the
      * cursor must land exactly on the end of the body that ckpt_body_size
      * predicted. A serializer and a deserializer that disagree about the

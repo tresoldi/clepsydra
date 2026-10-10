@@ -60,6 +60,13 @@ columns and example numbers are expected throughout 0.x and are listed here.
 
 ### Added
 
+- **Non-centred move for the relaxed clock.** Branch log-multipliers are
+  N(−σ_b²/2, σ_b), a funnel in which single-site moves stall as σ_b shrinks:
+  on Arawan the relaxed fit gave R-hat 1.16 and bulk ESS 22 for σ_b. A
+  joint move now changes log σ_b and maps every multiplier through its
+  standardised deviation (Jacobian n_b·δ). A prior-only test recovers the
+  hierarchical prior exactly (σ_b bulk ESS 6,589). Without the move the
+  same test fails with R-hat 1.04 and ESS 175. Checkpoint version 6.
 - **Incremental likelihood evaluation** (E3.1). The T1 adapter caches, per
   cognate pattern, the data extension (computed once) and every node's p/q
   for each mixture node. An evaluation recomputes only the nodes whose
