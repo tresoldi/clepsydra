@@ -1093,6 +1093,14 @@ TEST(test_analysis_three_ages_and_scale_source)
     CHECK(root->prior_overlap >= 0.0 && root->prior_overlap <= 1.0);
     CHECK(root->prior.hpd_hi > root->prior.hpd_lo);
     CHECK(a->lexical_root.median > 0.0);
+    /* Width decomposition and sensitivities are computed and sane. */
+    CHECK(a->var_share_data >= 0.0 && a->var_share_clock >= 0.0);
+    for (int k = 0; k < 4; k++) {
+        if (k == GD_SENS_CALIBRATIONS) continue;   /* no sampled calibrated node here */
+        CHECK(!isnan(a->sens_root[k]) && a->sens_root[k] >= 0.0);
+    }
+    /* The lexical root is the likelihood's to set, not the clock prior's. */
+    CHECK(a->sens_lexroot[GD_SENS_LIKELIHOOD] > a->sens_lexroot[GD_SENS_CLOCK]);
     gd_analysis_tree_result_destroy(a);
 
     /* Every tip modern and no node calibrated: the calendar scale is the

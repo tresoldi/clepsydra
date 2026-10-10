@@ -178,6 +178,7 @@ typedef struct gd_mcmc_result {
     size_t  n_concepts;
     double *samples;     /* [chain][draw][param] */
     double *pointwise;   /* [chain][draw][concept] or NULL */
+    double *loglik;      /* [chain][draw]: total log-likelihood of each draw */
     double *rhat;        /* n_param: max of bulk and folded (tail) R-hat */
     double *ess;         /* n_param: bulk ESS */
     double *ess_tail;    /* n_param: tail ESS (5% and 95% quantiles) */

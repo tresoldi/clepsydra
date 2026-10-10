@@ -239,6 +239,28 @@ static double overlap_log(const double *a, size_t na, const double *b, size_t nb
     return s;
 }
 
+/* First-order power-scaling sensitivity of g to a component with per-draw
+ * log density lp: max(|Cov(g, lp)|, |Cov((g - mean)^2, lp)| / (2 sd)) / sd. */
+static double power_sens(const double *g, const double *lp, size_t n)
+{
+    double mg = 0, ml = 0;
+    for (size_t i = 0; i < n; i++) { mg += g[i]; ml += lp[i]; }
+    mg /= (double)n; ml /= (double)n;
+    double vg = 0, c1 = 0, c2 = 0, m2 = 0;
+    for (size_t i = 0; i < n; i++) { double d = g[i] - mg; vg += d * d; m2 += d * d; }
+    vg /= (double)(n - 1); m2 /= (double)n;
+    if (!(vg > 0.0)) return NAN;
+    for (size_t i = 0; i < n; i++) {
+        double d = g[i] - mg, e = lp[i] - ml;
+        c1 += d * e;
+        c2 += (d * d - m2) * e;
+    }
+    c1 /= (double)(n - 1); c2 /= (double)(n - 1);
+    double sd = sqrt(vg);
+    double s_mean = fabs(c1) / sd, s_sd = fabs(c2) / (2.0 * sd) / sd;
+    return (s_mean > s_sd) ? s_mean : s_sd;
+}
+
 static double var_log(const double *x, size_t n)
 {
     double m = 0.0, v = 0.0;
@@ -992,6 +1014,72 @@ int gd_analysis_tree_job_run(gd_analysis_tree_job *job,
         r->scale_from_prior = !(r->rate_contraction >= 0.5);
         for (size_t i = 0; i < total; i++) pcol[i] = rate_col[i] * root_col[i];
         r->lexical_root = summarize(pcol, total, level);
+    }
+
+    /* Variance decomposition and power-scaling sensitivity (E1.6). */
+    for (int k = 0; k < 4; k++) { r->sens_root[k] = NAN; r->sens_lexroot[k] = NAN; }
+    r->var_share_data = NAN; r->var_share_clock = NAN;
+    if (!isnan(rate_col[0]) && total > 2) {
+        double *g_root = (double *)gd_malloc_array_checked(total, sizeof(double), err);
+        double *g_lex = (double *)gd_malloc_array_checked(total, sizeof(double), err);
+        double *lp = (double *)gd_malloc_array_checked(total, sizeof(double), err);
+        double *lr = (double *)gd_malloc_array_checked(total, sizeof(double), err);
+        if (g_root == NULL || g_lex == NULL || lp == NULL || lr == NULL) {
+            free(g_root); free(g_lex); free(lp); free(lr);
+            gd_error_set(err, GD_E_NOMEM, "out of memory"); goto done;
+        }
+        for (size_t i = 0; i < total; i++) {
+            lr[i] = log(rate_col[i]);
+            g_root[i] = log(root_col[i]);
+            g_lex[i] = lr[i] + g_root[i];
+        }
+        double vroot = 0, vlex = 0, vrate = 0, mr = 0, ml = 0, mt = 0;
+        for (size_t i = 0; i < total; i++) { mr += g_root[i]; ml += g_lex[i]; mt += lr[i]; }
+        mr /= (double)total; ml /= (double)total; mt /= (double)total;
+        for (size_t i = 0; i < total; i++) {
+            vroot += (g_root[i] - mr) * (g_root[i] - mr);
+            vlex += (g_lex[i] - ml) * (g_lex[i] - ml);
+            vrate += (lr[i] - mt) * (lr[i] - mt);
+        }
+        if (vroot > 0.0) { r->var_share_data = vlex / vroot; r->var_share_clock = vrate / vroot; }
+
+        /* Component log densities per draw. */
+        double sdr = job->cfg.rate_logsd, sdl = job->cfg.root_lex_logsd;
+        for (size_t i = 0; i < total; i++) {
+            double z = (lr[i] - job->cfg.rate_logmean) / sdr;
+            lp[i] = -0.5 * z * z;
+        }
+        r->sens_root[GD_SENS_CLOCK] = power_sens(g_root, lp, total);
+        r->sens_lexroot[GD_SENS_CLOCK] = power_sens(g_lex, lp, total);
+        for (size_t i = 0; i < total; i++) {
+            double z = (g_lex[i] - job->cfg.root_lex_logmean) / sdl;
+            lp[i] = -0.5 * z * z;
+        }
+        r->sens_root[GD_SENS_LEXROOT] = power_sens(g_root, lp, total);
+        r->sens_lexroot[GD_SENS_LEXROOT] = power_sens(g_lex, lp, total);
+        /* Calibrations on sampled nodes; fixed tips contribute a constant. */
+        bool any_cal = false;
+        for (size_t i = 0; i < total; i++) lp[i] = 0.0;
+        for (size_t c = 0; c < job->cs->ncals; c++) {
+            const gd_calibration *cl = &job->cs->cals[c];
+            if (!cl->resolved) continue;
+            size_t pv = SIZE_MAX;
+            for (size_t p = 0; p < np; p++)
+                if (res->param_type[p] == GD_MCMC_P_AGE && res->param_node[p] == cl->node_index) pv = p;
+            if (pv == SIZE_MAX) continue;
+            any_cal = true;
+            for (size_t i = 0; i < total; i++)
+                lp[i] += gd_cal_logprior(cl, gd_mcmc_result_at(res, pv, i));
+        }
+        if (any_cal) {
+            r->sens_root[GD_SENS_CALIBRATIONS] = power_sens(g_root, lp, total);
+            r->sens_lexroot[GD_SENS_CALIBRATIONS] = power_sens(g_lex, lp, total);
+        }
+        if (!job->cfg.prior_only) {
+            r->sens_root[GD_SENS_LIKELIHOOD] = power_sens(g_root, res->loglik, total);
+            r->sens_lexroot[GD_SENS_LIKELIHOOD] = power_sens(g_lex, res->loglik, total);
+        }
+        free(g_root); free(g_lex); free(lp); free(lr);
     }
 
     /* The tree moves into the result; tear down what still points at it first,

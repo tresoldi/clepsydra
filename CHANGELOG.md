@@ -34,6 +34,13 @@ columns and example numbers are expected throughout 0.x and are listed here.
 
 ### Added
 
+- **Width decomposition and power-scaling sensitivity** (E1.6).
+  `run_manifest.tsv` reports the share of the calendar root's log-variance
+  due to the lexical root (the cognates) and to the clock. On uncalibrated
+  Arawan they are 1% and ~100%. It also reports first-order power-scaling
+  sensitivities (after Kallioinen et al. 2024) of the root and the lexical
+  root to the clock prior, the lexical-root prior, the calibrations and the
+  likelihood. Per-draw log-likelihoods are now kept in `gd_mcmc_result`.
 - **Yule age prior as a sensitivity alternative** (E1.3; `--yule 1`,
   `--yule-kappa`). This is a pure-birth, completely sampled prior conditioned
   on the root. The rate is written as `kappa / root`, so the prior has no

@@ -1050,7 +1050,7 @@ int gd_mcmc_chain_restore(gd_mcmc_chain *ch, const unsigned char *buf,
 void gd_mcmc_result_destroy(gd_mcmc_result *res)
 {
     if (res == NULL) return;
-    free(res->samples); free(res->pointwise);
+    free(res->samples); free(res->pointwise); free(res->loglik);
     free(res->rhat); free(res->ess); free(res->ess_tail); free(res->mcse);
     free(res->acc_rate);
     free(res->param_type); free(res->param_node);
@@ -1203,6 +1203,7 @@ gd_mcmc_result *gd_mcmc_run(const gd_mcmc_model *model, gd_tree *tree,
         gd_mcmc_result_destroy(res); return NULL;
     }
     res->samples = (double *)gd_malloc_array_checked(nsamples, sizeof(double), err);
+    res->loglik = (double *)gd_malloc_array_checked(ndraws_all ? ndraws_all : 1, sizeof(double), err);
     res->rhat = (double *)gd_malloc_array_checked(np, sizeof(double), err);
     res->ess = (double *)gd_malloc_array_checked(np, sizeof(double), err);
     res->ess_tail = (double *)gd_malloc_array_checked(np, sizeof(double), err);
@@ -1210,7 +1211,7 @@ gd_mcmc_result *gd_mcmc_run(const gd_mcmc_model *model, gd_tree *tree,
     res->acc_rate = (double *)gd_calloc_checked(np, sizeof(double), err);
     if (res->n_concepts > 0)
         res->pointwise = (double *)gd_malloc_array_checked(npointwise, sizeof(double), err);
-    if (res->samples == NULL || res->rhat == NULL || res->ess == NULL ||
+    if (res->samples == NULL || res->loglik == NULL || res->rhat == NULL || res->ess == NULL ||
         res->ess_tail == NULL || res->mcse == NULL ||
         res->acc_rate == NULL || res->param_type == NULL || res->param_node == NULL ||
         (res->n_concepts > 0 && res->pointwise == NULL)) {
@@ -1227,6 +1228,7 @@ gd_mcmc_result *gd_mcmc_run(const gd_mcmc_model *model, gd_tree *tree,
         for (size_t draw = 0; draw < nd; draw++) {
             double *dst = res->samples + (c * nd + draw) * np;
             for (size_t p = 0; p < np; p++) dst[p] = gd_mcmc_chain_sample(ch, draw, p);
+            res->loglik[c * nd + draw] = gd_mcmc_chain_sample_loglik(ch, draw);
             if (res->n_concepts > 0) {
                 const double *pw = gd_mcmc_chain_sample_pointwise(ch, draw);
                 if (pw != NULL)

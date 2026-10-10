@@ -542,6 +542,19 @@ int cmd_date_tree(int argc, char **argv)
     fprintf(fp, "lexical_root_median\t%.4f\n", res->lexical_root.median);
     fprintf(fp, "lexical_root_hpd90\t%.4f-%.4f\n", res->lexical_root.hpd_lo, res->lexical_root.hpd_hi);
     fprintf(fp, "root_lex_prior\tlognormal(%.3f, %.3f)\n", cfg.root_lex_logmean, cfg.root_lex_logsd);
+    fprintf(fp, "root_var_share_data\t%.3f\n", res->var_share_data);
+    fprintf(fp, "root_var_share_clock\t%.3f\n", res->var_share_clock);
+    {
+        static const char *const names[4] = { "clock", "lexroot", "calibrations", "likelihood" };
+        const double *rows[2] = { res->sens_root, res->sens_lexroot };
+        const char *labels[2] = { "sensitivity_root_age", "sensitivity_lexical_root" };
+        for (int q = 0; q < 2; q++) {
+            fprintf(fp, "%s\t", labels[q]);
+            for (int k = 0; k < 4; k++)
+                fprintf(fp, "%s%s=%.3f", k ? ";" : "", names[k], rows[q][k]);
+            fprintf(fp, "\n");
+        }
+    }
     fprintf(fp, "converged\t%d\n", res->converged ? 1 : 0);
     fprintf(fp, "n_unconverged_params\t%zu\n", res->n_unconverged);
     fprintf(fp, "max_rhat\t%.4f\n", res->max_rhat);

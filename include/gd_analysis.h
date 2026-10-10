@@ -211,6 +211,9 @@ typedef struct gd_analysis_param {
     double              rhat, ess, ess_tail, mcse, acceptance;
 } gd_analysis_param;
 
+enum { GD_SENS_CLOCK = 0, GD_SENS_LEXROOT = 1, GD_SENS_CALIBRATIONS = 2, GD_SENS_LIKELIHOOD = 3 };
+#define GD_SENS_THRESHOLD 0.2
+
 #define GD_CONV_RHAT_MAX      1.01
 #define GD_CONV_ESS_PER_CHAIN 100.0
 
@@ -255,6 +258,28 @@ typedef struct gd_analysis_tree_result {
     double rate_contraction;
     bool   scale_from_prior;
     gd_analysis_summary lexical_root; /* rho * root age */
+
+    /*
+     * Where the calendar root's width comes from. log a_root = log L - log rho,
+     * so Var(log a_root) = Var(log L) + Var(log rho) - 2 Cov. `var_share_data`
+     * is Var(log L) / Var(log a_root), the part the cognates set;
+     * `var_share_clock` is Var(log rho) / Var(log a_root); the remainder is
+     * their covariance. NAN when the rate is not sampled.
+     */
+    double var_share_data, var_share_clock;
+
+    /*
+     * Power-scaling sensitivity (after Kallioinen et al. 2024, first order):
+     * raising one component of the posterior to a power alpha moves the
+     * posterior of a quantity g by d/d(log alpha) at alpha = 1, which is a
+     * covariance with that component's log density. Reported as the larger of
+     * the shifts in mean and sd, in posterior sd, for g = log root age
+     * (`sens_root`) and g = log lexical root (`sens_lexroot`). Index with
+     * GD_SENS_*. Above 0.2 a component is influential. A quantity that is
+     * prior-sensitive but not likelihood-sensitive is prior-dominated; one
+     * sensitive to both shows prior-data conflict.
+     */
+    double sens_root[4], sens_lexroot[4];
 
     bool   converged;
     size_t n_unconverged;             /* parameters failing any criterion */

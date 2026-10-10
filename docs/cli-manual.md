@@ -76,10 +76,25 @@ ages depend on the rate prior and calibrations — the tool says so.
   branch-rate confounding flag, where the calendar scale comes from
   (`scale_source`: `calibration`, `tip`, both, or `clock_prior`), how far the
   clock moved off its prior (`rate_contraction`; `scale_from_prior` is 1
-  below 0.5), the lexical root (median and 90% HPD) and its prior, the
-  convergence verdict (`converged`,
+  below 0.5), the lexical root (median and 90% HPD) and its prior, where the
+  calendar root's width comes from (`root_var_share_data` and
+  `root_var_share_clock`, the shares of Var(log root) due to the lexical root
+  and to the clock; Arawan uncalibrated is 0.01 and 1.0), the power-scaling
+  sensitivities, the convergence verdict (`converged`,
   `n_unconverged_params`, `max_rhat`, `min_ess_bulk`, `min_ess_tail`), and the
   scale-dependence note.
+
+**Power-scaling sensitivity.** `sensitivity_root_age` and
+`sensitivity_lexical_root` measure, for each component (the clock prior, the
+lexical-root prior, the calibrations, the likelihood), how far the posterior
+of log root age or log lexical root moves when that component is raised to a
+power α, at α = 1. This is the first-order version of Kallioinen et al.
+(2024): a covariance with the component's log density, as the larger shift
+of mean or sd, in posterior sd. Above 0.2 the component is influential.
+Prior-sensitive and not likelihood-sensitive means prior-dominated; sensitive
+to both means prior-data conflict. A flat-topped calibration (a uniform
+window) is invisible to power-scaling, because its log density is constant
+inside the window. Judge those from the `prior_*` columns instead.
 
 **Convergence check.** Every sampled parameter must have rank R̂ < 1.01 (the
 larger of the bulk and folded R̂) and bulk and tail ESS ≥ 100 per chain
