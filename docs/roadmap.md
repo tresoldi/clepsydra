@@ -103,8 +103,19 @@ Four things follow from the research and shape everything below.
     - E2.9: `tip_error`, with the empirical prior from D1.3.
     - E2.10: the adequacy panel.
   - The gate's simulator (D3, `tools/simworld`) is running.
-- **E3:** done: E3.0 (subtree move), E3.2 (draws and pointwise output), E3.4
-  (`date-trees`). Open: E3.1 (likelihood caching), E3.3 (checkpoint binding).
+- **E3:** done:
+  - E3.0: the subtree move.
+  - E3.1: incremental likelihood. Edge terms are computed once per mixture
+    node, and only dirty nodes are recomputed; this is exact, and 1.65×
+    on Arawan.
+  - E3.2: draws and pointwise output.
+  - E3.4: `date-trees`.
+  - Added: parallel chains (`--threads`; bit-identical draws, 2.9× on four
+    chains).
+  - Added: a non-centred σ_b move for the relaxed clock. Without it, the
+    Arawan relaxed fit stalled at R-hat 1.16.
+
+  Open: E3.3 (checkpoint binding).
 - **D1:** done: D1.2 (`reference/calibrations/curated_nodes.tsv`) and D1.3
   (`error-prior.md`).
 - **D2, the σ_f pilot: done, and a no-go on its pre-registered rule**
