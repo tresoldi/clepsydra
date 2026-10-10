@@ -53,6 +53,7 @@
 #include "gd_analysis.h"
 #include "gd_options.h"
 #include "gd_report.h"
+#include "gd_treeset.h"
 
 #ifdef __cplusplus
 extern "C" {
