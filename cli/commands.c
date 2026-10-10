@@ -493,6 +493,7 @@ int cmd_date_tree(int argc, char **argv)
     /* Only when it happened: a clean file should not carry a line saying so. */
     if (res->n_unreadable_weights > 0)
         fprintf(fp, "unreadable_primary_weights\t%zu\n", res->n_unreadable_weights);
+    fprintf(fp, "missing_cognate_rows\t%zu\n", res->n_missing_cognates);
     fprintf(fp, "note\tabsolute ages depend on the rate prior and calibrations; see docs/scientific-methods.md\n");
     if (fclose(fp) != 0) { fp = NULL; fprintf(stderr, "error: failed to flush %s\n", path); goto done; }
     fp = NULL;

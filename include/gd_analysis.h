@@ -193,6 +193,9 @@ typedef struct gd_analysis_tree_result {
      * taken as 1.0. A typo in one cell of a large forms file is otherwise
      * silent: the run succeeds and the wrong synonym may have been chosen. */
     size_t n_unreadable_weights;
+    /* Form rows that carried no observation ('.', '?', empty, or status
+     * missing/excluded/absent). Skipped, not read as a cognate class. */
+    size_t n_missing_cognates;
     bool   relaxed;
 
     /* Branch-rate × node-age confounding (docs/model-spec.md §7.2).
@@ -315,6 +318,7 @@ typedef struct gd_analysis_pair_result {
     gd_pair_model model_id;
     size_t n_shared, n_cognate;
     double retention;
+    size_t n_missing_cognates;   /* rows skipped as unobserved, whole file */
 
     /* Years BP. */
     double mean, median, sd, et_lo_90, et_hi_90;

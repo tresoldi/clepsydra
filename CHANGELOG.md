@@ -4,6 +4,28 @@ Notable changes per release. Dates are release dates; the reasoning behind each
 structural change is in the commit that made it, and in `docs/deepening-plan.md`
 and `docs/c99-alignment-plan.md`.
 
+## Unreleased
+
+Work on `docs/roadmap.md`. Breaking changes to defaults, the CLI, output
+columns and example numbers are expected throughout 0.x and are listed here.
+
+### Fixed
+
+- **Missing cognate ids were counted as matches** (roadmap E0.1). A `.`, `?`
+  or empty `cognate_id`, or a row with `status` `missing`, `excluded` or
+  `absent`, was interned as an ordinary cognate class. Two languages that both
+  lacked a concept therefore "shared a cognate" in the pairwise models, and
+  formed a spurious class in T1. Such rows are now skipped and counted:
+  `missing_cognate_rows` in `run_manifest.tsv`, `n_missing_cognates` in both
+  result structs.
+- **Unknown or disjoint languages no longer "date"** (E0.8). `date-pair` with
+  a language the forms file never mentions, or with two languages sharing no
+  observed concept, is an error instead of returning the prior. `date-tree`
+  fails when a tree tip has no observed form, naming the tip.
+- **Language count and tip resolution** (E0.10). `n_languages` counts tips
+  instead of assuming a binary tree (`(nnodes + 1) / 2`). A forms language
+  that matches an internal node label is an error.
+
 ## 0.2.0 — 2026-08-21
 
 First release intended for use outside the repository. The engine's numbers are

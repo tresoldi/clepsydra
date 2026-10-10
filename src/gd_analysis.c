@@ -399,6 +399,7 @@ struct gd_analysis_tree_job {
     gd_mcmc_t1             *model;
     size_t                  n_skipped_rows;
     size_t                  n_unreadable_weights;
+    size_t                  n_missing_cognates;
     int                     ran;
 };
 
@@ -420,9 +421,19 @@ void gd_analysis_tree_job_destroy(gd_analysis_tree_job *job)
     free(job);
 }
 
+/* Tips, counted. (nnodes + 1) / 2 holds only for a binary tree; a polytomy
+ * or a unary node makes it wrong. */
+static size_t count_leaves(const gd_tree *t)
+{
+    size_t k = 0;
+    if (t == NULL) return 0;
+    for (size_t v = 0; v < t->nnodes; v++) k += t->nodes[v].is_leaf ? 1u : 0u;
+    return k;
+}
+
 size_t gd_analysis_tree_job_languages(const gd_analysis_tree_job *job)
 {
-    return (job != NULL && job->tree != NULL) ? (job->tree->nnodes + 1) / 2 : 0;
+    return (job != NULL) ? count_leaves(job->tree) : 0;
 }
 size_t gd_analysis_tree_job_nodes(const gd_analysis_tree_job *job)
 {
@@ -490,6 +501,7 @@ int gd_analysis_tree_prepare(const gd_analysis_tree_input *in,
     }
     job->cb.nconcept = forms->nconcept;
     job->n_unreadable_weights = forms->n_unreadable_weights;
+    job->n_missing_cognates = forms->n_missing_cognates;
 
     /* Rows whose language the tree never mentions are not data for this run.
      * Counted per row, not per language, because that is what the dataset
@@ -499,6 +511,15 @@ int gd_analysis_tree_prepare(const gd_analysis_tree_input *in,
     if (lang_node == NULL) { gd_error_set(err, GD_E_NOMEM, "out of memory"); goto done; }
     for (size_t l = 0; l < forms->nlang; l++) {
         lang_node[l] = gd_tree_find_label(job->tree, forms->languages[l]);
+        /* Forms describe languages, and languages are tips. A label match on
+         * an internal node (a clade named like a language) would give that
+         * node observations it cannot have under the model. */
+        if (lang_node[l] != GD_NODE_NONE && !gd_tree_is_leaf(job->tree, lang_node[l])) {
+            gd_error_setf(err, GD_E_INVALID_ARG,
+                          "forms language '%s' names an internal node of the tree, not a tip",
+                          forms->languages[l]);
+            goto done;
+        }
         if (lang_node[l] == GD_NODE_NONE) job->n_skipped_rows += forms->rows_per_lang[l];
     }
 
@@ -543,6 +564,22 @@ int gd_analysis_tree_prepare(const gd_analysis_tree_input *in,
             cls = (int)class_count[a->concept]++;
         }
         job->cb.labels[a->concept * n + node] = cls;
+    }
+
+    /* A tip with no observed form is a name the forms file does not know
+     * (usually a spelling mismatch with the tree). Dating it would sample its
+     * branch from the prior and report that as a result. */
+    for (size_t v = 0; v < n; v++) {
+        if (!gd_tree_is_leaf(job->tree, v)) continue;
+        size_t c = 0;
+        while (c < job->cb.nconcept && job->cb.labels[c * n + v] < 0) c++;
+        if (c == job->cb.nconcept) {
+            const char *name = job->tree->nodes[v].label;
+            gd_error_setf(err, GD_E_MISSING_FIELD,
+                          "tree tip '%s' has no observed form in the forms file",
+                          (name != NULL) ? name : "(unnamed)");
+            goto done;
+        }
     }
 
     job->concepts = (gd_cognate_data *)gd_malloc_array_checked(job->cb.nconcept, sizeof(gd_cognate_data), err);
@@ -747,7 +784,7 @@ int gd_analysis_tree_job_run(gd_analysis_tree_job *job,
 
     r->nages = nages;
     r->nparams = np;
-    r->n_languages = (n + 1) / 2;
+    r->n_languages = count_leaves(job->tree);
     r->n_nodes = n;
     r->n_concepts = job->cb.nconcept;
     r->n_chains = res->n_chains;
@@ -756,6 +793,7 @@ int gd_analysis_tree_job_run(gd_analysis_tree_job *job,
     r->n_draws = res->n_draws;
     r->n_skipped_rows = job->n_skipped_rows;
     r->n_unreadable_weights = job->n_unreadable_weights;
+    r->n_missing_cognates = job->n_missing_cognates;
     r->relaxed = job->cfg.relaxed;
     r->branch_rate_confounded = res->branch_rate_confounded;
     r->min_branch_duration_corr = res->min_branch_duration_corr;
@@ -903,6 +941,13 @@ int gd_analysis_pair_run(const gd_analysis_pair_input *in,
 
     size_t li_a = gd_forms_language_index(forms, in->lang_a);
     size_t li_b = gd_forms_language_index(forms, in->lang_b);
+    /* A language the file never mentions is a typo, not "no evidence": the
+     * run would otherwise return the prior and call it a date. */
+    if (li_a == SIZE_MAX || li_b == SIZE_MAX) {
+        gd_error_setf(err, GD_E_INVALID_ARG, "language '%s' not found in forms",
+                     (li_a == SIZE_MAX) ? in->lang_a : in->lang_b);
+        goto done;
+    }
 
     /* Concepts present in both languages; a match is an identical cognate id. */
     size_t nc = forms->nconcept;
@@ -922,6 +967,11 @@ int gd_analysis_pair_run(const gd_analysis_pair_input *in,
         refs[m].log_rate_mean = cfg->rate_logmean;   /* per kiloyear */
         refs[m].log_rate_sd = cfg->rate_logsd;
         m++;
+    }
+    if (m == 0) {
+        gd_error_setf(err, GD_E_MISSING_FIELD,
+                     "'%s' and '%s' share no observed concept", in->lang_a, in->lang_b);
+        goto done;
     }
 
     /* GD_PAIR_P1 keeps the hierarchical constant-rate posterior; a decay law
@@ -952,6 +1002,7 @@ int gd_analysis_pair_run(const gd_analysis_pair_input *in,
     r->n_shared = m;
     r->n_cognate = nmatch;
     r->retention = m ? (double)nmatch / (double)m : 0.0;
+    r->n_missing_cognates = forms->n_missing_cognates;
     r->mean = result.mean * unit;
     r->median = result.median * unit;
     r->sd = result.sd * unit;

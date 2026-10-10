@@ -26,7 +26,7 @@ typedef struct {
 } forms_row;
 
 typedef struct {
-    size_t c_lang, c_con, c_cog, c_w;   /* column indices; SIZE_MAX if absent */
+    size_t c_lang, c_con, c_cog, c_w, c_status; /* column indices; SIZE_MAX if absent */
     int    header_seen;
 
     char **concepts;  size_t nconcept, concept_cap;
@@ -35,6 +35,7 @@ typedef struct {
 
     forms_row *rows;  size_t nrows, row_cap;
     size_t n_unreadable_weights;
+    size_t n_missing_cognates;
 
     int failed;                          /* a GD_E_* code, or 0 */
 } forms_builder;
@@ -85,7 +86,7 @@ static size_t intern(char ***tab, size_t *n, size_t *cap,
 static int header_cb(const gd_tsv_row *row, void *user, gd_error *err)
 {
     forms_builder *b = (forms_builder *)user;
-    b->c_lang = b->c_con = b->c_cog = b->c_w = SIZE_MAX;
+    b->c_lang = b->c_con = b->c_cog = b->c_w = b->c_status = SIZE_MAX;
     for (size_t i = 0; i < row->nfields; i++) {
         const char *f = row->fields[i];
         size_t      l = row->lengths[i];
@@ -93,6 +94,7 @@ static int header_cb(const gd_tsv_row *row, void *user, gd_error *err)
         else if (field_is(f, l, "concept_id"))     b->c_con  = i;
         else if (field_is(f, l, "cognate_id"))     b->c_cog  = i;
         else if (field_is(f, l, "primary_weight")) b->c_w    = i;
+        else if (field_is(f, l, "status"))         b->c_status = i;
     }
     b->header_seen = 1;
     if (b->c_lang == SIZE_MAX || b->c_con == SIZE_MAX || b->c_cog == SIZE_MAX) {
@@ -101,6 +103,27 @@ static int header_cb(const gd_tsv_row *row, void *user, gd_error *err)
                 "forms needs the columns language_id, concept_id, cognate_id");
     }
     return GD_E_OK;
+}
+
+/*
+ * A row that carries no observation: an empty, '.' or '?' cognate id, or a
+ * status of missing, excluded or absent. Such a row says the cell is unknown,
+ * and an unknown cell is not a cognate class. Reading '.' as a class made two
+ * missing cells compare equal, so every pair of languages that both lacked a
+ * concept was counted as sharing a cognate.
+ */
+static int row_is_unobserved(const forms_builder *b, const gd_tsv_row *row,
+                             const char *gf, size_t gl)
+{
+    size_t n = field_len(gf, gl);
+    if (n == 0 || gd_tsv_is_missing(gf, n) || field_is(gf, n, "?")) return 1;
+    if (b->c_status != SIZE_MAX && b->c_status < row->nfields) {
+        const char *sf = row->fields[b->c_status];
+        size_t      sl = row->lengths[b->c_status];
+        if (field_is(sf, sl, "missing") || field_is(sf, sl, "excluded") ||
+            field_is(sf, sl, "absent")) return 1;
+    }
+    return 0;
 }
 
 static int row_cb(const gd_tsv_row *row, void *user, gd_error *err)
@@ -120,6 +143,13 @@ static int row_cb(const gd_tsv_row *row, void *user, gd_error *err)
     if (li == SIZE_MAX) { b->failed = GD_E_NOMEM; return gd_error_set(err, GD_E_NOMEM, "out of memory"); }
     size_t ci = intern(&b->concepts, &b->nconcept, &b->concept_cap, cf, cl);
     if (ci == SIZE_MAX) { b->failed = GD_E_NOMEM; return gd_error_set(err, GD_E_NOMEM, "out of memory"); }
+
+    /* The language and concept are still interned, so the tables keep the
+     * shape the file declares; only the observation is dropped. */
+    if (row_is_unobserved(b, row, gf, gl)) {
+        b->n_missing_cognates++;
+        return GD_E_OK;
+    }
 
     /* Weight. Absent column, absent cell and '.' all mean 1.0, and so does a
      * value that will not parse -- counted, not refused. Never atof: it
@@ -208,7 +238,7 @@ int gd_forms_read(const char *tsv, size_t len,
     }
 
     memset(&b, 0, sizeof b);
-    b.c_lang = b.c_con = b.c_cog = b.c_w = SIZE_MAX;
+    b.c_lang = b.c_con = b.c_cog = b.c_w = b.c_status = SIZE_MAX;
 
     rc = gd_tsv_parse(tsv, len, header_cb, row_cb, &b, err);
     if (rc != GD_E_OK) {
@@ -264,6 +294,7 @@ int gd_forms_read(const char *tsv, size_t len,
     f->languages     = b.languages; b.languages = NULL;
     f->rows_per_lang = b.rows_per_lang; b.rows_per_lang = NULL;
     f->n_unreadable_weights = b.n_unreadable_weights;
+    f->n_missing_cognates   = b.n_missing_cognates;
 
     *out = f;
     f = NULL;

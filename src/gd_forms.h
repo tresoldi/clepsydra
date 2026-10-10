@@ -81,12 +81,19 @@ typedef struct gd_forms {
     /* Cells whose primary_weight was present but unreadable, and so was taken
      * as 1.0. Zero for a clean file. */
     size_t n_unreadable_weights;
+
+    /* Rows that carry no observation (empty, '.' or '?' cognate id, or
+     * status missing/excluded/absent). They are not cognate classes and are
+     * not counted in rows_per_lang. */
+    size_t n_missing_cognates;
 } gd_forms;
 
 /*
  * Read a forms TSV. `len` is a byte count; 0 means an empty buffer.
  * Requires the columns language_id, concept_id and cognate_id;
- * primary_weight is optional and defaults to 1.0.
+ * primary_weight is optional and defaults to 1.0. An optional status column
+ * marks rows as missing, excluded or absent; those rows, and rows whose
+ * cognate id is empty, '.' or '?', are skipped and counted.
  *
  * On success *out is an owned gd_forms; on failure *out is untouched and this
  * function owns nothing.

@@ -727,10 +727,12 @@ TEST(test_analysis_counts_unreadable_weights)
      * warning would cry wolf on every run. */
     static const char *FORMS_BAD =
         "language_id\tconcept_id\tcognate_id\tprimary_weight\n"
-        "latin\tc1\tk1\tnot-a-number\n"
-        "spanish\tc1\tk1\t1.0\n"
-        "latin\tc2\tk2\t1.0\n"
-        "spanish\tc2\tk3\talso-not\n";
+        "Latin\tc1\tk1\tnot-a-number\n"
+        "Spanish\tc1\tk1\t1.0\n"
+        "Portuguese\tc1\tk1\t1.0\n"
+        "Sardinian\tc1\tk1\t1.0\n"
+        "Latin\tc2\tk2\t1.0\n"
+        "Spanish\tc2\tk3\talso-not\n";
 
     gd_analysis_tree_input in; tree_input(&in);
     gd_analysis_tree_config cfg; quick_config(&cfg);
@@ -755,6 +757,133 @@ TEST(test_analysis_counts_unreadable_weights)
     CHECK(n_bad == 2);
 }
 
+/*
+ * E0.1: a missing cognate id is not a cognate class. Before the fix, '.' was
+ * interned like any id, so two languages that both lacked a concept compared
+ * equal and were counted as sharing a cognate.
+ */
+TEST(test_analysis_pair_missing_is_not_a_match)
+{
+    static const char *F =
+        "language_id\tconcept_id\tcognate_id\tstatus\n"
+        "A\tc1\tk1\tobserved\n"
+        "B\tc1\tk1\tobserved\n"
+        "A\tc2\t.\tobserved\n"
+        "B\tc2\t.\tobserved\n"
+        "A\tc3\t?\tobserved\n"
+        "B\tc3\t?\tobserved\n"
+        "A\tc4\t\tobserved\n"
+        "B\tc4\t\tobserved\n"
+        "A\tc5\tk5\tmissing\n"
+        "B\tc5\tk5\texcluded\n"
+        "A\tc6\tk6\tobserved\n"
+        "B\tc6\tk7\tobserved\n";
+    gd_analysis_pair_input in;
+    memset(&in, 0, sizeof in);
+    in.forms_tsv = F; in.forms_len = GD_LEN_NUL_TERMINATED;
+    in.lang_a = "A"; in.lang_b = "B";
+    gd_analysis_pair_config cfg; gd_analysis_pair_config_default(&cfg);
+    gd_error err = GD_ERROR_INIT;
+    gd_analysis_pair_result *res = NULL;
+    int rc = gd_analysis_pair_run(&in, &cfg, &res, &err);
+    size_t shared = 0, cog = 0, miss = 0;
+    if (res != NULL) {
+        shared = res->n_shared; cog = res->n_cognate; miss = res->n_missing_cognates;
+        gd_analysis_pair_result_destroy(res);
+    }
+    CHECK(rc == GD_E_OK);
+    CHECK(shared == 2);     /* c1 and c6 only */
+    CHECK(cog == 1);        /* c1 */
+    CHECK(miss == 8);
+}
+
+/* E0.8: a typo in a language name, or a pair with nothing in common, is an
+ * error, not a prior-only "date". */
+TEST(test_analysis_pair_unknown_or_disjoint_is_an_error)
+{
+    static const char *F =
+        "language_id\tconcept_id\tcognate_id\n"
+        "A\tc1\tk1\n"
+        "B\tc2\tk2\n";
+    gd_analysis_pair_input in;
+    memset(&in, 0, sizeof in);
+    in.forms_tsv = F; in.forms_len = GD_LEN_NUL_TERMINATED;
+    in.lang_a = "A"; in.lang_b = "Bee";
+    gd_analysis_pair_config cfg; gd_analysis_pair_config_default(&cfg);
+    gd_error err = GD_ERROR_INIT;
+    gd_analysis_pair_result *res = NULL;
+    CHECK(gd_analysis_pair_run(&in, &cfg, &res, &err) != GD_E_OK);
+    CHECK(res == NULL);
+    CHECK(strstr(err.message, "Bee") != NULL);
+
+    in.lang_b = "B";
+    gd_error_clear(&err);
+    CHECK(gd_analysis_pair_run(&in, &cfg, &res, &err) != GD_E_OK);
+    CHECK(res == NULL);
+}
+
+/* E0.1, E0.8, E0.10 on the tree path: missing rows are counted and not used;
+ * a tip without any observation is an error; a forms language that names an
+ * internal node is an error. */
+TEST(test_analysis_tree_missing_and_unknown_tips)
+{
+    gd_analysis_tree_input in; tree_input(&in);
+    gd_analysis_tree_config cfg; quick_config(&cfg);
+    gd_error err = GD_ERROR_INIT;
+    gd_analysis_tree_job *job = NULL;
+
+    static const char *WITH_DOTS =
+        "language_id\tconcept_id\tcognate_id\n"
+        "Latin\tc1\tk1\n" "Spanish\tc1\tk1\n" "Portuguese\tc1\tk1\n" "Sardinian\tc1\tk1\n"
+        "Latin\tc2\t.\n"  "Spanish\tc2\t.\n"  "Portuguese\tc2\tk3\n" "Sardinian\tc2\tk2\n";
+    in.forms_tsv = WITH_DOTS;
+    gd_analysis_tree_result *res = NULL;
+    int rc = gd_analysis_tree_run(&in, &cfg, &res, &err);
+    size_t miss = 0, nlang = 0;
+    if (res != NULL) { miss = res->n_missing_cognates; nlang = res->n_languages;
+                       gd_analysis_tree_result_destroy(res); }
+    CHECK(rc == 0);
+    CHECK(miss == 2);
+    CHECK(nlang == 4);
+
+    static const char *NO_SARDINIAN =
+        "language_id\tconcept_id\tcognate_id\n"
+        "Latin\tc1\tk1\n" "Spanish\tc1\tk1\n" "Portuguese\tc1\tk1\n"
+        "Sardinia\tc1\tk1\n";
+    tree_input(&in);
+    in.forms_tsv = NO_SARDINIAN;
+    gd_error_clear(&err);
+    CHECK(gd_analysis_tree_prepare(&in, &cfg, &job, &err) != 0);
+    CHECK(job == NULL);
+    CHECK(strstr(err.message, "Sardinian") != NULL);
+
+    static const char *INTERNAL =
+        "language_id\tconcept_id\tcognate_id\n"
+        "Latin\tc1\tk1\n" "Spanish\tc1\tk1\n" "Portuguese\tc1\tk1\n"
+        "Sardinian\tc1\tk1\n" "Ibero\tc1\tk1\n";
+    tree_input(&in);
+    in.forms_tsv = INTERNAL;
+    gd_error_clear(&err);
+    CHECK(gd_analysis_tree_prepare(&in, &cfg, &job, &err) != 0);
+    CHECK(job == NULL);
+    CHECK(strstr(err.message, "Ibero") != NULL);
+}
+
+/* E0.10: the language count is the number of tips, also for a polytomy. */
+TEST(test_analysis_counts_tips_of_a_polytomy)
+{
+    gd_analysis_tree_input in; tree_input(&in);
+    in.newick = "((Latin:1200,Spanish:2050,Portuguese:2050)WestRom:500,Sardinian:2550)Root;";
+    gd_analysis_tree_config cfg; quick_config(&cfg);
+    gd_error err = GD_ERROR_INIT;
+    gd_analysis_tree_job *job = NULL;
+    int rc = gd_analysis_tree_prepare(&in, &cfg, &job, &err);
+    size_t nl = (job != NULL) ? gd_analysis_tree_job_languages(job) : 0;
+    gd_analysis_tree_job_destroy(job);
+    CHECK(rc == 0);
+    CHECK(nl == 4);
+}
+
 static void run_tests(void)
 {
     RUN(test_analysis_prepare_reports_dataset_size);
@@ -776,6 +905,10 @@ static void run_tests(void)
     RUN(test_analysis_pair_decay_laws_differ);
     RUN(test_analysis_empty_buffer_is_empty_not_measured);
     RUN(test_analysis_pair_bad_input);
+    RUN(test_analysis_pair_missing_is_not_a_match);
+    RUN(test_analysis_pair_unknown_or_disjoint_is_an_error);
+    RUN(test_analysis_tree_missing_and_unknown_tips);
+    RUN(test_analysis_counts_tips_of_a_polytomy);
 }
 
 TEST_MAIN()
