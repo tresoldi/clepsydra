@@ -60,6 +60,15 @@ columns and example numbers are expected throughout 0.x and are listed here.
 
 ### Added
 
+- **Checkpoints bound to their inputs, resumable mid-sampling** (E3.3).
+  A chain checkpoint (version 7) records a 64-bit binding hash and refuses
+  to restore when anything differs. The hash covers the parameter layout,
+  tree, calibration windows, the model's data (via a new optional
+  `fingerprint` in `gd_mcmc_model`), every trajectory-shaping setting, and
+  the chain stream. The checkpoint also carries the draws already stored,
+  with their log-likelihoods and pointwise rows. A resume during sampling
+  reproduces every draw of an uninterrupted run (tested). So do the
+  refusals of other data, another seed and another chain.
 - **Parallel chains.** In threaded builds (the default `THREADS=1`; WASM
   is never threaded) each chain runs in its own POSIX thread, on its own
   tree copy and likelihood clone. `--threads N` caps how many run at once.

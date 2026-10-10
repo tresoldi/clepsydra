@@ -419,7 +419,57 @@ TEST(test_mcmc_checkpoint_roundtrip)
         CHECK(gd_mcmc_chain_sample(c, clast, p) == ref_last[p]);
     CHECK(gd_mcmc_chain_sample_loglik(c, clast) == ref_ll);
 
+    /* E3.3: a checkpoint taken during sampling carries the draws already
+     * stored, so the resumed chain's every draw matches the reference. */
+    cfg.store_pointwise = true;
+    gd_mcmc_chain *r2 = gd_mcmc_chain_create(&model, sm.t, cs, &cfg, 1u, &err);
+    CHECK(r2 != NULL && gd_mcmc_chain_run(r2, &err) == 0);
+    gd_mcmc_chain *e = gd_mcmc_chain_create(&model, sm.t, cs, &cfg, 1u, &err);
+    CHECK(e != NULL);
+    CHECK(gd_mcmc_chain_step(e, cfg.n_warmup + cfg.n_samples / 2, &err) == 0);
+    unsigned char *buf2 = NULL; size_t len2 = 0;
+    CHECK(gd_mcmc_chain_serialize(e, &buf2, &len2, &err) == 0);
+    gd_mcmc_chain_destroy(e);
+    gd_mcmc_chain *f = gd_mcmc_chain_create(&model, sm.t, cs, &cfg, 1u, &err);
+    CHECK(gd_mcmc_chain_restore(f, buf2, len2, &err) == 0);
+    CHECK(gd_mcmc_chain_nsamples(f) == cfg.n_samples / 2);
+    CHECK(gd_mcmc_chain_step(f, total - cfg.n_warmup - cfg.n_samples / 2, &err) == 0);
+    CHECK(gd_mcmc_chain_nsamples(f) == cfg.n_samples);
+    size_t ndiff = 0;
+    for (size_t k = 0; k < cfg.n_samples; k++) {
+        for (size_t p = 0; p < np; p++)
+            if (gd_mcmc_chain_sample(f, k, p) != gd_mcmc_chain_sample(r2, k, p)) ndiff++;
+        if (gd_mcmc_chain_sample_loglik(f, k) != gd_mcmc_chain_sample_loglik(r2, k)) ndiff++;
+        const double *pa = gd_mcmc_chain_sample_pointwise(f, k);
+        const double *pb = gd_mcmc_chain_sample_pointwise(r2, k);
+        CHECK(pa != NULL && pb != NULL);
+        for (size_t i = 0; i < model.n_pointwise; i++) if (pa[i] != pb[i]) ndiff++;
+    }
+    CHECK(ndiff == 0);
+    gd_mcmc_chain_destroy(f); gd_mcmc_chain_destroy(r2);
+
+    /* The checkpoint is bound to its inputs: other data, another seed or
+     * another chain stream are refused even though the shapes agree. */
+    gd_mcmc_chain *g = gd_mcmc_chain_create(&model, sm.t, cs, &cfg, 2u, &err);
+    CHECK(gd_mcmc_chain_restore(g, buf2, len2, &err) == GD_E_CHECKPOINT);
+    gd_mcmc_chain_destroy(g);
+    gd_mcmc_config cfg2 = cfg; cfg2.seed = cfg.seed + 1;
+    gd_mcmc_chain *h = gd_mcmc_chain_create(&model, sm.t, cs, &cfg2, 1u, &err);
+    CHECK(gd_mcmc_chain_restore(h, buf2, len2, &err) == GD_E_CHECKPOINT);
+    gd_mcmc_chain_destroy(h);
+    sbc_model sm2; gd_calibration_set *cs2 = NULL;
+    CHECK(build_dataset(&sm2, &cs2, R, log(0.0005), 1750.0, 1250.0, 40, 34u, &err) == 0);
+    gd_mcmc_model model2; gd_mcmc_t1_model(sm2.m, &model2);
+    gd_mcmc_chain *k2 = gd_mcmc_chain_create(&model2, sm2.t, cs2, &cfg, 1u, &err);
+    CHECK(k2 != NULL);
+    CHECK(gd_mcmc_chain_restore(k2, buf2, len2, &err) == GD_E_CHECKPOINT);
+    gd_mcmc_chain_destroy(k2);
+    gd_calset_destroy(cs2);
+    sbc_model_free(&sm2);
+    free(buf2);
+
     /* A corrupted checksum is rejected. */
+    cfg.store_pointwise = false;
     gd_mcmc_chain *d = gd_mcmc_chain_create(&model, sm.t, cs, &cfg, 1u, &err);
     buf[len - 1] ^= 0xFF;
     CHECK(gd_mcmc_chain_restore(d, buf, len, &err) == GD_E_CHECKPOINT);

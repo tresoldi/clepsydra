@@ -67,6 +67,10 @@ typedef struct gd_mcmc_model {
                    double *pointwise, double *out_total, gd_error *err);
     void *(*clone)(void *ctx, gd_tree *tree, gd_error *err);
     void  (*clone_free)(void *clone);
+    /* Optional: a hash of the data and settings the likelihood was built
+     * from, so a checkpoint cannot be restored against different data.
+     * NULL: the data are not part of the binding. */
+    uint64_t (*fingerprint)(void *ctx);
 } gd_mcmc_model;
 
 #endif /* GD_MCMC_MODEL_H */

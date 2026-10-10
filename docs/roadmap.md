@@ -115,7 +115,9 @@ Four things follow from the research and shape everything below.
   - Added: a non-centred σ_b move for the relaxed clock. Without it, the
     Arawan relaxed fit stalled at R-hat 1.16.
 
-  Open: E3.3 (checkpoint binding).
+  - E3.3: checkpoints bound to an input hash, and carrying their draws.
+
+  E3 is complete.
 - **D1:** done: D1.2 (`reference/calibrations/curated_nodes.tsv`) and D1.3
   (`error-prior.md`).
 - **D2, the σ_f pilot: done, and a no-go on its pre-registered rule**

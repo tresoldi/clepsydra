@@ -1410,6 +1410,23 @@ static void t1_model_clone_free(void *vc)
     gd_t1_ws_destroy(ws);
 }
 
+/* FNV-1a over the cognate labels and the likelihood options. */
+static uint64_t t1_model_fingerprint(void *vctx)
+{
+    const gd_mcmc_t1 *m = (const gd_mcmc_t1 *)vctx;
+    uint64_t h = 1469598103934665603ULL;
+#define T1_FP(ptr, n) do { const unsigned char *b_ = (const unsigned char *)(ptr); \
+        for (size_t i_ = 0; i_ < (n); i_++) { h ^= b_[i_]; h *= 1099511628211ULL; } } while (0)
+    uint64_t nc = m->nconcepts, nn = m->nnodes;
+    T1_FP(&nc, sizeof nc); T1_FP(&nn, sizeof nn);
+    for (size_t c = 0; c < m->nconcepts; c++)
+        T1_FP(m->concepts[c].labels, m->concepts[c].nnodes * sizeof(int));
+    int inc = (int)m->opt.incompatible;
+    T1_FP(&m->opt.noise_alpha, sizeof(double)); T1_FP(&inc, sizeof inc);
+#undef T1_FP
+    return h;
+}
+
 void gd_mcmc_t1_model(gd_mcmc_t1 *m, gd_mcmc_model *out)
 {
     if (m == NULL || out == NULL) return;
@@ -1418,4 +1435,5 @@ void gd_mcmc_t1_model(gd_mcmc_t1 *m, gd_mcmc_model *out)
     out->loglik = t1_model_loglik;
     out->clone = t1_model_clone;
     out->clone_free = t1_model_clone_free;
+    out->fingerprint = t1_model_fingerprint;
 }

@@ -40,7 +40,7 @@
 #define GD_MCMC_ADAPT_T0      10.0
 #define GD_MCMC_FIX_TOL       1e-9
 #define GD_MCMC_CKPT_MAGIC    0x394d4447u    /* "GDM9" */
-#define GD_MCMC_CKPT_VERSION  6u
+#define GD_MCMC_CKPT_VERSION  7u
 #define GD_MCMC_CONFOUND_THRESH 0.6          /* |corr| beyond this => confounded */
 
 /* ------------------------------------------------------------- parameters */
@@ -60,6 +60,7 @@ struct gd_mcmc_chain {
     gd_mcmc_config cfg;
     gd_rng *rng;
     uint64_t stream;          /* chain index, for progress reports */
+    uint64_t binding;         /* hash of everything a checkpoint must match */
 
     size_t nparam;
     gd_param *params;
@@ -384,6 +385,8 @@ static size_t count_params(const gd_mcmc_chain *ch, size_t *nfree_out)
             if (ch->cfg.tip_err_mean[v] > 0.0) np += 1;
     return np;
 }
+
+static uint64_t chain_binding(const gd_mcmc_chain *ch);
 
 gd_mcmc_chain *gd_mcmc_chain_create(const gd_mcmc_model *model, gd_tree *tree,
                                     gd_calibration_set *cal,
@@ -723,7 +726,61 @@ gd_mcmc_chain *gd_mcmc_chain_create(const gd_mcmc_model *model, gd_tree *tree,
                       ch->cur_loglik, ch->cur_logprior);
         gd_mcmc_chain_destroy(ch); return NULL;
     }
+    ch->binding = chain_binding(ch);
     return ch;
+}
+
+/* The inputs a checkpoint is bound to (E3.3): the parameter layout, the tree,
+ * the calibration windows, the model's data, every setting that shapes the
+ * trajectory, and the chain's stream. Not the thread count or progress
+ * settings, which change nothing a chain draws. */
+static uint64_t chain_binding(const gd_mcmc_chain *ch)
+{
+    uint64_t h = 1469598103934665603ULL;
+#define BIND(ptr, n) do { const unsigned char *b_ = (const unsigned char *)(ptr); \
+        for (size_t i_ = 0; i_ < (n); i_++) { h ^= b_[i_]; h *= 1099511628211ULL; } } while (0)
+#define BIND_D(x) do { double d_ = (double)(x); BIND(&d_, sizeof d_); } while (0)
+    const gd_mcmc_config *c = &ch->cfg;
+    BIND_D(ch->stream); BIND_D(c->seed);
+    BIND_D(c->n_warmup); BIND_D(c->n_samples); BIND_D(c->thin);
+    BIND_D(c->adapt); BIND_D(c->store_pointwise);
+    BIND_D(c->sample_rate); BIND_D(c->fixed_rate);
+    BIND_D(c->rate_logmean); BIND_D(c->rate_logsd); BIND_D(c->rate_step0);
+    BIND_D(c->tree_prior); BIND_D(c->root_lex_logmean); BIND_D(c->root_lex_logsd);
+    BIND_D(c->yule_kappa); BIND_D(c->prior_only); BIND_D(c->age_step0_frac);
+    BIND_D(c->clock_move); BIND_D(c->clock_step0);
+    BIND_D(c->subtree_move); BIND_D(c->subtree_step0);
+    BIND_D(c->block_age_scaling); BIND_D(c->block_step0);
+    BIND_D(c->sample_branch); BIND_D(c->sigma_b_prior_sd); BIND_D(c->sigma_b_init);
+    BIND_D(c->sigma_b_step0); BIND_D(c->branch_step0);
+    BIND_D(c->sample_contamination); BIND_D(c->fixed_epsilon);
+    BIND_D(c->eps_beta_a); BIND_D(c->eps_beta_b); BIND_D(c->eps_init); BIND_D(c->eps_step0);
+    BIND_D(c->sample_rate_mix); BIND_D(c->rate_mix_family); BIND_D(c->rate_mix_prior_sd);
+    BIND_D(c->rate_mix_prior_logmean); BIND_D(c->rate_mix_prior_logsd);
+    BIND_D(c->rate_mix_init); BIND_D(c->rate_mix_step0);
+    BIND_D(c->sample_concept_rates); BIND_D(c->concept_rate_sd); BIND_D(c->concept_step0);
+    for (size_t v = 0; v < ch->tree->nnodes; v++) {
+        if (c->tip_err_mean != NULL) BIND_D(c->tip_err_mean[v]);
+        if (c->tip_err_conc != NULL) BIND_D(c->tip_err_conc[v]);
+    }
+    const gd_tree *t = ch->tree;
+    BIND_D(t->nnodes); BIND_D(t->root);
+    for (size_t v = 0; v < t->nnodes; v++) {
+        BIND_D(t->nodes[v].parent); BIND_D(t->nodes[v].is_leaf);
+        if (t->nodes[v].label != NULL) BIND(t->nodes[v].label, strlen(t->nodes[v].label) + 1);
+        BIND_D(ch->cal->node_lo[v]); BIND_D(ch->cal->node_hi[v]);
+    }
+    BIND_D(ch->nparam);
+    for (size_t p = 0; p < ch->nparam; p++) {
+        BIND_D(ch->params[p].type); BIND_D(ch->params[p].node);
+    }
+    if (ch->model->fingerprint != NULL) {
+        uint64_t f = ch->model->fingerprint(ch->model->ctx);
+        BIND(&f, sizeof f);
+    }
+#undef BIND_D
+#undef BIND
+    return h;
 }
 
 /* --------------------------------------------------------------- sweep */
@@ -1234,9 +1291,20 @@ static uint64_t fnv1a(const unsigned char *p, size_t n)
     return h;
 }
 
-static size_t ckpt_body_size(const gd_mcmc_chain *ch)
+/* Draws stored so far: parameter rows, their log-likelihoods, and the
+ * pointwise rows when the chain keeps them. Part of a checkpoint so a resume
+ * during sampling loses nothing. */
+static size_t ckpt_draws_size(const gd_mcmc_chain *ch, size_t n_stored)
+{
+    size_t per = ch->nparam + 1 + (ch->pointwise != NULL ? ch->nconcepts : 0);
+    return n_stored * per * 8;
+}
+
+static size_t ckpt_body_size(const gd_mcmc_chain *ch, size_t n_stored)
 {
     return 4 + 4 + 4 + 8 + 16                 /* magic, ver, nparam, iter, rng */
+         + 8 + 8                              /* binding, n_stored */
+         + ckpt_draws_size(ch, n_stored)
          + ch->nparam * (8 + 8 + 8 + 8)       /* value, step, adapt, acc */
          + 8 + 8                              /* block_step, block_adapt_count */
          + 8 + 8                              /* clock_step, clock_adapt_count */
@@ -1250,7 +1318,7 @@ int gd_mcmc_chain_serialize(const gd_mcmc_chain *ch, unsigned char **buf,
     if (ch == NULL || buf == NULL || len == NULL) {
         gd_error_set(err, GD_E_INVALID_ARG, "mcmc_serialize: NULL"); return GD_E_INVALID_ARG;
     }
-    size_t body = ckpt_body_size(ch), total = body + 8;
+    size_t body = ckpt_body_size(ch, ch->n_stored), total = body + 8;
     unsigned char *out = *buf;
     if (out == NULL) {
         out = (unsigned char *)gd_malloc_checked(total, err);
@@ -1264,6 +1332,8 @@ int gd_mcmc_chain_serialize(const gd_mcmc_chain *ch, unsigned char **buf,
     u32 = GD_MCMC_CKPT_VERSION; memcpy(q, &u32, 4); q += 4;
     u32 = (uint32_t)ch->nparam; memcpy(q, &u32, 4); q += 4;
     u64 = ch->iter;             memcpy(q, &u64, 8); q += 8;
+    u64 = ch->binding;          memcpy(q, &u64, 8); q += 8;
+    u64 = ch->n_stored;         memcpy(q, &u64, 8); q += 8;
     if (gd_rng_serialize(ch->rng, q, GD_RNG_SERIAL_SIZE) != 0) {
         if (*buf == NULL) free(out);
         gd_error_set(err, GD_E_CHECKPOINT, "mcmc_serialize: rng"); return GD_E_CHECKPOINT;
@@ -1286,6 +1356,14 @@ int gd_mcmc_chain_serialize(const gd_mcmc_chain *ch, unsigned char **buf,
     d = ch->sub_adapt_count;   memcpy(q, &d, 8); q += 8;
     d = ch->funnel_step;       memcpy(q, &d, 8); q += 8;
     d = ch->funnel_adapt_count; memcpy(q, &d, 8); q += 8;
+    for (size_t k = 0; k < ch->n_stored; k++) {
+        memcpy(q, ch->samples + k * ch->nparam, ch->nparam * 8); q += ch->nparam * 8;
+        memcpy(q, &ch->sample_ll[k], 8); q += 8;
+        if (ch->pointwise != NULL) {
+            memcpy(q, ch->pointwise + k * ch->nconcepts, ch->nconcepts * 8);
+            q += ch->nconcepts * 8;
+        }
+    }
     u64 = fnv1a(out, body); memcpy(q, &u64, 8);
     *buf = out; *len = total;
     return 0;
@@ -1295,10 +1373,10 @@ int gd_mcmc_chain_restore(gd_mcmc_chain *ch, const unsigned char *buf,
                           size_t len, gd_error *err)
 {
     if (ch == NULL || buf == NULL) { gd_error_set(err, GD_E_INVALID_ARG, "mcmc_restore: NULL"); return GD_E_INVALID_ARG; }
-    size_t body = ckpt_body_size(ch);
-    if (len < body + 8) { gd_error_set(err, GD_E_CHECKPOINT, "mcmc_restore: short"); return GD_E_CHECKPOINT; }
+    const size_t head = 4 + 4 + 4 + 8 + 8 + 8;
+    if (len < head) { gd_error_set(err, GD_E_CHECKPOINT, "mcmc_restore: short"); return GD_E_CHECKPOINT; }
     const unsigned char *q = buf;
-    uint32_t magic, ver, nparam; uint64_t u64; double d;
+    uint32_t magic, ver, nparam; uint64_t iter, binding, n_stored; double d;
     memcpy(&magic, q, 4); q += 4;
     memcpy(&ver, q, 4); q += 4;
     memcpy(&nparam, q, 4); q += 4;
@@ -1307,11 +1385,26 @@ int gd_mcmc_chain_restore(gd_mcmc_chain *ch, const unsigned char *buf,
         gd_error_set(err, GD_E_CHECKPOINT, "mcmc_restore: version/shape mismatch");
         return GD_E_CHECKPOINT;
     }
+    memcpy(&iter, q, 8); q += 8;
+    memcpy(&binding, q, 8); q += 8;
+    memcpy(&n_stored, q, 8); q += 8;
+    if (binding != ch->binding) {
+        gd_error_set(err, GD_E_CHECKPOINT,
+                     "mcmc_restore: checkpoint was made with different data, tree, "
+                     "calibrations, settings or chain");
+        return GD_E_CHECKPOINT;
+    }
+    if (n_stored > ch->cap) {
+        gd_error_set(err, GD_E_CHECKPOINT, "mcmc_restore: more draws than the chain holds");
+        return GD_E_CHECKPOINT;
+    }
+    size_t body = ckpt_body_size(ch, (size_t)n_stored);
+    if (len < body + 8) { gd_error_set(err, GD_E_CHECKPOINT, "mcmc_restore: short"); return GD_E_CHECKPOINT; }
     uint64_t sum_expect; memcpy(&sum_expect, buf + body, 8);
     if (fnv1a(buf, body) != sum_expect) {
         gd_error_set(err, GD_E_CHECKPOINT, "mcmc_restore: checksum mismatch"); return GD_E_CHECKPOINT;
     }
-    memcpy(&u64, q, 8); q += 8; ch->iter = u64;
+    ch->iter = iter;
     if (gd_rng_restore(ch->rng, q, GD_RNG_SERIAL_SIZE) != 0) {
         gd_error_set(err, GD_E_CHECKPOINT, "mcmc_restore: rng"); return GD_E_CHECKPOINT;
     }
@@ -1330,6 +1423,15 @@ int gd_mcmc_chain_restore(gd_mcmc_chain *ch, const unsigned char *buf,
     memcpy(&d, q, 8); q += 8; ch->sub_adapt_count = d;
     memcpy(&d, q, 8); q += 8; ch->funnel_step = d;
     memcpy(&d, q, 8); q += 8; ch->funnel_adapt_count = d;
+    for (size_t k = 0; k < n_stored; k++) {
+        memcpy(ch->samples + k * ch->nparam, q, ch->nparam * 8); q += ch->nparam * 8;
+        memcpy(&ch->sample_ll[k], q, 8); q += 8;
+        if (ch->pointwise != NULL) {
+            memcpy(ch->pointwise + k * ch->nconcepts, q, ch->nconcepts * 8);
+            q += ch->nconcepts * 8;
+        }
+    }
+    ch->n_stored = (size_t)n_stored;
     /* Programmer invariant, and the reason the last q += 8 is not dead: the
      * cursor must land exactly on the end of the body that ckpt_body_size
      * predicted. A serializer and a deserializer that disagree about the
