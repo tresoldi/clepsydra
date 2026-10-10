@@ -4,23 +4,41 @@ Hierarchical Bayesian lexical dating in portable C99, with an optional
 Python reference-prior toolchain.
 
 > **Status: v0.2.0, with 0.3 in progress on `main`.** `docs/roadmap.md` is the
-> plan, and it changes defaults, CLI options and outputs as it goes (see
-> `CHANGELOG.md`, "Unreleased"). The C99 engine implements the classical and
-> hierarchical pairwise models (P0/P1), the strict novel-state tree likelihood
-> (T1) with a relaxed branch clock, a fixed-tree Metropolis-within-Gibbs
-> sampler, convergence diagnostics matched to ArviZ with a pass/fail gate, and
-> checkpoint/resume. The binary cognate-set likelihood (T2) is implemented and
-> tested at the likelihood level but is **experimental**: the CLI cannot run it
-> and no sampler path fits it. The `clepsydra` CLI (`date-tree`, `date-pair`)
-> runs end-to-end, with reproducible worked examples on real Lexibank cognate
-> data (CC-BY-4.0) under `examples/`. `make test` runs the C suites under
-> sanitizers plus the CLI checks.
+> plan and records its status; `CHANGELOG.md` ("Unreleased") lists every
+> breaking change. In 0.3 so far:
 >
-> **Read this before using absolute dates.** Until roadmap phase E1 lands, the
-> engine has no proper prior on uncalibrated node ages: an uncalibrated root is
-> shaped by numerical bounds, not by a tree prior. Calibrated runs are sound
-> as far as their calibrations go. Uncalibrated calendar ages are not
-> (`docs/research/arawan-lessons.md`).
+> - **A proper prior on node ages.** It replaces the hidden `[0, 1e15]` box.
+>   A lexical root `L = rho · a_root` carries a log-normal prior, and ages are
+>   uniform below the root. A Yule alternative is available as a sensitivity
+>   check.
+> - **The T1 likelihood** now includes:
+>   - concept-rate heterogeneity, integrated out (log-normal or gamma);
+>   - sampled contamination;
+>   - outlier-prone and one-sided calibrations;
+>   - ancestor tips;
+>   - list-level observation error.
+> - **Every run reports:**
+>   - three kinds of age per node (lexical, relative, calendar), where the
+>     calendar scale comes from, and the prior beside the posterior;
+>   - power-scaling sensitivity and a width decomposition;
+>   - posterior predictive checks;
+>   - a convergence verdict matched to ArviZ.
+> - **The commands:**
+>   - `date-tree` (fixed topology);
+>   - `date-trees` (over a posterior sample of trees from BEAST, MrBayes or
+>     RevBayes);
+>   - `date-pair` (two languages, synonyms marginalised);
+>   - `calib-sensitivity`.
+> - **T2 is experimental.** The binary cognate-set likelihood is tested at the
+>   likelihood level, but nothing can fit it.
+>
+> **Read this before quoting calendar dates for an uncalibrated family.** A
+> pre-registered pilot (`docs/research/clock-pilot.md`) finds that clock
+> rates vary by about 0.77 on the log scale between nodes and families. A
+> 2,000-year node with no calendar anchor therefore gets a 95% interval of
+> about ×/÷ 6. Treat lexical and relative ages as the products; calendar ages
+> without calibrations are scenarios, and the run manifest says where their
+> scale comes from.
 >
 > The **browser page** (`web/`) runs the engine via WebAssembly; its
 > committed build predates the 0.3 changes.
