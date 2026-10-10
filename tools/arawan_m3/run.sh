@@ -37,3 +37,15 @@ run date-trees --trees "$OUT/b1.trees" --forms "$D/forms.tsv" --calibrations "$O
     --clades "$OUT/clades.tsv" --out "$OUT/trees" --burnin 0.1 --ntrees 20 \
     --warmup 3000 --samples 3000 --chains 4 --seed 42 --allow-unconverged 1 || true
 echo done
+
+# Model averaging (E2.8): strict and relaxed clocks, log-normal and gamma
+# concept rates, stacked on PSIS-LOO. Draws and pointwise output on.
+AV="--forms $D/forms.tsv --calibrations $OUT/cal_tips.tsv --warmup 8000 --samples 8000 --chains 4 --seed 42 --compare-prior 0 --write-draws 1 --write-pointwise 1"
+T="--tree $D/tree_labeled.nwk"
+run date-tree $T --out "$OUT/av_strict_ln" $AV || true
+run date-tree $T --out "$OUT/av_strict_gm" $AV --concept-rate-gamma 1 || true
+run date-tree $T --out "$OUT/av_relaxed_ln" $AV --relaxed 1 || true
+run date-tree $T --out "$OUT/av_relaxed_gm" $AV --relaxed 1 --concept-rate-gamma 1 || true
+"$C" average --runs "$OUT/av_strict_ln,$OUT/av_strict_gm,$OUT/av_relaxed_ln,$OUT/av_relaxed_gm" \
+    --labels strict_lognormal,strict_gamma,relaxed_lognormal,relaxed_gamma --out "$OUT/average" || true
+echo averaged
