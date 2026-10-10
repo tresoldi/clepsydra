@@ -199,7 +199,12 @@ unchanged):
   concept sees is `exp(logr + μ_c) · m_b`, applied through the relaxed T1
   likelihood (`gd_t1_loglik_concept_relaxed`). `σ_b` enters only the prior, so
   its Metropolis update needs no likelihood recompute; its full conditional
-  includes every branch multiplier.
+  includes every branch multiplier. That coupling is Neal's funnel: as `σ_b`
+  shrinks the multipliers are pinned together and single-site moves stall.
+  Each sweep therefore also makes a **non-centred joint move**. It shifts
+  `log σ_b` by δ and maps every `log m_b` through its standardised
+  deviation `z_b = (log m_b + σ_b²/2)/σ_b`, which stays fixed. The map's
+  Jacobian is `n_b·δ`.
 - **Contamination.** `ε ~ Beta(a,b)` sampled on the logit scale, feeding the
   robust mixture of docs/model-spec.md §6, so injected loans / miscoded
   concepts are absorbed instead of biasing the dates.
@@ -216,7 +221,9 @@ with the ages free the branch rate and duration trade off and the flag fires.
 **Validation.** `tests/simulation/test_mcmc_relaxed.c`: branch-rate recovery
 where identifiable (ages fixed → posterior-mean `log m_b` correlates ~0.98 with
 the truth); the confounding warning fires when ages are free (correlation
-≈ −0.77); `σ_b` shrinks toward zero on strictly-clocked data; and the rate
+≈ −0.77); `σ_b` shrinks toward zero on strictly-clocked data; prior-only
+sampling recovers the hierarchical prior on `(σ_b, log m_b)` with `σ_b` bulk
+ESS above 6,000 (175 without the joint move, which then fails the test); and the rate
 estimate stays near the truth while `ε` rises as loan/miscoded concepts are
 injected (robustness). Family multipliers `β_f` reduce to the global scale on a
 single fixed tree (they need cross-family data, M11); the split-pulse model
