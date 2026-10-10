@@ -727,9 +727,43 @@ TEST(test_mcmc_result_accessors_agree_with_the_raw_layout)
     CHECK(bad_n == GD_E_INVALID_ARG);
 }
 
+/* E0.12: a chain never marks the caller's calibration set feasible, and it
+ * refuses to start from a state of zero density. */
+TEST(test_mcmc_refuses_infeasible_and_zero_density_starts)
+{
+    gd_error err = GD_ERROR_INIT;
+    sbc_model sm; gd_calibration_set *cs = NULL;
+    CHECK(build_dataset(&sm, &cs, 3000.0, log(0.0005), 1700.0, 1300.0, 40, 78u, &err) == 0);
+    gd_mcmc_model model; gd_mcmc_t1_model(sm.m, &model);
+    gd_mcmc_config cfg; gd_mcmc_config_default(&cfg);
+    cfg.n_warmup = 10; cfg.n_samples = 10;
+
+    cs->feasible = false;
+    gd_mcmc_chain *ch = gd_mcmc_chain_create(&model, sm.t, cs, &cfg, 0u, &err);
+    bool still_infeasible = !cs->feasible;
+    gd_mcmc_chain_destroy(ch);
+    cs->feasible = true;
+    CHECK(ch == NULL);
+    CHECK(still_infeasible);
+    CHECK(err.code == GD_E_CALIBRATION);
+
+    /* A fixed rate of zero makes every concept's likelihood degenerate. */
+    gd_error_clear(&err);
+    cfg.sample_rate = false;
+    cfg.fixed_rate = 1e-300;
+    cfg.fixed_epsilon = 0.0;
+    ch = gd_mcmc_chain_create(&model, sm.t, cs, &cfg, 0u, &err);
+    int refused = (ch == NULL);
+    gd_mcmc_chain_destroy(ch);
+    gd_calset_destroy(cs);
+    sbc_model_free(&sm);
+    CHECK(refused);
+}
+
 static void run_tests(void)
 {
     RUN(test_mcmc_reproducible);
+    RUN(test_mcmc_refuses_infeasible_and_zero_density_starts);
     RUN(test_mcmc_block_scaling_same_target);
     RUN(test_mcmc_no_post_warmup_adaptation);
     RUN(test_mcmc_checkpoint_roundtrip);

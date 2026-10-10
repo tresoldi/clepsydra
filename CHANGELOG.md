@@ -80,6 +80,10 @@ columns and example numbers are expected throughout 0.x and are listed here.
   `is_hard` must agree with the type or the table is refused. *Changes the
   romance example's calibration-sensitivity outputs, whose two windows are
   soft.*
+- **Sampler start-up** (E0.12). A chain no longer marks the caller's
+  calibration set feasible on its own (it did, so an unpropagated or
+  contradictory set reached the sampler). A chain whose initial state has a
+  non-finite likelihood or prior is refused instead of sampled.
 - **Language count and tip resolution** (E0.10). `n_languages` counts tips
   instead of assuming a binary tree (`(nnodes + 1) / 2`). A forms language
   that matches an internal node label is an error.

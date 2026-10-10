@@ -377,7 +377,15 @@ gd_mcmc_chain *gd_mcmc_chain_create(const gd_mcmc_model *model, gd_tree *tree,
     /* Draw initial ages from the prior (dispersion across chains). */
     double *agebuf = (double *)gd_malloc_array_checked(tree->nnodes, sizeof(double), err);
     if (agebuf == NULL) { gd_error_set(err, GD_E_NOMEM, "mcmc: init"); gd_mcmc_chain_destroy(ch); return NULL; }
-    if (!cal->feasible) cal->feasible = true;
+    /* The calibration set is the caller's: a chain reads it and never marks
+     * it feasible on the caller's behalf (it used to, which let an
+     * unpropagated or contradictory set through to sampling). */
+    if (!cal->feasible) {
+        free(agebuf);
+        gd_error_set(err, GD_E_CALIBRATION,
+                     "mcmc: calibrations are not marked feasible; propagate them first");
+        gd_mcmc_chain_destroy(ch); return NULL;
+    }
     if (gd_cal_sample_prior(ch->rng, cal, tree, agebuf, err) != 0) {
         free(agebuf); gd_mcmc_chain_destroy(ch); return NULL;
     }
@@ -467,6 +475,16 @@ gd_mcmc_chain *gd_mcmc_chain_create(const gd_mcmc_model *model, gd_tree *tree,
         gd_mcmc_chain_destroy(ch); return NULL;
     }
     ch->cur_logprior = chain_total_logprior(ch);
+    /* A chain that starts at zero density cannot be trusted to find its way:
+     * every proposal compares against -inf (or NaN), and the first accepted
+     * move is arbitrary. Refuse rather than sample from there. */
+    if (!isfinite(ch->cur_loglik) || !isfinite(ch->cur_logprior)) {
+        gd_error_setf(err, GD_E_RANGE,
+                      "mcmc: initial state has non-finite %s (log-likelihood %g, log-prior %g)",
+                      !isfinite(ch->cur_loglik) ? "likelihood" : "prior",
+                      ch->cur_loglik, ch->cur_logprior);
+        gd_mcmc_chain_destroy(ch); return NULL;
+    }
     return ch;
 }
 
