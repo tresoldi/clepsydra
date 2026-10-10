@@ -28,7 +28,15 @@ Python reference-prior toolchain.
 >   - `date-trees` (over a posterior sample of trees from BEAST, MrBayes or
 >     RevBayes);
 >   - `date-pair` (two languages, synonyms marginalised);
->   - `calib-sensitivity`.
+>   - `calib-sensitivity`;
+>   - `average` (stacking of model variants on PSIS-LOO, with the
+>     between-model share of each node's uncertainty).
+> - **The sampler:**
+>   - chains run in parallel threads, with draws identical to a
+>     sequential run;
+>   - the likelihood is evaluated incrementally;
+>   - the relaxed clock has a non-centred move;
+>   - checkpoints are bound to their inputs and resume mid-sampling.
 > - **T2 is experimental.** The binary cognate-set likelihood is tested at the
 >   likelihood level, but nothing can fit it.
 >
@@ -53,8 +61,9 @@ posteriors, external versioned-TSV reference priors, calibrations for
 absolute time, robust contamination for incompatible concepts, and a full
 validation suite.
 
-The scientific core is strict C99 (C standard library + libm only) and
-compiles natively, and also to **WebAssembly**: `web/` is a browser page that
+The scientific core is strict C99 (C standard library + libm only; native
+builds add POSIX threads for parallel chains, and `make THREADS=0` drops
+them). It compiles natively, and also to **WebAssembly**: `web/` is a browser page that
 runs the same engine locally, with no server and no upload. Python (under
 `tools/`) is optional and never required by the inference engine.
 
