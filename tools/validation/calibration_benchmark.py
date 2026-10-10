@@ -138,7 +138,9 @@ def parse_posterior_nodes(path):
             out[node] = {
                 "median": g("median_bp"), "mean": g("mean_bp"),
                 "hpd_lo": g("hpd90_lo_bp"), "hpd_hi": g("hpd90_hi_bp"),
-                "rhat": g("rhat"), "ess": g("ess"),
+                # "ess" before 0.3; "ess_bulk" since the tail ESS was added.
+                "rhat": g("rhat"),
+                "ess": g("ess_bulk") if "ess_bulk" in idx else g("ess"),
             }
     return out
 

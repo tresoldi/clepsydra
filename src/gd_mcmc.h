@@ -146,8 +146,10 @@ typedef struct gd_mcmc_result {
     size_t  n_concepts;
     double *samples;     /* [chain][draw][param] */
     double *pointwise;   /* [chain][draw][concept] or NULL */
-    double *rhat;        /* n_param */
-    double *ess;         /* n_param */
+    double *rhat;        /* n_param: max of bulk and folded (tail) R-hat */
+    double *ess;         /* n_param: bulk ESS */
+    double *ess_tail;    /* n_param: tail ESS (5% and 95% quantiles) */
+    double *mcse;        /* n_param: Monte Carlo SE of the mean */
     double *acc_rate;    /* n_param */
     gd_mcmc_ptype *param_type; /* n_param */
     size_t *param_node;        /* n_param (GD_NODE_NONE where N/A) */

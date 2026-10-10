@@ -822,6 +822,8 @@ int gd_analysis_tree_job_run(gd_analysis_tree_job *job,
         pp->stat = s;
         pp->rhat = res->rhat[p];
         pp->ess = res->ess[p];
+        pp->ess_tail = res->ess_tail[p];
+        pp->mcse = res->mcse[p];
         pp->acceptance = res->acc_rate[p];
 
         if (res->param_type[p] == GD_MCMC_P_AGE) {
@@ -831,6 +833,8 @@ int gd_analysis_tree_job_run(gd_analysis_tree_job *job,
             na->age = s;
             na->rhat = res->rhat[p];
             na->ess = res->ess[p];
+            na->ess_tail = res->ess_tail[p];
+            na->mcse = res->mcse[p];
         }
     }
 
@@ -848,6 +852,30 @@ int gd_analysis_tree_job_run(gd_analysis_tree_job *job,
     r->n_missing_cognates = job->n_missing_cognates;
     r->relaxed = job->cfg.relaxed;
     r->branch_rate_confounded = res->branch_rate_confounded;
+
+    /* Convergence verdict. A NAN diagnostic (a parameter that never moved, or
+     * too few draws) counts as a failure: "could not be assessed" is not
+     * "converged". */
+    {
+        double ess_min = GD_CONV_ESS_PER_CHAIN * (double)res->n_chains;
+        double mx = 0.0, mb = HUGE_VAL, mt = HUGE_VAL;
+        bool nan_r = false, nan_b = false, nan_t = false;
+        r->n_unconverged = 0;
+        for (size_t p = 0; p < np; p++) {
+            double rh = res->rhat[p], eb = res->ess[p], et = res->ess_tail[p];
+            bool ok = (rh < GD_CONV_RHAT_MAX) && (eb >= ess_min) && (et >= ess_min);
+            if (!ok) r->n_unconverged++;
+            if (isnan(rh)) nan_r = true; else if (rh > mx) mx = rh;
+            if (isnan(eb)) nan_b = true; else if (eb < mb) mb = eb;
+            if (isnan(et)) nan_t = true; else if (et < mt) mt = et;
+        }
+        /* The extremes report NAN when any parameter could not be assessed,
+         * so a summary line cannot look healthier than the worst case. */
+        r->max_rhat = nan_r ? NAN : mx;
+        r->min_ess_bulk = nan_b ? NAN : mb;
+        r->min_ess_tail = nan_t ? NAN : mt;
+        r->converged = (np > 0 && r->n_unconverged == 0);
+    }
     r->min_branch_duration_corr = res->min_branch_duration_corr;
 
     /* The tree moves into the result; tear down what still points at it first,

@@ -13,6 +13,9 @@
 
 #include <math.h>
 #include <stdlib.h>
+#include <string.h>
+
+#include "diag_golden.h"
 
 TEST(test_inv_normal_cdf_known)
 {
@@ -88,8 +91,44 @@ TEST(test_ess_iid_vs_autocorrelated)
     gd_rng_destroy(rng);
 }
 
+/* E0.9: every estimator agrees with ArviZ to rounding, on cases chosen to
+ * exercise the corners: an odd chain length (the middle draw is dropped on
+ * split), strong autocorrelation, one offset chain, a scale mismatch that only
+ * the folded R-hat sees, ties, and antithetic draws (ESS above N). */
+TEST(test_diagnostics_match_arviz)
+{
+    size_t ncase = sizeof GOLDEN / sizeof GOLDEN[0];
+    for (size_t k = 0; k < ncase; k++) {
+        const golden_case *g = &GOLDEN[k];
+        double r  = gd_rhat_rank(g->draws, GOLDEN_C, GOLDEN_N);
+        double eb = gd_ess_bulk(g->draws, GOLDEN_C, GOLDEN_N);
+        double et = gd_ess_tail(g->draws, GOLDEN_C, GOLDEN_N);
+        double em = gd_ess_mean(g->draws, GOLDEN_C, GOLDEN_N);
+        double mc = gd_mcse_mean(g->draws, GOLDEN_C, GOLDEN_N);
+        CHECK_APPROX(r,  g->rhat,      1e-9 * g->rhat);
+        CHECK_APPROX(eb, g->ess_bulk,  1e-7 * g->ess_bulk);
+        CHECK_APPROX(et, g->ess_tail,  1e-7 * g->ess_tail);
+        CHECK_APPROX(em, g->ess_mean,  1e-7 * g->ess_mean);
+        CHECK_APPROX(mc, g->mcse_mean, 1e-7 * g->mcse_mean);
+    }
+}
+
+/* The folded R-hat is what catches chains that agree in location and
+ * disagree in spread; the bulk R-hat alone does not. */
+TEST(test_rhat_tail_catches_scale_mismatch)
+{
+    const golden_case *g = NULL;
+    for (size_t k = 0; k < sizeof GOLDEN / sizeof GOLDEN[0]; k++)
+        if (strcmp(GOLDEN[k].name, "scale_mismatch") == 0) g = &GOLDEN[k];
+    CHECK(g != NULL);
+    CHECK(gd_rhat_bulk(g->draws, GOLDEN_C, GOLDEN_N) < 1.05);
+    CHECK(gd_rhat_tail(g->draws, GOLDEN_C, GOLDEN_N) > 1.1);
+}
+
 static void run_tests(void)
 {
+    RUN(test_diagnostics_match_arviz);
+    RUN(test_rhat_tail_catches_scale_mismatch);
     RUN(test_inv_normal_cdf_known);
     RUN(test_rhat_converged_vs_stuck);
     RUN(test_ess_iid_vs_autocorrelated);

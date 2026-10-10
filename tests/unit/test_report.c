@@ -170,7 +170,7 @@ TEST(test_report_posterior_nodes_columns_are_the_shipped_ones)
     CHECK(gd_table_write_tsv(t, &sink, &err) == GD_E_OK);
     gd_table_destroy(t);
     CHECK_STREQ(m.buf,
-        "node\tmean_bp\tmedian_bp\tsd\thpd90_lo_bp\thpd90_hi_bp\trhat\tess\n");
+        "node\tmean_bp\tmedian_bp\tsd\thpd90_lo_bp\thpd90_hi_bp\trhat\tess_bulk\tess_tail\n");
 }
 
 TEST(test_report_diagnostics_columns_are_the_shipped_ones)
@@ -184,7 +184,7 @@ TEST(test_report_diagnostics_columns_are_the_shipped_ones)
     gd_sink sink = { &m, mem_write };
     CHECK(gd_table_write_tsv(t, &sink, &err) == GD_E_OK);
     gd_table_destroy(t);
-    CHECK_STREQ(m.buf, "param\ttype\tmean\tsd\trhat\tess\tacceptance\n");
+    CHECK_STREQ(m.buf, "param\ttype\tmean\tsd\trhat\tess_bulk\tess_tail\tmcse_mean\tacceptance\n");
 }
 
 TEST(test_report_pair_is_a_key_value_table)
@@ -263,6 +263,8 @@ TEST(test_report_diagnostics_row_is_byte_for_byte_the_shipped_format)
     params[0].stat.sd = 0.1188447;
     params[0].rhat = 1.0009;
     params[0].ess = 834.4;
+    params[0].ess_tail = 701.2;
+    params[0].mcse = 0.004114;
     params[0].acceptance = 0.4441;
 
     params[1].type = GD_MCMC_P_AGE;
@@ -272,6 +274,8 @@ TEST(test_report_diagnostics_row_is_byte_for_byte_the_shipped_format)
     params[1].stat.sd = 104.72;
     params[1].rhat = 1.0011;
     params[1].ess = 2295.4;
+    params[1].ess_tail = 1999.6;
+    params[1].mcse = 2.18571;
     params[1].acceptance = 0.4432;
 
     gd_analysis_tree_result res;
@@ -288,9 +292,9 @@ TEST(test_report_diagnostics_row_is_byte_for_byte_the_shipped_format)
     gd_table_destroy(t);
 
     CHECK_STREQ(m.buf,
-        "param\ttype\tmean\tsd\trhat\tess\tacceptance\n"
-        "log_rate\tlog_rate\t-9.002\t0.1188\t1.001\t834\t0.444\n"
-        "age:root\tage\t2670\t104.7\t1.001\t2295\t0.443\n");
+        "param\ttype\tmean\tsd\trhat\tess_bulk\tess_tail\tmcse_mean\tacceptance\n"
+        "log_rate\tlog_rate\t-9.002\t0.1188\t1.001\t834\t701\t0.004114\t0.444\n"
+        "age:root\tage\t2670\t104.7\t1.001\t2295\t2000\t2.186\t0.443\n");
 }
 
 TEST(test_report_node_row_is_byte_for_byte_the_shipped_format)
@@ -306,6 +310,7 @@ TEST(test_report_node_row_is_byte_for_byte_the_shipped_format)
     ages[0].age.hpd_hi = 1849.92;
     ages[0].rhat = 1.00449;
     ages[0].ess = 740.6;
+    ages[0].ess_tail = 512.3;
 
     gd_analysis_tree_result res;
     memset(&res, 0, sizeof res);
@@ -320,8 +325,8 @@ TEST(test_report_node_row_is_byte_for_byte_the_shipped_format)
     CHECK(gd_table_write_tsv(t, &sink, &err) == GD_E_OK);
 
     CHECK_STREQ(m.buf,
-        "node\tmean_bp\tmedian_bp\tsd\thpd90_lo_bp\thpd90_hi_bp\trhat\tess\n"
-        "proto_romance\t1610.4\t1601.3\t143.8\t1370.1\t1849.9\t1.004\t741\n");
+        "node\tmean_bp\tmedian_bp\tsd\thpd90_lo_bp\thpd90_hi_bp\trhat\tess_bulk\tess_tail\n"
+        "proto_romance\t1610.4\t1601.3\t143.8\t1370.1\t1849.9\t1.004\t741\t512\n");
 
     /* The same row as the browser sees it: different key names, different
      * precision, and the node index the TSV has no column for. */
@@ -331,7 +336,7 @@ TEST(test_report_node_row_is_byte_for_byte_the_shipped_format)
     CHECK_STREQ(m.buf,
         "[{\"label\":\"proto_romance\",\"node\":4,\"mean\":1610.44,"
         "\"median\":1601.27,\"sd\":143.81,\"hpd_lo\":1370.06,"
-        "\"hpd_hi\":1849.92,\"rhat\":1.00449,\"ess\":740.6}]");
+        "\"hpd_hi\":1849.92,\"rhat\":1.00449,\"ess\":740.6,\"ess_tail\":512.3}]");
 }
 
 static void run_tests(void)

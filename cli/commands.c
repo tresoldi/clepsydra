@@ -365,6 +365,13 @@ static void usage_tree(void)
     print_options(opts, nopt, &def);
     fprintf(stderr, "  %-20s (0)  report sampling progress on stderr\n",
             "--progress 0|1");
+    fprintf(stderr, "  %-20s (0)  exit 0 even if the convergence check fails\n",
+            "--allow-unconverged 0|1");
+    fprintf(stderr,
+      "  Convergence check: every sampled parameter needs rank R-hat < %.2f and\n"
+      "  bulk and tail ESS >= %.0f per chain. A failing run still writes its\n"
+      "  outputs, then exits with status 3.\n",
+      GD_CONV_RHAT_MAX, GD_CONV_ESS_PER_CHAIN);
 }
 
 int cmd_date_tree(int argc, char **argv)
@@ -379,11 +386,16 @@ int cmd_date_tree(int argc, char **argv)
     int progress = 0;
     if (parse_int_arg(opt_arg(argc, argv, "--progress", "0"), "--progress", &progress) != 0)
         return 1;
+    int allow_unconverged = 0;
+    if (parse_int_arg(opt_arg(argc, argv, "--allow-unconverged", "0"),
+                      "--allow-unconverged", &allow_unconverged) != 0)
+        return 1;
 
     size_t nopt;
     const gd_option *opts = gd_options_tree(&nopt);
     static const char *const tree_extra[] = {
-        "--tree", "--forms", "--calibrations", "--out", "--progress"
+        "--tree", "--forms", "--calibrations", "--out", "--progress",
+        "--allow-unconverged"
     };
     if (reject_unknown_opts(argc, argv, opts, nopt,
                             tree_extra, sizeof tree_extra / sizeof tree_extra[0]) != 0) {
@@ -494,15 +506,33 @@ int cmd_date_tree(int argc, char **argv)
     if (res->n_unreadable_weights > 0)
         fprintf(fp, "unreadable_primary_weights\t%zu\n", res->n_unreadable_weights);
     fprintf(fp, "missing_cognate_rows\t%zu\n", res->n_missing_cognates);
+    fprintf(fp, "converged\t%d\n", res->converged ? 1 : 0);
+    fprintf(fp, "n_unconverged_params\t%zu\n", res->n_unconverged);
+    fprintf(fp, "max_rhat\t%.4f\n", res->max_rhat);
+    fprintf(fp, "min_ess_bulk\t%.0f\n", res->min_ess_bulk);
+    fprintf(fp, "min_ess_tail\t%.0f\n", res->min_ess_tail);
     fprintf(fp, "note\tabsolute ages depend on the rate prior and calibrations; see docs/scientific-methods.md\n");
     if (fclose(fp) != 0) { fp = NULL; fprintf(stderr, "error: failed to flush %s\n", path); goto done; }
     fp = NULL;
 
     fprintf(stderr, "wrote posterior_nodes.tsv, diagnostics.tsv, run_manifest.tsv to %s/\n", out_dir);
 
+    int status = 0;
+    if (!res->converged) {
+        fprintf(stderr,
+                "%s: NOT CONVERGED: %zu parameter(s) fail (max R-hat %.3f, "
+                "min bulk ESS %.0f, min tail ESS %.0f; need R-hat < %.2f and "
+                "ESS >= %.0f). See diagnostics.tsv; run longer or more chains.\n",
+                allow_unconverged ? "warning" : "error",
+                res->n_unconverged, res->max_rhat, res->min_ess_bulk,
+                res->min_ess_tail, GD_CONV_RHAT_MAX,
+                GD_CONV_ESS_PER_CHAIN * (double)res->n_chains);
+        if (!allow_unconverged) status = 3;
+    }
+
     gd_analysis_tree_result_destroy(res);
     free_tree_inputs(&in);
-    return 0;
+    return status;
 
 done:
     if (fp != NULL) fclose(fp);

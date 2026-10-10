@@ -59,13 +59,19 @@ ages depend on the rate prior and calibrations — the tool says so.
 
 **Outputs** (strict TSV in `DIR/`):
 - `posterior_nodes.tsv` — per free internal node: mean/median/sd, 90% HPD (years
-  BP), R̂, ESS.
-- `diagnostics.tsv` — every sampled parameter: mean, sd, R̂, ESS, acceptance.
+  BP), R̂, bulk and tail ESS.
+- `diagnostics.tsv` — every sampled parameter: mean, sd, R̂, bulk and tail ESS,
+  MCSE of the mean, acceptance.
 - `run_manifest.tsv` — program/commit, model, sizes, seed, priors, the
-  branch-rate confounding flag, and the scale-dependence note.
+  branch-rate confounding flag, the convergence verdict (`converged`,
+  `n_unconverged_params`, `max_rhat`, `min_ess_bulk`, `min_ess_tail`), and the
+  scale-dependence note.
 
-Always check R̂ (near 1) and ESS (large) in the outputs before interpreting the
-ages; a short run reports high R̂ / low ESS honestly.
+**Convergence check.** Every sampled parameter must have rank R̂ < 1.01 (the
+larger of the bulk and folded R̂) and bulk and tail ESS ≥ 100 per chain
+(Vehtari et al. 2021). A failing run still writes its outputs, prints which
+criteria failed, and exits with status **3**. `--allow-unconverged 1` makes it
+a warning; use it to inspect a failure, not to publish one.
 
 ## `date-pair` — pairwise divergence (P1)
 

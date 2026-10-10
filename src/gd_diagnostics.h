@@ -17,33 +17,38 @@
 #include <stddef.h>
 
 /*
- * Rank-normalized split-R-hat over n_chains chains of n_per_chain draws each.
- * Each chain is split in half (so 2*n_chains half-chains), the pooled draws
- * are rank-normalized to normal scores, and the classic R-hat is computed on
- * those. Converged chains give a value near 1.0; a stuck or offset chain
- * pushes it well above 1 (the > 1.01 rule of thumb).
+ * Every estimator below follows ArviZ 0.23 exactly and is golden-tested
+ * against it. Chains are split in half (first and last n/2 draws), so every
+ * function needs n_per_chain >= 4; R-hat also needs n_chains >= 2. A
+ * degenerate input returns NAN.
  *
- * Returns NAN if n_chains < 2 or n_per_chain < 4, or if every draw is
- * identical (no variance to assess).
+ * gd_rhat_rank is max(bulk, tail): the bulk R-hat is the classic split R-hat
+ * on rank-normalised draws, the tail R-hat the same on draws folded about
+ * their median, |x - median|. The folded version catches chains that agree
+ * in location but not in scale. Converged chains give < 1.01.
  */
 double gd_rhat_rank(const double *samples, size_t n_chains, size_t n_per_chain);
+double gd_rhat_bulk(const double *samples, size_t n_chains, size_t n_per_chain);
+double gd_rhat_tail(const double *samples, size_t n_chains, size_t n_per_chain);
 
-/* The classic split-R-hat on raw values (no rank-normalization), exposed for
- * testing and for parameters already on a well-behaved scale. Same degenerate
- * conventions as gd_rhat_rank. */
+/* The classic split-R-hat on raw values (no rank-normalization). */
 double gd_split_rhat(const double *samples, size_t n_chains, size_t n_per_chain);
 
 /*
- * Bulk effective sample size: the rank-normalized multi-chain ESS. Combines
- * within- and between-chain autocorrelation with Geyer's initial monotone
- * positive-sequence truncation. For well-mixed independent draws it approaches
- * the total draw count n_chains * n_per_chain; for autocorrelated draws it is
- * smaller.
- *
- * Returns NAN if n_chains < 1 or n_per_chain < 4 or the draws have no
- * variance.
+ * Effective sample sizes, with Geyer's initial positive and monotone
+ * sequences (Stan/ArviZ). They may exceed the draw count for antithetic
+ * chains.
+ *   gd_ess_bulk  — on rank-normalised draws: reliability of central summaries.
+ *   gd_ess_tail  — min of the ESS of I(x <= q05) and I(x <= q95): reliability
+ *                  of the interval ends, which is what a reported HPD needs.
+ *   gd_ess_mean  — on raw draws: the ESS for the posterior mean.
  */
 double gd_ess_bulk(const double *samples, size_t n_chains, size_t n_per_chain);
+double gd_ess_tail(const double *samples, size_t n_chains, size_t n_per_chain);
+double gd_ess_mean(const double *samples, size_t n_chains, size_t n_per_chain);
+
+/* Monte Carlo standard error of the posterior mean: sd / sqrt(ess_mean). */
+double gd_mcse_mean(const double *samples, size_t n_chains, size_t n_per_chain);
 
 /* Inverse standard-normal CDF (quantile function), Acklam's rational
  * approximation refined by one Halley step; |error| < 1e-12 on (0,1).

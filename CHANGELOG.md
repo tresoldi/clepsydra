@@ -25,6 +25,21 @@ columns and example numbers are expected throughout 0.x and are listed here.
   ancestor-descendant pair this is the time elapsed between the lists. The
   decay laws assume contemporaneous lists and refuse tip ages.
 
+- **Convergence check** (E0.9). R̂ is now the larger of the bulk and folded
+  (tail) rank R̂. Tail ESS and the MCSE of the mean are new. All of them are
+  ported from ArviZ 0.23 and golden-tested against it. The old rank
+  normalisation used `N - 1/4` where Vehtari et al. use `N + 1/4`, and its
+  Geyer truncation differed. `date-tree` now judges convergence: every
+  parameter needs R̂ < 1.01 and bulk and tail ESS ≥ 100 per chain. A failing
+  run still writes its outputs, then exits with status 3 unless
+  `--allow-unconverged 1`. The verdict is in `run_manifest.tsv` and in the
+  result struct (`converged`, `n_unconverged`, `max_rhat`, `min_ess_*`).
+  `posterior_nodes.tsv` and `diagnostics.tsv` rename `ess` to `ess_bulk` and
+  add `ess_tail` (and `mcse_mean`). The Sino-Tibetan example now runs 8,000
+  samples per chain to pass. The five-IE example does not pass at any
+  practical length under the current sampler; it runs with
+  `--allow-unconverged 1` and says so until E1.7.
+
 ### Known gaps
 
 - The committed browser engine (`web/`) predates these changes; it is

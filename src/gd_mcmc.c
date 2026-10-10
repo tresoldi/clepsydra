@@ -872,7 +872,8 @@ void gd_mcmc_result_destroy(gd_mcmc_result *res)
 {
     if (res == NULL) return;
     free(res->samples); free(res->pointwise);
-    free(res->rhat); free(res->ess); free(res->acc_rate);
+    free(res->rhat); free(res->ess); free(res->ess_tail); free(res->mcse);
+    free(res->acc_rate);
     free(res->param_type); free(res->param_node);
     free(res);
 }
@@ -1025,10 +1026,13 @@ gd_mcmc_result *gd_mcmc_run(const gd_mcmc_model *model, gd_tree *tree,
     res->samples = (double *)gd_malloc_array_checked(nsamples, sizeof(double), err);
     res->rhat = (double *)gd_malloc_array_checked(np, sizeof(double), err);
     res->ess = (double *)gd_malloc_array_checked(np, sizeof(double), err);
+    res->ess_tail = (double *)gd_malloc_array_checked(np, sizeof(double), err);
+    res->mcse = (double *)gd_malloc_array_checked(np, sizeof(double), err);
     res->acc_rate = (double *)gd_calloc_checked(np, sizeof(double), err);
     if (res->n_concepts > 0)
         res->pointwise = (double *)gd_malloc_array_checked(npointwise, sizeof(double), err);
     if (res->samples == NULL || res->rhat == NULL || res->ess == NULL ||
+        res->ess_tail == NULL || res->mcse == NULL ||
         res->acc_rate == NULL || res->param_type == NULL || res->param_node == NULL ||
         (res->n_concepts > 0 && res->pointwise == NULL)) {
         gd_error_set(err, GD_E_NOMEM, "mcmc_run: arrays");
@@ -1065,6 +1069,8 @@ gd_mcmc_result *gd_mcmc_run(const gd_mcmc_model *model, gd_tree *tree,
         (void)gd_mcmc_result_column(res, p, col, ndraws_all);
         res->rhat[p] = gd_rhat_rank(col, n_chains, nd);
         res->ess[p] = gd_ess_bulk(col, n_chains, nd);
+        res->ess_tail[p] = gd_ess_tail(col, n_chains, nd);
+        res->mcse[p] = gd_mcse_mean(col, n_chains, nd);
     }
     free(col);
 

@@ -296,7 +296,8 @@ static const gd_column NODE_COLS[] = {
     { "hpd90_lo_bp",  "hpd_lo",  1, GD_NUM_FIXED },
     { "hpd90_hi_bp",  "hpd_hi",  1, GD_NUM_FIXED },
     { "rhat",         "rhat",    3, GD_NUM_FIXED },
-    { "ess",          "ess",     0, GD_NUM_FIXED },
+    { "ess_bulk",     "ess",     0, GD_NUM_FIXED },
+    { "ess_tail",     "ess_tail", 0, GD_NUM_FIXED },
 };
 
 int gd_report_nodes(const gd_analysis_tree_result *res,
@@ -322,6 +323,7 @@ int gd_report_nodes(const gd_analysis_tree_result *res,
         if ((rc = gd_table_set_num(t, 6, a->age.hpd_hi, err)) != GD_E_OK) goto fail;
         if ((rc = gd_table_set_num(t, 7, a->rhat, err)) != GD_E_OK) goto fail;
         if ((rc = gd_table_set_num(t, 8, a->ess, err)) != GD_E_OK) goto fail;
+        if ((rc = gd_table_set_num(t, 9, a->ess_tail, err)) != GD_E_OK) goto fail;
     }
     *out = t;
     return GD_E_OK;
@@ -340,7 +342,9 @@ static const gd_column PARAM_COLS[] = {
     { "mean",       "mean",       4, GD_NUM_GENERAL },
     { "sd",         "sd",         4, GD_NUM_GENERAL },
     { "rhat",       "rhat",       3, GD_NUM_FIXED },
-    { "ess",        "ess",        0, GD_NUM_FIXED },
+    { "ess_bulk",   "ess",        0, GD_NUM_FIXED },
+    { "ess_tail",   "ess_tail",   0, GD_NUM_FIXED },
+    { "mcse_mean",  "mcse",       4, GD_NUM_GENERAL },
     { "acceptance", "acceptance", 3, GD_NUM_FIXED },
 };
 
@@ -380,7 +384,9 @@ int gd_report_diagnostics(const gd_analysis_tree_result *res,
         if ((rc = gd_table_set_num(t, 4, pp->stat.sd, err)) != GD_E_OK) goto fail;
         if ((rc = gd_table_set_num(t, 5, pp->rhat, err)) != GD_E_OK) goto fail;
         if ((rc = gd_table_set_num(t, 6, pp->ess, err)) != GD_E_OK) goto fail;
-        if ((rc = gd_table_set_num(t, 7, pp->acceptance, err)) != GD_E_OK) goto fail;
+        if ((rc = gd_table_set_num(t, 7, pp->ess_tail, err)) != GD_E_OK) goto fail;
+        if ((rc = gd_table_set_num(t, 8, pp->mcse, err)) != GD_E_OK) goto fail;
+        if ((rc = gd_table_set_num(t, 9, pp->acceptance, err)) != GD_E_OK) goto fail;
     }
     *out = t;
     return GD_E_OK;

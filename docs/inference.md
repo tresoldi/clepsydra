@@ -122,11 +122,16 @@ in the callback).
   serializes (versioned + FNV-1a checksum) for chunked resume — an interrupted
   run restored mid-warm-up reproduces the uninterrupted run's draws exactly
   (`test_mcmc_checkpoint_roundtrip`).
-- **Diagnostics**: `gd_rhat_rank` (rank-normalized split-R̂) and `gd_ess_bulk`
-  (rank-normalized bulk-ESS with Geyer's initial-monotone truncation), per
-  Vehtari et al. 2021; `gd_mcmc_run` runs `n_chains` chains and reports R̂, ESS
-  and acceptance per parameter. R̂ flags a deliberately offset/stuck chain
-  (`test_diagnostics.c`).
+- **Diagnostics** (Vehtari et al. 2021, ported line for line from ArviZ 0.23
+  and golden-tested against it in `test_diagnostics.c`):
+  - `gd_rhat_rank`, the maximum of the bulk (rank-normalised split) and tail
+    (folded about the median) R̂;
+  - `gd_ess_bulk` and `gd_ess_tail` (the ESS of the 5% and 95% quantiles);
+  - `gd_mcse_mean`.
+
+  A run **converges** when every sampled parameter has R̂ < 1.01 and both
+  ESSs ≥ 100 per chain. `date-tree` writes its outputs either way, then exits
+  with status 3 on failure unless `--allow-unconverged 1` is given.
 - **Output**: retained draws carry the total log-likelihood and, optionally,
   the per-concept pointwise log-likelihood (`store_pointwise`) for WAIC /
   PSIS-LOO in Python; the pointwise vector sums to the total
@@ -239,8 +244,8 @@ comparison, prior-dominance diagnostic.
 
 ### 7.2 MCMC diagnostics
 
-computed in C (raw) and finalized in the Python postprocessor:
-rank-normalized split-R̂; bulk ESS; tail ESS; acceptance rate by proposal;
+computed in C: rank-normalized split-R̂ (bulk and folded); bulk ESS; tail
+ESS; MCSE of the mean; the convergence verdict above; acceptance rate by proposal;
 number of invalid proposals; chain means and quantiles; autocorrelation
 summaries; Monte Carlo standard error; warnings for insufficient mixing.
 **Do not** declare convergence from acceptance rate alone.

@@ -162,7 +162,7 @@ typedef struct gd_analysis_node_age {
     size_t              node;
     const char         *label;
     gd_analysis_summary age;
-    double              rhat, ess;
+    double              rhat, ess, ess_tail, mcse;
 } gd_analysis_node_age;
 
 /* One sampled parameter, in the sampler's own scale. For an age or a branch
@@ -175,8 +175,14 @@ typedef struct gd_analysis_param {
     size_t              node;
     const char         *label;
     gd_analysis_summary stat;
-    double              rhat, ess, acceptance;
+    /* rhat is max(bulk, folded) rank R-hat; ess the bulk ESS; ess_tail the
+     * ESS of the 5% and 95% quantiles; mcse the Monte Carlo SE of the mean
+     * (Vehtari et al. 2021, matched to ArviZ). */
+    double              rhat, ess, ess_tail, mcse, acceptance;
 } gd_analysis_param;
+
+#define GD_CONV_RHAT_MAX      1.01
+#define GD_CONV_ESS_PER_CHAIN 100.0
 
 typedef struct gd_analysis_tree_result {
     gd_tree *tree;                    /* owned by the result */
@@ -197,6 +203,15 @@ typedef struct gd_analysis_tree_result {
      * missing/excluded/absent). Skipped, not read as a cognate class. */
     size_t n_missing_cognates;
     bool   relaxed;
+
+    /* Convergence verdict over every sampled parameter (Vehtari et al. 2021):
+     * converged when max R-hat < GD_CONV_RHAT_MAX and both the bulk and the
+     * tail ESS are at least GD_CONV_ESS_PER_CHAIN per chain. A run that fails
+     * is still returned -- its draws are evidence of the failure -- but the
+     * CLI exits non-zero unless told otherwise. */
+    bool   converged;
+    size_t n_unconverged;             /* parameters failing any criterion */
+    double max_rhat, min_ess_bulk, min_ess_tail;
 
     /* Branch-rate × node-age confounding (docs/model-spec.md §7.2).
      * `min_branch_duration_corr` is NAN when branch multipliers are not

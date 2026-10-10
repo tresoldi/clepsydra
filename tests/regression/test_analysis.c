@@ -986,6 +986,40 @@ TEST(test_analysis_pair_rate_is_per_year)
     CHECK(fabs(cfg.rate_logmean + log(1000.0) - (-2.0)) < 0.01);
 }
 
+/* E0.9: the result carries a convergence verdict consistent with its own
+ * diagnostics, and a run far too short to mix is reported as unconverged. */
+TEST(test_analysis_convergence_verdict)
+{
+    gd_analysis_tree_input in; tree_input(&in);
+    gd_analysis_tree_config cfg; quick_config(&cfg);
+    cfg.n_warmup = 5; cfg.n_samples = 12;
+    gd_error err = GD_ERROR_INIT;
+    gd_analysis_tree_result *res = NULL;
+    int rc = gd_analysis_tree_run(&in, &cfg, &res, &err);
+    bool conv = true; size_t nun = 0, np = 0; double mr = 0, eb = 0, et = 0;
+    bool consistent = false;
+    if (res != NULL) {
+        conv = res->converged; nun = res->n_unconverged; np = res->nparams;
+        mr = res->max_rhat; eb = res->min_ess_bulk; et = res->min_ess_tail;
+        size_t count = 0;
+        for (size_t p = 0; p < res->nparams; p++) {
+            const gd_analysis_param *pp = &res->params[p];
+            double need = GD_CONV_ESS_PER_CHAIN * (double)res->n_chains;
+            if (!(pp->rhat < GD_CONV_RHAT_MAX && pp->ess >= need && pp->ess_tail >= need)) count++;
+        }
+        consistent = (count == nun);
+        gd_analysis_tree_result_destroy(res);
+    }
+    CHECK(rc == 0);
+    CHECK(np > 0);
+    CHECK(consistent);
+    CHECK(!conv);
+    CHECK(nun > 0);
+    CHECK(isnan(mr) || mr > 0.0);
+    CHECK(isnan(eb) || eb < 400.0);
+    (void)et;
+}
+
 static void run_tests(void)
 {
     RUN(test_analysis_prepare_reports_dataset_size);
@@ -1000,6 +1034,7 @@ static void run_tests(void)
     RUN(test_analysis_reports_progress);
     RUN(test_analysis_progress_can_cancel);
     RUN(test_analysis_counts_unreadable_weights);
+    RUN(test_analysis_convergence_verdict);
     RUN(test_analysis_reads_calibrations);
     RUN(test_analysis_drops_a_calibration);
     RUN(test_analysis_widens_calibrations);
