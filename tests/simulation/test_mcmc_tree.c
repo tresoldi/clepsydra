@@ -860,7 +860,7 @@ TEST(test_mcmc_prior_only_matches_analytic_prior)
  * and the joint log-likelihood is an extra test quantity (Modrak et al.
  * 2025): it is what fails when the posterior is just the prior.
  */
-typedef enum { SC_FREE, SC_NORMAL, SC_LOGNORMAL, SC_ANCIENT, SC_YULE } sbc_scenario;
+typedef enum { SC_FREE, SC_NORMAL, SC_LOGNORMAL, SC_ANCIENT, SC_YULE, SC_MIXRATES } sbc_scenario;
 
 static void run_sbc_scenario(sbc_scenario sc, size_t nrep, double *chisq_out)
 {
@@ -923,8 +923,13 @@ static void run_sbc_scenario(sbc_scenario sc, size_t nrep, double *chisq_out)
         sm.store = (int *)malloc(NCON * n * sizeof(int));
         sm.concepts = (gd_cognate_data *)malloc(NCON * sizeof(gd_cognate_data));
         int *sim = (int *)malloc(n * sizeof(int));
+        /* SC_MIXRATES: sigma_c ~ HalfNormal(1), each concept's rate times a
+         * log-normal multiplier with mean 1, as the mixture model assumes. */
+        double sc_true = (sc == SC_MIXRATES) ? fabs(gd_rng_normal(rng, 0.0, 1.0)) : 0.0;
         for (size_t c = 0; c < NCON; c++) {
-            CHECK(gd_t1_simulate(rng, sm.t, exp(logr), sim, &err) == 0);
+            double lam = (sc == SC_MIXRATES)
+                       ? exp(sc_true * gd_rng_normal(rng, 0.0, 1.0) - 0.5 * sc_true * sc_true) : 1.0;
+            CHECK(gd_t1_simulate(rng, sm.t, exp(logr) * lam, sim, &err) == 0);
             int *row = sm.store + c * n;
             for (size_t i = 0; i < n; i++) row[i] = sm.t->nodes[i].is_leaf ? sim[i] : -1;
             sm.concepts[c].labels = row;
@@ -944,6 +949,7 @@ static void run_sbc_scenario(sbc_scenario sc, size_t nrep, double *chisq_out)
             gd_mcmc_state st;
             memset(&st, 0, sizeof st);
             st.rates = &logr; st.n_rates = 1; st.epsilon = 0.0;
+            st.rate_mix_sd = sc_true;
             CHECK(model.loglik(model.ctx, sm.t, &st, NULL, &ll_true, &err) == 0);
         }
 
@@ -972,13 +978,15 @@ static void run_sbc_scenario(sbc_scenario sc, size_t nrep, double *chisq_out)
         cfg.rate_logmean = lrm; cfg.rate_logsd = lrs;
         cfg.root_lex_logmean = lxm; cfg.root_lex_logsd = lxs;
         if (sc == SC_YULE) { cfg.tree_prior = GD_TREE_PRIOR_YULE; cfg.yule_kappa = 2.0; }
+        if (sc == SC_MIXRATES) { cfg.sample_rate_mix = true; cfg.rate_mix_prior_sd = 1.0; }
         gd_mcmc_chain *ch = gd_mcmc_chain_create(&model, sm.t, cs, &cfg, 0, &err);
         CHECK(ch != NULL);
         CHECK(gd_mcmc_chain_run(ch, &err) == 0);
         size_t pc[4] = { (size_t)-1, (size_t)-1, (size_t)-1, (size_t)-1 };
         for (size_t p = 0; p < gd_mcmc_chain_param_count(ch); p++) {
             size_t node = gd_mcmc_chain_param_node(ch, p);
-            if (node == GD_NODE_NONE) pc[0] = p;
+            if (gd_mcmc_chain_param_type(ch, p) == GD_MCMC_P_LOGRATE) pc[0] = p;
+            else if (node == GD_NODE_NONE) continue;
             else if (node == root) pc[1] = p;
             else if (node == r1) pc[2] = p;
             else if (node == r2) pc[3] = p;
@@ -1001,7 +1009,7 @@ static void run_sbc_scenario(sbc_scenario sc, size_t nrep, double *chisq_out)
         gd_rng_destroy(rng);
     }
     static const char *const names[5] = { "log_rate", "root", "r1", "r2", "loglik" };
-    static const char *const scn[5] = { "free", "normal", "lognormal", "ancient", "yule" };
+    static const char *const scn[6] = { "free", "normal", "lognormal", "ancient", "yule", "mixrates" };
     for (int q = 0; q < 5; q++) {
         double e = (double)nrep / (double)B, c2 = 0.0;
         printf("    SBC %-9s %-8s:", scn[sc], names[q]);
@@ -1017,11 +1025,11 @@ static void run_sbc_scenario(sbc_scenario sc, size_t nrep, double *chisq_out)
 
 TEST(test_mcmc_sbc_proper_prior_scenarios)
 {
-    const sbc_scenario all[5] = { SC_FREE, SC_NORMAL, SC_LOGNORMAL, SC_ANCIENT, SC_YULE };
-    for (int s = 0; s < 5; s++) {
+    const sbc_scenario all[6] = { SC_FREE, SC_NORMAL, SC_LOGNORMAL, SC_ANCIENT, SC_YULE, SC_MIXRATES };
+    for (int s = 0; s < 6; s++) {
         double c2[5];
         run_sbc_scenario(all[s], 160, c2);
-        /* dof 7: 0.999 quantile 24.3; 25 tests, ~2.5% family-wise. */
+        /* dof 7: 0.999 quantile 24.3; 30 tests, ~3% family-wise. */
         for (int q = 0; q < 5; q++) CHECK(c2[q] < 24.3);
     }
 }
