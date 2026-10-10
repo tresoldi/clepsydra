@@ -417,16 +417,18 @@ int cmd_date_tree(int argc, char **argv)
     int progress = 0;
     if (parse_int_arg(opt_arg(argc, argv, "--progress", "0"), "--progress", &progress) != 0)
         return 1;
-    int allow_unconverged = 0;
+    int allow_unconverged = 0, write_draws = 0;
     if (parse_int_arg(opt_arg(argc, argv, "--allow-unconverged", "0"),
-                      "--allow-unconverged", &allow_unconverged) != 0)
+                      "--allow-unconverged", &allow_unconverged) != 0 ||
+        parse_int_arg(opt_arg(argc, argv, "--write-draws", "0"),
+                      "--write-draws", &write_draws) != 0)
         return 1;
 
     size_t nopt;
     const gd_option *opts = gd_options_tree(&nopt);
     static const char *const tree_extra[] = {
         "--tree", "--forms", "--calibrations", "--out", "--progress",
-        "--allow-unconverged", "--analysis"
+        "--allow-unconverged", "--analysis", "--write-draws"
     };
     if (reject_unknown_opts(argc, argv, opts, nopt,
                             tree_extra, sizeof tree_extra / sizeof tree_extra[0]) != 0) {
@@ -436,6 +438,8 @@ int cmd_date_tree(int argc, char **argv)
     gd_analysis_tree_config cfg;
     gd_analysis_tree_config_default(&cfg);
     if (apply_registry_opts(argc, argv, opts, nopt, &cfg) != 0) return 1;
+    /* Every retained draw, for the caller's own post-processing (E3.2). */
+    if (write_draws) cfg.trace_draws = cfg.n_samples;
 
     struct cli_progress prog = { cfg.n_chains };
     if (progress) {
@@ -504,6 +508,28 @@ int cmd_date_tree(int argc, char **argv)
         int wrc = write_table(tbl, out_dir, "diagnostics.tsv");
         gd_table_destroy(tbl);
         if (wrc != 0) goto done;
+    }
+    if (write_draws && res->trace != NULL) {
+        char dpath[1200];
+        if (!out_path(dpath, sizeof dpath, out_dir, "draws.tsv")) goto done;
+        FILE *fd = fopen(dpath, "w");
+        if (fd == NULL) { fprintf(stderr, "error: cannot open %s for writing\n", dpath); goto done; }
+        fprintf(fd, "chain\tdraw");
+        for (size_t p = 0; p < res->nparams; p++) {
+            const gd_analysis_param *pp = &res->params[p];
+            if (pp->type == GD_MCMC_P_AGE && pp->label != NULL) fprintf(fd, "\tage:%s", pp->label);
+            else if (pp->label != NULL) fprintf(fd, "\t%s:%s", pp->type_name, pp->label);
+            else fprintf(fd, "\t%s", pp->type_name);
+        }
+        fprintf(fd, "\n");
+        for (size_t c = 0; c < res->n_chains; c++)
+            for (size_t k = 0; k < res->trace_draws; k++) {
+                fprintf(fd, "%zu\t%zu", c, k);
+                for (size_t p = 0; p < res->nparams; p++)
+                    fprintf(fd, "\t%.10g", gd_analysis_trace_draw(res, p, c, k));
+                fprintf(fd, "\n");
+            }
+        if (fclose(fd) != 0) { fprintf(stderr, "error: failed to flush %s\n", dpath); goto done; }
     }
     if (res->n_checks > 0) {
         gd_table *tbl = NULL;

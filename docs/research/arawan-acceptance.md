@@ -122,3 +122,11 @@ Two leads, not acted on:
 - The 7.5% of concepts that no T1 history fits remains unexplained: in the
   replicates the share is at most 1.2%. Ancestral polymorphism or borrowing
   is the likely cause; E2.8 and the synonym model are the places to test it.
+
+With the empirical prior from D1.3 (`error-prior.md`: mean 0.088,
+concentration 13) in place of the guessed one, the 1833 list's error
+posterior is 0.19, more than twice the typical modern list. The root is
+3,123 BP (90% HPD 696–7,872) and the lexical root 0.646. Every pair with the
+1833 list now has a ppp between 0.13 and 0.97. The data therefore ask for an
+error rate on this list well above what independent same-language pairs
+suggest for ordinary lists, as expected for an 1833 non-specialist record.

@@ -37,6 +37,10 @@ grep -q '^converged	0$' "$TMP/u/run_manifest.tsv" || { echo "  FAIL manifest lac
 # ... unless told it may.
 expect 0 "unconverged run, allowed" -- "$CLE" date-tree $TREE --out "$TMP/u" --warmup 5 --samples 12 --chains 2 --allow-unconverged 1
 
+# --write-draws writes every retained draw: header + samples x chains rows.
+expect 0 "write draws" -- "$CLE" date-tree $TREE --out "$TMP/d" --warmup 20 --samples 30 --chains 2 --concept-rates 0 --compare-prior 0 --allow-unconverged 1 --write-draws 1
+[ "$(wc -l < "$TMP/d/draws.tsv")" -eq 61 ] || { echo "  FAIL draws.tsv row count"; fail=$((fail + 1)); }
+
 # date-trees over a two-tree sample (the same tree twice) pools clade ages.
 cat "$EX/tree.nwk" "$EX/tree.nwk" > "$TMP/two.trees"
 printf 'clade_id\tmembers\nibero\tSpanish,Portuguese\n' > "$TMP/clades.tsv"

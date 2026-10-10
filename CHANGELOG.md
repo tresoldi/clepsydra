@@ -52,6 +52,7 @@ columns and example numbers are expected throughout 0.x and are listed here.
 
 ### Added
 
+- **`--write-draws 1`** (E3.2) writes every retained draw to `draws.tsv`.
 - **`date-trees`: dating over a posterior sample of trees** (E3.4).
   - **Input.** Newick or NEXUS (BEAST, MrBayes and RevBayes `Translate`
     tables and `[&…]` comments are handled; `gd_treeset.h`). After burn-in,
