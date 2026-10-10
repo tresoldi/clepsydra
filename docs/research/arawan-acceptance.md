@@ -93,3 +93,32 @@ adequacy panel rejects the fit: Paumari–Paumari 1833 sharing is observed at
 0.66 against 0.84 replicated (ppp 1.00). The negative control is now
 diagnosed by the engine, and E2.9 (source-level observation error) is the
 item that has to absorb it.
+
+### With observation error on the 1833 list (E2.9)
+
+Paumari 1833 gets a `tip_error` prior, Beta with mean 0.15 and
+concentration 5. This is a sensitivity analysis: no empirical prior exists
+yet (that needs D1.3).
+
+| run | root BP, median (90% HPD) | lexical root | error probability, posterior | Paumari–1833 sharing: obs / rep (ppp) |
+|---|---|---|---|---|
+| tips only + error | 3,088 (687–7,722) | 0.64 | 0.23 | 0.66 / 0.65 (0.48) |
+| ancestor + error | 2,992 (715–7,304) | 0.64 | 0.29 | 0.66 / 0.68 (0.61) |
+
+With an error term, the two treatments of the 1833 list agree. Without it,
+the ancestor model put the root at 839 BP. The adequacy failures on the 1833
+list disappear: every pair involving it now has a ppp between 0.05 and 0.95.
+The data push the error probability to about a quarter, above its prior
+mean, so roughly one 1833 form in four behaves as a wrong form rather than a
+replacement.
+
+Because the error is identified only by its prior, the number itself is not
+a finding. The finding is that a list-level error term is what the data ask
+for, and that without one the list distorts every date in the tree.
+
+Two leads, not acted on:
+- Arua (Chandless 1869) shares more with the 1833 list than predicted
+  (ppp 0.05–0.07). The two old lists may share a recording practice.
+- The 7.5% of concepts that no T1 history fits remains unexplained: in the
+  replicates the share is at most 1.2%. Ancestral polymorphism or borrowing
+  is the likely cause; E2.8 and the synonym model are the places to test it.
