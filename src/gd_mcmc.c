@@ -167,6 +167,8 @@ void gd_mcmc_config_default(gd_mcmc_config *cfg)
     cfg->eps_step0 = 0.40;
     cfg->sample_rate_mix = false;
     cfg->rate_mix_prior_sd = 1.0;
+    cfg->rate_mix_prior_logmean = 0.0;
+    cfg->rate_mix_prior_logsd = 0.0;
     cfg->rate_mix_init = 0.5;
     cfg->rate_mix_step0 = 0.30;
     cfg->sample_concept_rates = false;
@@ -264,6 +266,15 @@ static double tiperr_logprior(const gd_mcmc_chain *ch, size_t v, double z)
     return beta_logpdf(e, m * k, (1.0 - m) * k) + log(e) + log1p(-e);
 }
 
+/* Prior on log sigma_c (the sampled value): half-normal on sigma_c with its
+ * Jacobian, or a normal on log sigma_c. */
+static double sigc_logprior(const gd_mcmc_chain *ch, double logs)
+{
+    if (ch->cfg.rate_mix_prior_logsd > 0.0)
+        return norm_logpdf(logs, ch->cfg.rate_mix_prior_logmean, ch->cfg.rate_mix_prior_logsd);
+    return halfnormal_logpdf(exp(logs), ch->cfg.rate_mix_prior_sd) + logs;
+}
+
 /* The proper age prior at the chain's current root age and rate. */
 static double tree_lp(const gd_mcmc_chain *ch)
 {
@@ -307,7 +318,7 @@ static double param_logprior(const gd_mcmc_chain *ch, const gd_param *pp)
         case GD_MCMC_P_CONCEPT_DEV:
             return norm_logpdf(pp->value, 0.0, ch->cfg.concept_rate_sd);
         case GD_MCMC_P_LOG_SIGMA_C:
-            return halfnormal_logpdf(exp(pp->value), ch->cfg.rate_mix_prior_sd) + pp->value;
+            return sigc_logprior(ch, pp->value);
         case GD_MCMC_P_LOGIT_TIPERR:
             return tiperr_logprior(ch, pp->node, pp->value);
     }
@@ -979,8 +990,7 @@ static int chain_sweep(gd_mcmc_chain *ch, int adapting, gd_error *err)
                     break;
                 case GD_MCMC_P_LOG_SIGMA_C:
                     ch->sigma_c = exp(prop);
-                    dprior = (halfnormal_logpdf(exp(prop), ch->cfg.rate_mix_prior_sd) + prop)
-                           - (halfnormal_logpdf(exp(old_v), ch->cfg.rate_mix_prior_sd) + old_v);
+                    dprior = sigc_logprior(ch, prop) - sigc_logprior(ch, old_v);
                     break;
                 default: break;
             }

@@ -544,7 +544,8 @@ void gd_analysis_tree_config_default(gd_analysis_tree_config *cfg)
     cfg->compare_prior = true;
     cfg->concept_rates = true;
     cfg->loan_threshold = 0.5;
-    cfg->concept_rate_prior_sd = 1.0;
+    cfg->concept_rate_prior_logmean = -0.1;
+    cfg->concept_rate_prior_logsd = 0.35;
     cfg->hpd_level = 0.90;
     cfg->calibrations.drop_index = GD_ANALYSIS_KEEP_ALL;
     cfg->calibrations.widen = 1.0;
@@ -973,7 +974,8 @@ int gd_analysis_tree_job_run(gd_analysis_tree_job *job,
     }
     mc.tip_err_mean = te_mean;
     mc.tip_err_conc = te_conc;
-    mc.rate_mix_prior_sd = job->cfg.concept_rate_prior_sd;
+    mc.rate_mix_prior_logmean = job->cfg.concept_rate_prior_logmean;
+    mc.rate_mix_prior_logsd = job->cfg.concept_rate_prior_logsd;
     mc.yule_kappa = job->cfg.yule_kappa;
     mc.on_progress = job->cfg.on_progress;
     mc.progress_user = job->cfg.progress_user;

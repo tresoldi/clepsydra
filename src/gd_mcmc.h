@@ -126,6 +126,10 @@ typedef struct gd_mcmc_config {
     bool     sample_rate_mix;
     int      rate_mix_family;   /* GD_T1_MIX_LOGNORMAL (0) or _GAMMA (1) */
     double   rate_mix_prior_sd; /* default 1.0 */
+    /* With rate_mix_prior_logsd > 0 the prior on sigma_c is instead
+     * log sigma_c ~ N(rate_mix_prior_logmean, rate_mix_prior_logsd^2). */
+    double   rate_mix_prior_logmean;
+    double   rate_mix_prior_logsd;   /* default 0: use the half-normal */
     double   rate_mix_init;     /* default 0.5 */
     double   rate_mix_step0;    /* default 0.30 (log scale) */
 

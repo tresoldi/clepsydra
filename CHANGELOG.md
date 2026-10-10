@@ -11,8 +11,16 @@ columns and example numbers are expected throughout 0.x and are listed here.
 
 ### Changed (breaking)
 
+- **Empirical prior on the concept-rate spread.** The prior is now
+  `log sigma_c ~ N(-0.1, 0.35)` (`--concept-rate-prior-logmean`, `-logsd`),
+  fitted on 17 calibrated subtrees in six families. It replaces
+  HalfNormal(1) and `--concept-rate-prior-sd`. Under the vaguer prior, a
+  small family's weakly identified spread came out too low and its lexical
+  ages too young: in the simulator, 78% coverage at the 90% level
+  (`docs/research/concept-rate-prior.md`).
+
 - **Among-concept rate heterogeneity is on by default** (E2.1;
-  `--concept-rates`, `--concept-rate-prior-sd`).
+  `--concept-rates`; the spread prior is described below).
   - **The model.** Each concept's rate is `rho · lambda_c`, with
     `log lambda_c ~ N(-sigma_c²/2, sigma_c²)`, integrated out per concept.
     The multipliers are rescaled to mean exactly 1, so `rho` stays the mean
@@ -21,7 +29,7 @@ columns and example numbers are expected throughout 0.x and are listed here.
     Golub–Welsch. Against a dense integral the error is below 0.4% up to
     `sigma_c = 1.5` on long branches; 8 points erred by 6%, in the slow tail
     that dates deep nodes.
-  - **The spread.** `sigma_c ~ HalfNormal(1)` is sampled (`log_sigma_c` in
+  - **The spread.** `sigma_c` is sampled (its prior is now empirical; see below) (`log_sigma_c` in
     `diagnostics.tsv`). On Romance it is about 1.05, and node ages move by up
     to 2%.
   - **Cost.** Concepts with the same cognate partition are now evaluated

@@ -151,7 +151,13 @@ typedef struct gd_analysis_tree_config {
     /* Forms rows at or above this loan probability are read as missing
      * (E2.4); above 1 keeps them all. */
     double   loan_threshold;    /* 0.5 */
-    double   concept_rate_prior_sd; /* 1.0 */
+    /* Prior on the concept-rate spread: log sigma_c ~ N(logmean, logsd^2).
+     * The default N(-0.1, 0.35) is empirical: the spread fitted on 17
+     * calibrated subtrees in six families. A weakly identified spread under
+     * a vaguer prior biased small families young
+     * (docs/research/concept-rate-prior.md). */
+    double   concept_rate_prior_logmean; /* -0.1 */
+    double   concept_rate_prior_logsd;   /* 0.35 */
     /* Mixing family for the concept rates (E2.8): 0 log-normal (the spread
      * is a log-sd), 1 gamma (the spread is a coefficient of variation). */
     bool     concept_rate_gamma;    /* 0 */
