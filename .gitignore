@@ -45,3 +45,6 @@ spec.txt
 
 # Example run outputs
 examples/*/output/
+
+# Per-replicate simulator inputs and fits (regenerable; nodes.tsv is kept)
+docs/research/simworld/runs/
