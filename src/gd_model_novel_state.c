@@ -78,6 +78,10 @@ struct gd_t1_ws {
      * for a tip whose list replaces a form "in error" with probability e_w.
      * Borrowed; NULL = none. */
     const double *hazard;
+    /* Optional precomputed edge terms (log retention, log change) per working
+     * node, for the edge above it; set by the cached adapter, which computes
+     * them once per mixture node instead of once per pattern. NULL: compute. */
+    const double *edge_lr, *edge_lc;
 };
 
 /* ------------------------------------------------------------------ helpers */
@@ -446,7 +450,9 @@ static int t1_node_update(gd_t1_ws *ws, size_t u, double rate, const double *bm,
         int det1 = ws->det[l];
         double lr1, lc1;
         double effr1 = rate * (bm != NULL ? bm[ws->orig[l]] : 1.0);
-        if (!branch_logs(ws, l, effr1, &lr1, &lc1)) {
+        if (ws->edge_lr != NULL) {
+            lr1 = ws->edge_lr[l]; lc1 = ws->edge_lc[l];
+        } else if (!branch_logs(ws, l, effr1, &lr1, &lc1)) {
             gd_error_set(err, GD_E_RANGE,
                          "t1: child is older than its parent (chronology inversion)");
             return GD_E_RANGE;
@@ -459,7 +465,9 @@ static int t1_node_update(gd_t1_ws *ws, size_t u, double rate, const double *bm,
             q2 = ws->logq[r];
             det2 = ws->det[r];
             double effr2 = rate * (bm != NULL ? bm[ws->orig[r]] : 1.0);
-            if (!branch_logs(ws, r, effr2, &lr2, &lc2)) {
+            if (ws->edge_lr != NULL) {
+                lr2 = ws->edge_lr[r]; lc2 = ws->edge_lc[r];
+            } else if (!branch_logs(ws, r, effr2, &lr2, &lc2)) {
                 gd_error_set(err, GD_E_RANGE,
                              "t1: child is older than its parent (chronology inversion)");
                 return GD_E_RANGE;
@@ -1034,6 +1042,7 @@ struct gd_mcmc_t1 {
     double *c_noise;          /* nuniq */
     double *c_logp, *c_logq;  /* nuniq * kcap * m */
     double *c_lltree;         /* nuniq * kcap: tree log-lik per mixture node */
+    double *c_elr, *c_elc;    /* kcap * m: edge terms per mixture node */
     size_t  kcap, c_K;
     double  c_rate, c_mult[GD_T1_MIX_KMAX];
     double *c_age;            /* m working ages */
@@ -1071,6 +1080,12 @@ static int t1_cached_patterns(gd_mcmc_t1 *m, double rate, const double *mult,
         double *lt = (double *)gd_realloc_array_checked(m->c_lltree, m->nuniq * K, sizeof(double), err);
         if (lt == NULL) return GD_E_NOMEM;
         m->c_lltree = lt;
+        double *el = (double *)gd_realloc_array_checked(m->c_elr, K * mm, sizeof(double), err);
+        if (el == NULL) return GD_E_NOMEM;
+        m->c_elr = el;
+        double *ec = (double *)gd_realloc_array_checked(m->c_elc, K * mm, sizeof(double), err);
+        if (ec == NULL) return GD_E_NOMEM;
+        m->c_elc = ec;
         m->kcap = K;
         m->cache_valid = false;
     }
@@ -1097,6 +1112,22 @@ static int t1_cached_patterns(gd_mcmc_t1 *m, double rate, const double *mult,
             if (m->dirty[u]) {
                 any = true;
                 if (ws->parent[u] != GD_NODE_NONE) m->dirty[ws->parent[u]] = true;
+            }
+        }
+    }
+
+    /* Edge terms depend on the rate, the mixture node, the branch multiplier
+     * and the tip hazard, not on the pattern: compute them once here. */
+    if (any) {
+        for (size_t k = 0; k < K; k++) {
+            double *lr = m->c_elr + k * mm, *lc = m->c_elc + k * mm;
+            for (size_t w = 0; w < mm; w++) {
+                lr[w] = 0.0; lc[w] = -HUGE_VAL;
+                if (ws->parent[w] == GD_NODE_NONE) continue;
+                double effr = rate * mult[k] * (bm != NULL ? bm[ws->orig[w]] : 1.0);
+                if (!branch_logs(ws, w, effr, &lr[w], &lc[w]))
+                    return gd_error_set(err, GD_E_RANGE,
+                                        "t1: child is older than its parent (chronology inversion)");
             }
         }
     }
@@ -1142,12 +1173,15 @@ static int t1_cached_patterns(gd_mcmc_t1 *m, double rate, const double *mult,
                     memcpy(ws->logq, lq, mm * sizeof(double));
                 }
                 bool warn = false;
+                ws->edge_lr = m->c_elr + k * mm;
+                ws->edge_lc = m->c_elc + k * mm;
                 for (size_t i = 0; i < mm; i++) {
                     size_t v = ws->post[i];
                     if (!full && !m->dirty[v]) continue;
                     int rc = t1_node_update(ws, v, rate * mult[k], bm, &warn, err);
-                    if (rc != 0) return rc;
+                    if (rc != 0) { ws->edge_lr = ws->edge_lc = NULL; return rc; }
                 }
+                ws->edge_lr = ws->edge_lc = NULL;
                 if (warn) res->stability_warning = true;
                 memcpy(lp, ws->logp, mm * sizeof(double));
                 memcpy(lq, ws->logq, mm * sizeof(double));
@@ -1350,7 +1384,7 @@ void gd_mcmc_t1_destroy(gd_mcmc_t1 *m)
     free(m->rates); free(m->bm); free(m->per);
     free(m->uniq); free(m->count); free(m->of_concept); free(m->per_uniq);
     free(m->c_det); free(m->c_compat); free(m->c_noise); free(m->c_logp); free(m->c_logq);
-    free(m->c_lltree); free(m->c_age); free(m->c_bm); free(m->c_haz); free(m->dirty);
+    free(m->c_lltree); free(m->c_elr); free(m->c_elc); free(m->c_age); free(m->c_bm); free(m->c_haz); free(m->dirty);
     free(m);
 }
 

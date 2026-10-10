@@ -72,8 +72,12 @@ columns and example numbers are expected throughout 0.x and are listed here.
   for each mixture node. An evaluation recomputes only the nodes whose
   edges changed, and their ancestors; a change of ε alone recomputes
   nothing. It agrees exactly with full recomputation over a random walk of
-  400 state changes. The speed-up is modest, 1.2× on Romance: the rate,
-  spread, block and clock moves change every node each sweep.
+  400 state changes. Edge terms (log retention and log change) depend
+  on the rate, mixture node, branch multiplier and tip hazard, not on
+  the pattern. They are now computed once per mixture node per
+  evaluation, instead of once per pattern: 1.65× on Arawan. The
+  dirty-node tracking adds little (1.2× on Romance), because the rate,
+  spread, block and clock moves change every edge each sweep.
 - **`--write-draws 1`** and **`--write-pointwise 1`** (E3.2) write every
   retained draw (`draws.tsv`) and the per-draw, per-concept
   log-likelihoods for PSIS-LOO and WAIC (`pointwise.tsv`).
