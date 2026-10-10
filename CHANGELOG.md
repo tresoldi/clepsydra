@@ -17,6 +17,10 @@ columns and example numbers are expected throughout 0.x and are listed here.
 
 ### Added
 
+- **Taxon-set targets** (E0.11). A calibration may target `mrca:A,B,...`, the
+  most recent common ancestor of the listed tips. Unlabelled internal nodes
+  are reported as `mrca:X,Y` instead of `(node)`, and those names resolve
+  back to the same node.
 - **`date-pair --age-a/--age-b`** (E0.6): the sampling dates of the two
   lists, in years BP. They were hard-coded to 0, so an old list (Paumari
   1833, Arua 1869) could only be dated by correcting the output by hand.

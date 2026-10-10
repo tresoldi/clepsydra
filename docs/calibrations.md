@@ -36,6 +36,14 @@ latin_tip	latin	fixed_tip	1900	.	.	1	HIST_LATIN_01
 romance_root	romance_root	offset_lognormal	1400	5.30	0.25	0	HIST_ROMANCE_02
 ```
 
+**Targets.** `target_id` is a node label, or a set of tips written
+`mrca:A,B,...`: the most recent common ancestor of the listed tips. A set
+needs no labelled Newick and survives any relabelling of internal nodes.
+Unlabelled internal nodes are reported under generated names of the same
+form (`mrca:X,Y`, where X and Y are the alphabetically first tips under the
+node's first two children), so every name in an output can be pasted back
+into a calibration table.
+
 **Tips.** A tip that no calibration names is an extant language, fixed at age
 0. A tip with an uncertain age (an ancient or historical language) needs its
 own calibration: `fixed_tip` for a known date, or any node-type distribution

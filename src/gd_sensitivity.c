@@ -79,9 +79,12 @@ int gd_analysis_sensitivity_score(const gd_analysis_tree_result *baseline,
     row.covered = false;
     row.abs_err = NAN;
 
-    size_t t = (variant->tree != NULL)
-             ? gd_tree_find_label(variant->tree, withheld->target)
-             : GD_NODE_NONE;
+    size_t t = GD_NODE_NONE;
+    if (variant->tree != NULL) {
+        gd_error ignore = GD_ERROR_INIT;   /* unresolvable: reported as absent */
+        if (gd_tree_resolve_target(variant->tree, withheld->target, &t, &ignore) != 0)
+            t = GD_NODE_NONE;
+    }
     const gd_analysis_node_age *a =
         (t != GD_NODE_NONE) ? gd_analysis_result_node(variant, t) : NULL;
 

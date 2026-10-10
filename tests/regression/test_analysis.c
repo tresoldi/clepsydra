@@ -1020,6 +1020,57 @@ TEST(test_analysis_convergence_verdict)
     (void)et;
 }
 
+/* E0.11: a calibration may name a taxon set, "mrca:A,B,...", and unlabelled
+ * internal nodes get stable "mrca:X,Y" names that resolve back to them. */
+TEST(test_analysis_mrca_targets_and_generated_names)
+{
+    gd_analysis_tree_input in; tree_input(&in);
+    /* Same topology as TREE, with the internal labels removed. */
+    in.newick = "((Latin:1200,(Spanish:2050,Portuguese:2050):0):500,Sardinian:2550);";
+    in.calibrations_tsv =
+        "calibration_id\ttarget_id\ttype\tp1\tp2\tp3\tis_hard\tsource_key\n"
+        "cal1\tLatin\tfixed_tip\t2050\t.\t.\t1\tstandard\n"
+        "ib\tmrca:Portuguese, Spanish\tuniform_node\t600\t900\t.\t1\tstandard\n"
+        "rt\tmrca:Sardinian,Spanish,Latin\tuniform_node\t2400\t2600\t.\t1\tstandard\n";
+    gd_analysis_tree_config cfg; quick_config(&cfg);
+    gd_error err = GD_ERROR_INIT;
+    gd_analysis_tree_result *res = NULL;
+    int rc = gd_analysis_tree_run(&in, &cfg, &res, &err);
+    double ib_lo = 0, ib_hi = 0, rt_lo = 0, rt_hi = 0;
+    int names_ok = 1, found_ib = 0, found_rt = 0;
+    if (res != NULL) {
+        for (size_t i = 0; i < res->nages; i++) {
+            const gd_analysis_node_age *a = &res->ages[i];
+            if (a->label == NULL) { names_ok = 0; continue; }
+            if (strcmp(a->label, "mrca:Portuguese,Spanish") == 0) {
+                found_ib = 1; ib_lo = a->age.hpd_lo; ib_hi = a->age.hpd_hi;
+            }
+            if (strcmp(a->label, "mrca:Sardinian,Latin") == 0 ||
+                strcmp(a->label, "mrca:Latin,Sardinian") == 0) {
+                found_rt = 1; rt_lo = a->age.hpd_lo; rt_hi = a->age.hpd_hi;
+            }
+        }
+        gd_analysis_tree_result_destroy(res);
+    }
+    CHECK(rc == 0);
+    CHECK(names_ok);
+    CHECK(found_ib);
+    CHECK(found_rt);
+    CHECK(ib_lo >= 600.0 && ib_hi <= 900.0);
+    CHECK(rt_lo >= 2400.0 && rt_hi <= 2600.0);
+
+    /* A name that is not a tip is refused with the name in the message. */
+    tree_input(&in);
+    in.calibrations_tsv =
+        "calibration_id\ttarget_id\ttype\tp1\tp2\tp3\tis_hard\tsource_key\n"
+        "x\tmrca:Spanish,Castilian\tuniform_node\t600\t900\t.\t1\tstandard\n";
+    gd_analysis_tree_job *job = NULL;
+    gd_error_clear(&err);
+    CHECK(gd_analysis_tree_prepare(&in, &cfg, &job, &err) != 0);
+    CHECK(job == NULL);
+    CHECK(strstr(err.message, "Castilian") != NULL);
+}
+
 static void run_tests(void)
 {
     RUN(test_analysis_prepare_reports_dataset_size);
@@ -1036,6 +1087,7 @@ static void run_tests(void)
     RUN(test_analysis_counts_unreadable_weights);
     RUN(test_analysis_convergence_verdict);
     RUN(test_analysis_reads_calibrations);
+    RUN(test_analysis_mrca_targets_and_generated_names);
     RUN(test_analysis_drops_a_calibration);
     RUN(test_analysis_widens_calibrations);
     RUN(test_analysis_is_hard_and_widen_semantics);

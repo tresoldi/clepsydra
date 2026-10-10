@@ -395,6 +395,94 @@ size_t gd_tree_mrca(const gd_tree *t, size_t a, size_t b)
     return t->euler[min_idx];
 }
 
+int gd_tree_resolve_target(const gd_tree *t, const char *target, size_t *out,
+                           gd_error *err)
+{
+    if (t == NULL || target == NULL || out == NULL) {
+        return gd_error_set(err, GD_E_INVALID_ARG, "resolve_target: NULL");
+    }
+    if (strncmp(target, "mrca:", 5) != 0) {
+        size_t idx = gd_tree_find_label(t, target);
+        if (idx == GD_NODE_NONE) {
+            return gd_error_setf(err, GD_E_CALIBRATION,
+                                 "target '%s' is not a node label in the tree", target);
+        }
+        *out = idx;
+        return 0;
+    }
+    size_t acc = GD_NODE_NONE;
+    const char *p = target + 5;
+    while (*p != '\0') {
+        while (*p == ' ' || *p == '\t') p++;
+        const char *e = p;
+        while (*e != '\0' && *e != ',') e++;
+        const char *ee = e;
+        while (ee > p && (ee[-1] == ' ' || ee[-1] == '\t')) ee--;
+        size_t len = (size_t)(ee - p);
+        if (len == 0) {
+            return gd_error_setf(err, GD_E_CALIBRATION,
+                                 "target '%s': empty tip name in the mrca list", target);
+        }
+        char name[256];
+        if (len >= sizeof name) {
+            return gd_error_setf(err, GD_E_CALIBRATION,
+                                 "target '%s': a tip name is too long", target);
+        }
+        memcpy(name, p, len);
+        name[len] = '\0';
+        size_t v = gd_tree_find_label(t, name);
+        if (v == GD_NODE_NONE || !t->nodes[v].is_leaf) {
+            return gd_error_setf(err, GD_E_CALIBRATION,
+                                 "target '%s': '%s' is not a tip of the tree", target, name);
+        }
+        acc = (acc == GD_NODE_NONE) ? v : gd_tree_mrca(t, acc, v);
+        if (acc == GD_NODE_NONE) {
+            return gd_error_set(err, GD_E_CALIBRATION, "target: tree has no LCA support");
+        }
+        p = (*e == ',') ? e + 1 : e;
+    }
+    if (acc == GD_NODE_NONE) {
+        return gd_error_setf(err, GD_E_CALIBRATION, "target '%s' lists no tips", target);
+    }
+    *out = acc;
+    return 0;
+}
+
+int gd_tree_name_internal_nodes(gd_tree *t, gd_error *err)
+{
+    if (t == NULL) return gd_error_set(err, GD_E_INVALID_ARG, "name_internal_nodes: NULL");
+    const char **minlab = (const char **)gd_calloc_checked(t->nnodes ? t->nnodes : 1,
+                                                           sizeof(char *), err);
+    if (minlab == NULL) return GD_E_NOMEM;
+    /* Smallest tip label in each clade, children before parents. */
+    for (size_t i = 0; i < t->nnodes; i++) {
+        size_t v = t->postorder[i];
+        if (t->nodes[v].is_leaf) { minlab[v] = t->nodes[v].label; continue; }
+        for (size_t c = 0; c < t->nodes[v].nchildren; c++) {
+            const char *m = minlab[t->nodes[v].children[c]];
+            if (m != NULL && (minlab[v] == NULL || strcmp(m, minlab[v]) < 0)) minlab[v] = m;
+        }
+    }
+    int rc = 0;
+    for (size_t v = 0; v < t->nnodes && rc == 0; v++) {
+        gd_node *nd = &t->nodes[v];
+        if (nd->is_leaf || nd->label != NULL || nd->nchildren < 2) continue;
+        const char *a = minlab[nd->children[0]], *b = minlab[nd->children[1]];
+        if (a == NULL || b == NULL) continue;   /* unlabelled tips: nothing stable to say */
+        if (strcmp(a, b) > 0) { const char *tmp = a; a = b; b = tmp; }
+        size_t need = 5 + strlen(a) + 1 + strlen(b) + 1;
+        char *lab = (char *)gd_malloc_checked(need, err);
+        if (lab == NULL) { rc = GD_E_NOMEM; break; }
+        memcpy(lab, "mrca:", 5);
+        memcpy(lab + 5, a, strlen(a));
+        lab[5 + strlen(a)] = ',';
+        memcpy(lab + 6 + strlen(a), b, strlen(b) + 1);
+        nd->label = lab;
+    }
+    gd_free((void *)minlab);
+    return rc;
+}
+
 size_t gd_tree_find_label(const gd_tree *t, const char *label)
 {
     if (t == NULL || label == NULL) {

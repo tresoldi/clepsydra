@@ -109,10 +109,8 @@ int gd_calibrations_resolve(gd_calibration_set *cs, const gd_tree *tree,
         return GD_E_INVALID_ARG;
     }
     for (size_t i = 0; i < cs->ncals; i++) {
-        size_t idx = gd_tree_find_label(tree, cs->cals[i].target_id);
-        if (idx == GD_NODE_NONE) {
-            gd_error_set(err, GD_E_CALIBRATION,
-                         "calibration target not found in tree");
+        size_t idx = GD_NODE_NONE;
+        if (gd_tree_resolve_target(tree, cs->cals[i].target_id, &idx, err) != 0) {
             cs->cals[i].resolved = false;
             return GD_E_CALIBRATION;
         }

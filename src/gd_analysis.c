@@ -510,6 +510,9 @@ int gd_analysis_tree_prepare(const gd_analysis_tree_input *in,
         label_error(err, in->newick_name);
         goto done;
     }
+    /* Unlabelled internal nodes get stable "mrca:X,Y" names, so every node
+     * in every output can be told apart and targeted by a calibration. */
+    if (gd_tree_name_internal_nodes(job->tree, err) != 0) goto done;
     size_t n = job->tree->nnodes;
     job->cb.nnodes = n;
 
@@ -639,7 +642,10 @@ int gd_analysis_tree_prepare(const gd_analysis_tree_input *in,
      * target, which marks the tip as dated-but-unknown. */
     bool drop_tip = false;
     if (drop) {
-        size_t tv = gd_tree_find_label(job->tree, cals[job->cfg.calibrations.drop_index].target);
+        size_t tv = GD_NODE_NONE;
+        gd_error ignore = GD_ERROR_INIT;   /* an unresolvable target fails later, with its name */
+        (void)gd_tree_resolve_target(job->tree, cals[job->cfg.calibrations.drop_index].target,
+                                     &tv, &ignore);
         drop_tip = (tv != GD_NODE_NONE && gd_tree_is_leaf(job->tree, tv));
     }
     job->cs = gd_calset_create(ncal - drop + (drop_tip ? 1 : 0), err);

@@ -70,6 +70,25 @@ typedef struct gd_tree {
  * that label. `label` is compared exactly; NULL labels never match. */
 size_t gd_tree_find_label(const gd_tree *t, const char *label);
 
+/*
+ * Resolve a target name to a node. A plain name is looked up as a label. A
+ * name of the form "mrca:A,B,..." is the most recent common ancestor of the
+ * listed tips (at least one; whitespace around names is ignored), which is
+ * defined whatever the tree's internal labels are. Returns 0 and sets *out,
+ * or GD_E_CALIBRATION with a message naming what could not be found.
+ */
+int gd_tree_resolve_target(const gd_tree *t, const char *target, size_t *out,
+                           gd_error *err);
+
+/*
+ * Give every unlabelled internal node a stable name "mrca:X,Y": X and Y are
+ * the alphabetically first tip labels under its first two children. The pair
+ * determines the node uniquely (their MRCA is that node), the name resolves
+ * back through gd_tree_resolve_target, and it does not depend on node
+ * numbering. Labels already present are left alone. Needs labelled tips.
+ */
+int gd_tree_name_internal_nodes(gd_tree *t, gd_error *err);
+
 /* Compute the MRCA (LCA) of two nodes. Requires the tree's LCA support to have
  * been built, which every tree from the parser has. */
 size_t gd_tree_mrca(const gd_tree *t, size_t a, size_t b);
