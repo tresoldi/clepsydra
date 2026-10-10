@@ -6,6 +6,7 @@ for lexical dating. `docs/roadmap.md` is the plan these documents support.
 | file | what it is |
 |---|---|
 | `arawan-lessons.md` | Field report: every way 0.2.0 failed on Arawan, mapped to a roadmap item |
+| `clock-pilot.md` | D2: the cross-family clock pilot (pre-registered; σ_tot 0.77, a no-go for sharp uncalibrated calendar dates) |
 | `arawan-acceptance.md` | The Arawan re-run recorded at every roadmap gate |
 | `reviews/2026-10-10-codex.md` | Independent adversarial review of the code and model (Codex) |
 | `reviews/2026-10-10-claude.md` | Independent adversarial review of the code and model (Claude), with reproduced runs |

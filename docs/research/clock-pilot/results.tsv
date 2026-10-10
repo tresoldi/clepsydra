@@ -1,0 +1,309 @@
+analysis	quantity	estimate	lo95	hi95	note
+main_T1	n_nodes	15	.	.	
+main_T1	F_families	6	.	.	aust1307;drav1251;indo1319;pama1250;tung1282;ural1272
+main_T1	reml_sigma_f	0.0000	0.0000	1.0800	profile likelihood
+main_T1	reml_tau	0.6400	0.4100	1.0000	profile likelihood
+main_T1	reml_mu	-8.6426	-8.9802	-8.3051	ln rate per year
+main_T1	bayes_sigma_f	0.3300	0.0100	1.1800	posterior median, HalfNormal(1.0) on sigma_f and tau
+main_T1	bayes_tau	0.6400	0.4200	1.0400	posterior median, HalfNormal(1.0) on sigma_f and tau
+main_T1	bayes_sigma_tot	0.7737	0.5025	1.3960	posterior median, HalfNormal(1.0) on sigma_f and tau
+main_T1	bayes_mu	-8.5947	-9.1394	-7.9631	posterior median, HalfNormal(1.0) on sigma_f and tau
+main_T1	depth_slope	-0.3934	-0.8639	0.0771	OLS of b on ln T (unweighted)
+prior0.5_T1	n_nodes	15	.	.	
+prior0.5_T1	F_families	6	.	.	aust1307;drav1251;indo1319;pama1250;tung1282;ural1272
+prior0.5_T1	reml_sigma_f	0.0000	0.0000	1.0800	profile likelihood
+prior0.5_T1	reml_tau	0.6400	0.4100	1.0000	profile likelihood
+prior0.5_T1	reml_mu	-8.6426	-8.9802	-8.3051	ln rate per year
+prior0.5_T1	bayes_sigma_f	0.2600	0.0100	0.8400	posterior median, HalfNormal(0.5) on sigma_f and tau
+prior0.5_T1	bayes_tau	0.6100	0.4100	0.9300	posterior median, HalfNormal(0.5) on sigma_f and tau
+prior0.5_T1	bayes_sigma_tot	0.7021	0.4789	1.0999	posterior median, HalfNormal(0.5) on sigma_f and tau
+prior0.5_T1	bayes_mu	-8.6016	-9.0621	-8.0783	posterior median, HalfNormal(0.5) on sigma_f and tau
+prior0.5_T1	depth_slope	-0.3934	-0.8639	0.0771	OLS of b on ln T (unweighted)
+main_g1	n_nodes	15	.	.	
+main_g1	F_families	6	.	.	aust1307;drav1251;indo1319;pama1250;tung1282;ural1272
+main_g1	reml_sigma_f	0.0000	0.0000	1.3000	profile likelihood
+main_g1	reml_tau	0.7700	0.5000	1.2000	profile likelihood
+main_g1	reml_mu	-8.3423	-8.7455	-7.9391	ln rate per year
+main_g1	bayes_sigma_f	0.3700	0.0100	1.3100	posterior median, HalfNormal(1.0) on sigma_f and tau
+main_g1	bayes_tau	0.7700	0.5100	1.2200	posterior median, HalfNormal(1.0) on sigma_f and tau
+main_g1	bayes_sigma_tot	0.9122	0.6001	1.5852	posterior median, HalfNormal(1.0) on sigma_f and tau
+main_g1	bayes_mu	-8.2791	-8.9024	-7.5467	posterior median, HalfNormal(1.0) on sigma_f and tau
+main_g1	depth_slope	-0.1585	-0.7768	0.4599	OLS of b on ln T (unweighted)
+prior0.5_g1	n_nodes	15	.	.	
+prior0.5_g1	F_families	6	.	.	aust1307;drav1251;indo1319;pama1250;tung1282;ural1272
+prior0.5_g1	reml_sigma_f	0.0000	0.0000	1.3000	profile likelihood
+prior0.5_g1	reml_tau	0.7700	0.5000	1.2000	profile likelihood
+prior0.5_g1	reml_mu	-8.3423	-8.7455	-7.9391	ln rate per year
+prior0.5_g1	bayes_sigma_f	0.2800	0.0100	0.9000	posterior median, HalfNormal(0.5) on sigma_f and tau
+prior0.5_g1	bayes_tau	0.7200	0.4900	1.0600	posterior median, HalfNormal(0.5) on sigma_f and tau
+prior0.5_g1	bayes_sigma_tot	0.8122	0.5630	1.2278	posterior median, HalfNormal(0.5) on sigma_f and tau
+prior0.5_g1	bayes_mu	-8.2902	-8.8074	-7.6978	posterior median, HalfNormal(0.5) on sigma_f and tau
+prior0.5_g1	depth_slope	-0.1585	-0.7768	0.4599	OLS of b on ln T (unweighted)
+main_g0.5	n_nodes	15	.	.	
+main_g0.5	F_families	6	.	.	aust1307;drav1251;indo1319;pama1250;tung1282;ural1272
+main_g0.5	reml_sigma_f	0.1200	0.0000	1.9000	profile likelihood
+main_g0.5	reml_tau	1.0000	0.6200	1.5600	profile likelihood
+main_g0.5	reml_mu	-7.9938	-8.5261	-7.4615	ln rate per year
+main_g0.5	bayes_sigma_f	0.4900	0.0200	1.5700	posterior median, HalfNormal(1.0) on sigma_f and tau
+main_g0.5	bayes_tau	0.9600	0.6400	1.5100	posterior median, HalfNormal(1.0) on sigma_f and tau
+main_g0.5	bayes_sigma_tot	1.1560	0.7749	1.9115	posterior median, HalfNormal(1.0) on sigma_f and tau
+main_g0.5	bayes_mu	-7.9147	-8.6902	-7.0013	posterior median, HalfNormal(1.0) on sigma_f and tau
+main_g0.5	depth_slope	0.1298	-0.6777	0.9373	OLS of b on ln T (unweighted)
+main_g2	n_nodes	15	.	.	
+main_g2	F_families	6	.	.	aust1307;drav1251;indo1319;pama1250;tung1282;ural1272
+main_g2	reml_sigma_f	0.0000	0.0000	1.1400	profile likelihood
+main_g2	reml_tau	0.6900	0.4500	1.0800	profile likelihood
+main_g2	reml_mu	-8.4977	-8.8606	-8.1348	ln rate per year
+main_g2	bayes_sigma_f	0.3400	0.0100	1.2300	posterior median, HalfNormal(1.0) on sigma_f and tau
+main_g2	bayes_tau	0.6900	0.4600	1.1100	posterior median, HalfNormal(1.0) on sigma_f and tau
+main_g2	bayes_sigma_tot	0.8286	0.5408	1.4689	posterior median, HalfNormal(1.0) on sigma_f and tau
+main_g2	bayes_mu	-8.4435	-9.0168	-7.7735	posterior median, HalfNormal(1.0) on sigma_f and tau
+main_g2	depth_slope	-0.2833	-0.8222	0.2556	OLS of b on ln T (unweighted)
+pairmedian_T1	n_nodes	15	.	.	
+pairmedian_T1	F_families	6	.	.	aust1307;drav1251;indo1319;pama1250;tung1282;ural1272
+pairmedian_T1	reml_sigma_f	0.0000	0.0000	1.1200	profile likelihood
+pairmedian_T1	reml_tau	0.6300	0.3900	0.9800	profile likelihood
+pairmedian_T1	reml_mu	-8.6329	-8.9656	-8.3002	ln rate per year
+pairmedian_T1	bayes_sigma_f	0.3400	0.0100	1.2000	posterior median, HalfNormal(1.0) on sigma_f and tau
+pairmedian_T1	bayes_tau	0.6200	0.4000	1.0100	posterior median, HalfNormal(1.0) on sigma_f and tau
+pairmedian_T1	bayes_sigma_tot	0.7632	0.4924	1.3918	posterior median, HalfNormal(1.0) on sigma_f and tau
+pairmedian_T1	bayes_mu	-8.5837	-9.1290	-7.9509	posterior median, HalfNormal(1.0) on sigma_f and tau
+pairmedian_T1	depth_slope	-0.4025	-0.8609	0.0558	OLS of b on ln T (unweighted)
+nodebest_T1	n_nodes	15	.	.	
+nodebest_T1	F_families	6	.	.	aust1307;drav1251;indo1319;pama1250;tung1282;ural1272
+nodebest_T1	reml_sigma_f	0.0000	0.0000	1.0800	profile likelihood
+nodebest_T1	reml_tau	0.6400	0.4100	1.0000	profile likelihood
+nodebest_T1	reml_mu	-8.6426	-8.9802	-8.3051	ln rate per year
+nodebest_T1	bayes_sigma_f	0.3300	0.0100	1.1800	posterior median, HalfNormal(1.0) on sigma_f and tau
+nodebest_T1	bayes_tau	0.6400	0.4200	1.0400	posterior median, HalfNormal(1.0) on sigma_f and tau
+nodebest_T1	bayes_sigma_tot	0.7737	0.5025	1.3960	posterior median, HalfNormal(1.0) on sigma_f and tau
+nodebest_T1	bayes_mu	-8.5947	-9.1394	-7.9631	posterior median, HalfNormal(1.0) on sigma_f and tau
+nodebest_T1	depth_slope	-0.3934	-0.8639	0.0771	OLS of b on ln T (unweighted)
+plusabvd_T1	n_nodes	22	.	.	
+plusabvd_T1	F_families	6	.	.	aust1307;drav1251;indo1319;pama1250;tung1282;ural1272
+plusabvd_T1	reml_sigma_f	0.5600	0.1500	1.3700	profile likelihood
+plusabvd_T1	reml_tau	0.2700	0.1700	0.4400	profile likelihood
+plusabvd_T1	reml_mu	-8.4979	-8.9960	-7.9999	ln rate per year
+plusabvd_T1	bayes_sigma_f	0.5800	0.1200	1.3700	posterior median, HalfNormal(1.0) on sigma_f and tau
+plusabvd_T1	bayes_tau	0.2900	0.1800	0.5000	posterior median, HalfNormal(1.0) on sigma_f and tau
+plusabvd_T1	bayes_sigma_tot	0.6592	0.3680	1.3983	posterior median, HalfNormal(1.0) on sigma_f and tau
+plusabvd_T1	bayes_mu	-8.5273	-9.1176	-7.8566	posterior median, HalfNormal(1.0) on sigma_f and tau
+plusabvd_T1	depth_slope	-0.2354	-0.4928	0.0220	OLS of b on ln T (unweighted)
+nodebest_g1	n_nodes	15	.	.	
+nodebest_g1	F_families	6	.	.	aust1307;drav1251;indo1319;pama1250;tung1282;ural1272
+nodebest_g1	reml_sigma_f	0.0000	0.0000	1.3000	profile likelihood
+nodebest_g1	reml_tau	0.7700	0.5000	1.2000	profile likelihood
+nodebest_g1	reml_mu	-8.3423	-8.7455	-7.9391	ln rate per year
+nodebest_g1	bayes_sigma_f	0.3700	0.0100	1.3100	posterior median, HalfNormal(1.0) on sigma_f and tau
+nodebest_g1	bayes_tau	0.7700	0.5100	1.2200	posterior median, HalfNormal(1.0) on sigma_f and tau
+nodebest_g1	bayes_sigma_tot	0.9122	0.6001	1.5852	posterior median, HalfNormal(1.0) on sigma_f and tau
+nodebest_g1	bayes_mu	-8.2791	-8.9024	-7.5467	posterior median, HalfNormal(1.0) on sigma_f and tau
+nodebest_g1	depth_slope	-0.1585	-0.7768	0.4599	OLS of b on ln T (unweighted)
+plusabvd_g1	n_nodes	22	.	.	
+plusabvd_g1	F_families	6	.	.	aust1307;drav1251;indo1319;pama1250;tung1282;ural1272
+plusabvd_g1	reml_sigma_f	0.6400	0.0000	1.6500	profile likelihood
+plusabvd_g1	reml_tau	0.3700	0.2500	0.6100	profile likelihood
+plusabvd_g1	reml_mu	-8.1675	-8.7451	-7.5900	ln rate per year
+plusabvd_g1	bayes_sigma_f	0.6200	0.0600	1.4900	posterior median, HalfNormal(1.0) on sigma_f and tau
+plusabvd_g1	bayes_tau	0.4100	0.2600	0.6700	posterior median, HalfNormal(1.0) on sigma_f and tau
+plusabvd_g1	bayes_sigma_tot	0.7566	0.4401	1.5498	posterior median, HalfNormal(1.0) on sigma_f and tau
+plusabvd_g1	bayes_mu	-8.2216	-8.8512	-7.4527	posterior median, HalfNormal(1.0) on sigma_f and tau
+plusabvd_g1	depth_slope	0.0033	-0.3451	0.3517	OLS of b on ln T (unweighted)
+familymeans_T1	bayes_sd_between_family_means	0.8115	0.4220	1.7031	one mean b per family; sigma_f not separable from tau here
+familymeans_g1	bayes_sd_between_family_means	0.9330	0.4904	1.8682	one mean b per family; sigma_f not separable from tau here
+censored_T1	ml_sigma_f	0.0000	0.0000	0.9500	ML, two-sided + 9 one-sided nodes; F=6
+censored_T1	ml_tau	0.5934	.	.	
+censored_T1	ml_mu	-8.7415	.	.	
+censored_g1	ml_sigma_f	0.0000	0.0000	1.1000	ML, two-sided + 9 one-sided nodes; F=6
+censored_g1	ml_tau	0.7129	.	.	
+censored_g1	ml_mu	-8.4453	.	.	
+main_T1	width95_factor_at_2000y	6.1093	319.6029	11928.5785	posterior predictive for a new family's node, median 2000 y, s_lex=0.116
+main_g1	width95_factor_at_2000y	8.1891	237.0780	15898.6340	posterior predictive for a new family's node, median 2000 y, s_lex=0.116
+lofo_climatological	n_nodes	15	.	.	
+lofo_climatological	n_families	6	.	.	
+lofo_climatological	log_score_node_mean	-1.3212	.	.	
+lofo_climatological	log_score_family_mean	-1.7723	.	.	
+lofo_climatological	interval_score_node_mean	5.9525	.	.	
+lofo_climatological	interval_score_family_mean	9.0372	.	.	
+lofo_climatological	cov50_node_mean	0.7130	.	.	
+lofo_climatological	cov50_family_mean	0.5678	.	.	
+lofo_climatological	cov80_node_mean	0.8376	.	.	
+lofo_climatological	cov80_family_mean	0.7050	.	.	
+lofo_climatological	cov95_node_mean	0.9333	.	.	
+lofo_climatological	cov95_family_mean	0.8333	.	.	
+lofo_climatological	pit_node_mean	0.5190	.	.	
+lofo_climatological	pit_family_mean	0.4911	.	.	
+lofo_climatological	width95_factor_node_mean	6.5175	.	.	
+lofo_climatological	width95_factor_family_mean	5.4128	.	.	
+lofo_climatological	sum_z2	18.4578	.	.	
+lofo_clock_bayes_T1	n_nodes	15	.	.	
+lofo_clock_bayes_T1	n_families	6	.	.	
+lofo_clock_bayes_T1	log_score_node_mean	-1.2309	.	.	
+lofo_clock_bayes_T1	log_score_family_mean	-1.3549	.	.	
+lofo_clock_bayes_T1	interval_score_node_mean	4.2789	.	.	
+lofo_clock_bayes_T1	interval_score_family_mean	3.9738	.	.	
+lofo_clock_bayes_T1	cov50_node_mean	0.6832	.	.	
+lofo_clock_bayes_T1	cov50_family_mean	0.4553	.	.	
+lofo_clock_bayes_T1	cov80_node_mean	0.8637	.	.	
+lofo_clock_bayes_T1	cov80_family_mean	0.7704	.	.	
+lofo_clock_bayes_T1	cov95_node_mean	1.0000	.	.	
+lofo_clock_bayes_T1	cov95_family_mean	1.0000	.	.	
+lofo_clock_bayes_T1	pit_node_mean	0.5258	.	.	
+lofo_clock_bayes_T1	pit_family_mean	0.4621	.	.	
+lofo_clock_bayes_T1	width95_factor_node_mean	8.7718	.	.	
+lofo_clock_bayes_T1	width95_factor_family_mean	7.5075	.	.	
+lofo_clock_bayes_T1	sum_z2	8.5659	.	.	
+lofo_clock_bayes_g1	n_nodes	15	.	.	
+lofo_clock_bayes_g1	n_families	6	.	.	
+lofo_clock_bayes_g1	log_score_node_mean	-1.3857	.	.	
+lofo_clock_bayes_g1	log_score_family_mean	-1.5175	.	.	
+lofo_clock_bayes_g1	interval_score_node_mean	4.8769	.	.	
+lofo_clock_bayes_g1	interval_score_family_mean	4.5674	.	.	
+lofo_clock_bayes_g1	cov50_node_mean	0.6161	.	.	
+lofo_clock_bayes_g1	cov50_family_mean	0.3734	.	.	
+lofo_clock_bayes_g1	cov80_node_mean	0.8842	.	.	
+lofo_clock_bayes_g1	cov80_family_mean	0.8216	.	.	
+lofo_clock_bayes_g1	cov95_node_mean	1.0000	.	.	
+lofo_clock_bayes_g1	cov95_family_mean	1.0000	.	.	
+lofo_clock_bayes_g1	pit_node_mean	0.5282	.	.	
+lofo_clock_bayes_g1	pit_family_mean	0.4514	.	.	
+lofo_clock_bayes_g1	width95_factor_node_mean	11.8013	.	.	
+lofo_clock_bayes_g1	width95_factor_family_mean	10.0844	.	.	
+lofo_clock_bayes_g1	sum_z2	8.9459	.	.	
+lofo_clock_reml_T1	n_nodes	15	.	.	
+lofo_clock_reml_T1	n_families	6	.	.	
+lofo_clock_reml_T1	log_score_node_mean	-1.1944	.	.	
+lofo_clock_reml_T1	log_score_family_mean	-1.3631	.	.	
+lofo_clock_reml_T1	interval_score_node_mean	4.3923	.	.	
+lofo_clock_reml_T1	interval_score_family_mean	4.0485	.	.	
+lofo_clock_reml_T1	cov50_node_mean	0.6560	.	.	
+lofo_clock_reml_T1	cov50_family_mean	0.4251	.	.	
+lofo_clock_reml_T1	cov80_node_mean	0.8544	.	.	
+lofo_clock_reml_T1	cov80_family_mean	0.7474	.	.	
+lofo_clock_reml_T1	cov95_node_mean	1.0000	.	.	
+lofo_clock_reml_T1	cov95_family_mean	1.0000	.	.	
+lofo_clock_reml_T1	pit_node_mean	0.5159	.	.	
+lofo_clock_reml_T1	pit_family_mean	0.4486	.	.	
+lofo_clock_reml_T1	width95_factor_node_mean	9.3081	.	.	
+lofo_clock_reml_T1	width95_factor_family_mean	7.8348	.	.	
+lofo_clock_reml_T1	sum_z2	7.4807	.	.	
+lofo_clock_reml_g1	n_nodes	15	.	.	
+lofo_clock_reml_g1	n_families	6	.	.	
+lofo_clock_reml_g1	log_score_node_mean	-1.3739	.	.	
+lofo_clock_reml_g1	log_score_family_mean	-1.5595	.	.	
+lofo_clock_reml_g1	interval_score_node_mean	5.2460	.	.	
+lofo_clock_reml_g1	interval_score_family_mean	4.8724	.	.	
+lofo_clock_reml_g1	cov50_node_mean	0.6071	.	.	
+lofo_clock_reml_g1	cov50_family_mean	0.3695	.	.	
+lofo_clock_reml_g1	cov80_node_mean	0.8605	.	.	
+lofo_clock_reml_g1	cov80_family_mean	0.7624	.	.	
+lofo_clock_reml_g1	cov95_node_mean	1.0000	.	.	
+lofo_clock_reml_g1	cov95_family_mean	1.0000	.	.	
+lofo_clock_reml_g1	pit_node_mean	0.5199	.	.	
+lofo_clock_reml_g1	pit_family_mean	0.4404	.	.	
+lofo_clock_reml_g1	width95_factor_node_mean	14.2836	.	.	
+lofo_clock_reml_g1	width95_factor_family_mean	11.8920	.	.	
+lofo_clock_reml_g1	sum_z2	7.2022	.	.	
+lofo_family_size	n_nodes	15	.	.	
+lofo_family_size	n_families	6	.	.	
+lofo_family_size	log_score_node_mean	-1.0382	.	.	
+lofo_family_size	log_score_family_mean	-1.5327	.	.	
+lofo_family_size	interval_score_node_mean	4.4942	.	.	
+lofo_family_size	interval_score_family_mean	6.5014	.	.	
+lofo_family_size	cov50_node_mean	0.6302	.	.	
+lofo_family_size	cov50_family_mean	0.4154	.	.	
+lofo_family_size	cov80_node_mean	0.8818	.	.	
+lofo_family_size	cov80_family_mean	0.7045	.	.	
+lofo_family_size	cov95_node_mean	0.9043	.	.	
+lofo_family_size	cov95_family_mean	0.7609	.	.	
+lofo_family_size	pit_node_mean	0.5112	.	.	
+lofo_family_size	pit_family_mean	0.4655	.	.	
+lofo_family_size	width95_factor_node_mean	4.5115	.	.	
+lofo_family_size	width95_factor_family_mean	3.8319	.	.	
+lofo_family_size	sum_z2	17.0645	.	.	
+lofo_old_default_T1	n_nodes	15	.	.	
+lofo_old_default_T1	n_families	6	.	.	
+lofo_old_default_T1	log_score_node_mean	-1.0545	.	.	
+lofo_old_default_T1	log_score_family_mean	-1.2314	.	.	
+lofo_old_default_T1	interval_score_node_mean	3.1737	.	.	
+lofo_old_default_T1	interval_score_family_mean	3.1826	.	.	
+lofo_old_default_T1	cov50_node_mean	0.6459	.	.	
+lofo_old_default_T1	cov50_family_mean	0.4717	.	.	
+lofo_old_default_T1	cov80_node_mean	0.8201	.	.	
+lofo_old_default_T1	cov80_family_mean	0.7080	.	.	
+lofo_old_default_T1	cov95_node_mean	0.9947	.	.	
+lofo_old_default_T1	cov95_family_mean	0.9868	.	.	
+lofo_old_default_T1	pit_node_mean	0.4347	.	.	
+lofo_old_default_T1	pit_family_mean	0.3861	.	.	
+lofo_old_default_T1	width95_factor_node_mean	4.8890	.	.	
+lofo_old_default_T1	width95_factor_family_mean	4.9116	.	.	
+lofo_old_default_T1	sum_z2	10.2596	.	.	
+lofo_skill	clock_bayes_T1_minus_climatological	0.4174	-0.2857	1.5561	family-weighted mean log-score difference; family bootstrap, F=6
+lofo_skill	clock_bayes_T1_minus_family_size	0.1778	-0.5524	1.1522	family-weighted mean log-score difference; family bootstrap, F=6
+lofo_skill	clock_bayes_T1_minus_old_default_T1	-0.1235	-0.2408	-0.0073	family-weighted mean log-score difference; family bootstrap, F=6
+lofo_skill	clock_bayes_g1_minus_climatological	0.2549	-0.6034	1.7161	family-weighted mean log-score difference; family bootstrap, F=6
+lofo_skill	clock_bayes_g1_minus_family_size	0.0152	-0.7296	1.2362	family-weighted mean log-score difference; family bootstrap, F=6
+lofo_skill	clock_bayes_g1_minus_old_default_T1	-0.2861	-0.5939	0.1084	family-weighted mean log-score difference; family bootstrap, F=6
+provenance	bdpa	e1e3aeab3190742c98a2d15c7378aefe26451d8d	1.0000	.	primary-pool; forms=50095; ; ancient dropped: Diva slatina (mont); Proto-Germanic
+provenance	blustaustronesian	0e366cc82c66379f83d415c465d504ec0bf9e40e	1.0000	.	primary-pool; forms=4358; ; ancient dropped: 
+provenance	bodtkhobwa	fb84bfddddf2b69cbcd90ebd71970cb175b88616	1.0000	.	primary-pool; forms=4720; ; ancient dropped: 
+provenance	bowernpny	0641c6a23e908e4a34eee834e0903e78d4781048	1.0000	.	primary-pool; forms=44876; ; ancient dropped: 
+provenance	cals	968ad6beaf8cb138b17758fed45918b1bbfa9a0a	1.0000	.	primary-pool; forms=15826; ; ancient dropped: 
+provenance	carvalhopurus	23b16b4e6b4e628ed87d7c5d8be2fbb1cf910e3d	1.0000	.	excluded; forms=731; DEGENERATE_COGNACY (1.000 sets/concept): excluded; ancient dropped: 
+provenance	chaconarawakan	d7874df4a7d3de37c436017bcca9fda443641d4d	1.0000	.	primary-pool; forms=711; ; ancient dropped: 
+provenance	chaconbaniwa	dab4c9c539d8320148317abf3880d2b5d0e81798	1.0000	.	primary-pool; forms=2354; ; ancient dropped: 
+provenance	chaconcolumbian	33d0a5618842c32253b49425076fbe52f8b02c87	1.0000	.	primary-pool; forms=9030; ; ancient dropped: 
+provenance	chaconnorthwestarawakan	d248dbc7b252b7696b945c3529ab497f2e5779c9	1.0000	.	primary-pool; forms=2390; ; ancient dropped: 
+provenance	chacontukanoan	05a4dbaced32a0bd675c5afbc4609a09ce9839f4	1.0000	.	excluded; forms=1542; DEGENERATE_COGNACY (1.050 sets/concept): excluded; ancient dropped: 
+provenance	constenlachibchan	def48749fb269a0dccb7ae164d6ccdf85f38a559	1.0000	.	primary-pool; forms=2631; ; ancient dropped: 
+provenance	crossandean	94ff25ef0037f88afc301f950e56d8b8708e6c21	1.0000	.	primary-pool; forms=7518; ; ancient dropped: Santo Tomás
+provenance	davletshinaztecan	313ca210e17dd35b1a72a22be5e47ce1efe70324	1.0000	.	primary-pool; forms=854; ; ancient dropped: Proto-Aztecan; Classical Nahuatl
+provenance	deepadungpalaung	fa33308ebb78db24057daa16cb418d00a7504837	1.0000	.	primary-pool; forms=1584; ; ancient dropped: 
+provenance	dravlex	37578075e5ccb09c43022f7f1282125e748de84d	0.9939	.	primary-pool; forms=2127; ; ancient dropped: 
+provenance	dunnaslian	2cbc18138908440e01a6e046cc5101e28855b344	0.8610	.	primary-pool; forms=4560; LOW_COVERAGE; ancient dropped: 
+provenance	felekesemitic	38c030f938722e952fab3dc7881b3449008fdd7d	1.0000	.	primary-pool; forms=3120; ; ancient dropped: Ge'ez
+provenance	gaotb	0f7a04d40558e2ede5a99b9a802caace27adf9e8	0.9963	.	primary-pool; forms=5085; ; ancient dropped: Tibetan (Written)
+provenance	gravinachadic	27877793ead91479e027b7cde7e2fd9c27dfb189	1.0000	.	primary-pool; forms=16663; ; ancient dropped: 
+provenance	hattorijaponic	4c57259f90157695c760f8e130a802a70cfe90e7	1.0000	.	primary-pool; forms=1986; ; ancient dropped: 
+provenance	houchinese	38d6bd34af5678be7f0c481c6ed765cd0ddfd998	1.0000	.	primary-pool; forms=2789; ; ancient dropped: 
+provenance	iecor	700b635a04786427b78841489c46eefbe2843509	1.0000	.	primary-pool; forms=25731; ; ancient dropped: Hittite; Tocharian A; Tocharian B; Old Church Slavonic; Vedic: Early; Old Prussian; Greek: Ancient; Latin; Old Irish; Avestan: Younger; Armenian: Classical; Oscan; Old Persian; Umbrian; Luvian; Gaulish; Gaelic: Manx; Old Breton; Old Welsh; Old Swedish; Pali; Middle Breton; Greek: Mycenaean; Khotanese; Polabian; Greek: New Testament; Middle Persian; Parthian; Anglo-Norman; Old Spanish; Dalmatian: Vegliote; Old French; Late Cornish; Middle Cornish; Old Polish; Middle Welsh; Old Czech; Old Novgorod; Slovene: Early Modern; Sogdian; Bactrian; Old Occitan; Khwarazmian; Old Catalan; Old High German; Old Saxon; Old English; Middle High German; Middle Dutch; Old Frisian; Old Icelandic; Gothic
+provenance	kahd	3fff22ed63fd67204d693f3b85cdce8441a954bd	1.0000	.	primary-pool; forms=5935; ; ancient dropped: Proto-Arawan
+provenance	kesslersignificance	f5042544442d41949919b563e5a7b9b78660e5a9	1.0000	.	primary-pool; forms=1600; ; ancient dropped: Latin
+provenance	leekoreanic	b2ca6413274d592ee15deb59d35ef71e4957d608	0.9958	.	primary-pool; forms=2365; ; ancient dropped: Middle Korean
+provenance	lieberherrkhobwa	0d6fef294151d253c1d8fe7a5c79e05744ccb411	1.0000	.	primary-pool; forms=2144; ; ancient dropped: 
+provenance	lionnetyotonahua	e9f01cb9442a282752ea85f8ca8c12224d859f95	1.0000	.	primary-pool; forms=2870; ; ancient dropped: Proto-Sonoran; Proto-Tepiman
+provenance	liusinitic	54f6742d9fa60315ae41b91d0d1e02f04036efb5	1.0000	.	primary-pool; forms=4302; ; ancient dropped: 
+provenance	luangthongkumkaren	b0b671518df2240feeb325d983d9ad627132d9be	1.0000	.	primary-pool; forms=3233; ; ancient dropped: Proto-Karen
+provenance	lundgrenomagoa	26fd8056479e089c07eb0e32358021f49eca735b	1.0000	.	primary-pool; forms=3289; ; ancient dropped: 
+provenance	mannburmish	513edae24c395440ceb23ead61b933b1f52c6d0c	1.0000	.	primary-pool; forms=2076; ; ancient dropped: Written_Burmese
+provenance	mcd	1cabc586bbc463b6832ee68206cd10604f3c4053	0.8480	.	primary-pool; forms=20689; LOW_COVERAGE; ancient dropped: Proto-Chuukic; Proto-Malayo-Polynesian; Proto-Oceanic; Pre-Proto-Oceanic; Proto-Willaumez; Proto-Micronesian; Pre-Proto-Micronesian; Proto-Western Micronesian; Proto-Polynesian; Proto-Austronesian; Uraustronesisch; Proto-Central Micronesian; Proto-Pohnpeic-Chuukic; Proto-Pohnpeic; Proto-Eastern Oceanic; Proto-Nakanai; Proto-Kimbe; Proto-Lakalai; Proto-Western-Malayo-Polynesian; Old Mapian
+provenance	mcelhanonhuon	853a42b1bac2cae19f620c55b81fcb41448fc8b4	1.0000	.	primary-pool; forms=1960; ; ancient dropped: 
+provenance	mixtecansubgrouping	7354138dba4a579c13df73f965484d140b890f4a	1.0000	.	primary-pool; forms=15932; ; ancient dropped: 
+provenance	nagarajakhasian	56b7337d1b5861522d9d39ecb7179619c4ebeb5e	0.9399	.	primary-pool; forms=1214; LOW_COVERAGE; ancient dropped: 
+provenance	oskolskayatungusic	f8a4d051e1284dcc6238e4a312286671fb7f43e9	0.9934	.	primary-pool; forms=6095; ; ancient dropped: 
+provenance	peirosaustroasiatic	b4d2e4dcee173494c90328f7cafd78c9851c0956	1.0000	.	primary-pool; forms=10706; ; ancient dropped: 
+provenance	pharaocoracholaztecan	c49bdff04c2bd64763e74374b72fc8263305c8e3	0.9362	.	primary-pool; forms=799; LOW_COVERAGE; ancient dropped: Proto-Nahua; Proto-Corachol-Nahua
+provenance	ratcliffearabic	ade26929716d9700fe5c7a5efbe4c7fa063f5059	0.7343	.	excluded; forms=1340; DEGENERATE_COGNACY (1.000 sets/concept): excluded; ancient dropped: 
+provenance	robinsonap	a7bb8de6aed4730a126318eabd3b9ea720eaec47	0.7883	.	primary-pool; forms=4841; LOW_COVERAGE; ancient dropped: 
+provenance	saenkoromance	10320bb6b32d517b22336a0cd00c8385a85a346e	1.0000	.	primary-pool; forms=4853; ; ancient dropped: 
+provenance	sagartst	c6df5f38eeef9cf40dbb939e6515f8bf8cd04246	1.0000	.	primary-pool; forms=12179; ; ancient dropped: Burmish_Old_Burmese; Sinitic_Old_Chinese; Tibetan_Old_Tibetan
+provenance	savelyevturkic	4a540590580f0981d1c5679668cd08578f856de2	1.0000	.	primary-pool; forms=8360; ; ancient dropped: Old Turkic
+provenance	sidwellbahnaric	be17c6e8a96d4c1e457bfa90917dd75ccb6e51af	1.0000	.	primary-pool; forms=4546; ; ancient dropped: 
+provenance	sidwellvietic	43be06aa3ef0aab101c5628625440a35a95cd588	1.0000	.	primary-pool; forms=3218; ; ancient dropped: Proto-Vietic
+provenance	simsrma	cba6dee8e4662de47bf64126e241209957ba81ee	1.0000	.	excluded; forms=1055; DEGENERATE_COGNACY (1.018 sets/concept): excluded; ancient dropped: 
+provenance	smithborneo	98973b0353cde305c7dea782be67e0659e24ce49	1.0000	.	primary-pool; forms=50997; ; ancient dropped: Sebop (old)
+provenance	starostintujia	e54bc4f75fbd283c51b020fe3618bab32d88f6d7	1.0000	.	primary-pool; forms=513; ; ancient dropped: 
+provenance	syrjaenenuralic	f4b9010d5d5d9fc5208d32a75bca0e488697357d	1.0000	.	primary-pool; forms=1401; ; ancient dropped: 
+provenance	tuled	91c20e199ad3963d41c8987ac59431c4706f7645	1.0000	.	primary-pool; forms=25004; ; ancient dropped: Old Guaraní; Proto-Tupi; Proto-Tupi-Guarani
+provenance	uralex	6b3667f770e709ebe4aa3426f8fffb9a0a818323	1.0000	.	primary-pool; forms=10106; ; ancient dropped: Proto-Uralic*
+provenance	utoaztecan	13aaffc2f50124f3e77e6086d6a1ff5a9e5c1653	0.8844	.	primary-pool; forms=5813; LOW_COVERAGE; ancient dropped: Classical Nahuatl; Proto-Keresan
+provenance	walworthpolynesian	515aa7fd5210949e79b57d5dd5dfb8a8ae9644d7	1.0000	.	primary-pool; forms=7518; ; ancient dropped: Proto Polynesian
+provenance	wichmannmixezoquean	6793ec2fdfd2e47bc0bbb63c26bc60d93995f35f	1.0000	.	primary-pool; forms=1106; ; ancient dropped: 
+provenance	yamfinder	46c0a50de971bfb1125c0c3e2ec020b8cd4a19b7	0.0000	.	excluded; forms=12231; DEGENERATE_COGNACY (0.000 sets/concept): excluded; ancient dropped: 
+provenance	yanglalo	d92ec940abf8552936346a786e4152fb36e6485b	1.0000	.	primary-pool; forms=7798; ; ancient dropped: Proto-Lalo
+provenance	zhangrgyalrong	51cdc51964a9a3c0d194f01b6d1ab89c56db2613	1.0000	.	excluded; forms=603; DEGENERATE_COGNACY (1.008 sets/concept): excluded; ancient dropped: 
+provenance	zhivlovobugrian	696ed737b209ed5771268bfeac5370f3e8b6d510	1.0000	.	primary-pool; forms=2055; ; ancient dropped: 
+provenance	abvd	2af9f4ef6fff6250e0a31f383f249c3c9cf42e55	0.7261	.	sensitivity-only; forms=346919; LOW_COVERAGE; ancient dropped: Proto-Central Eastern Malayo Polynesian; Proto-Central Malayo Polynesian; Proto-Malayo-Polynesian; Proto-Oceanic (Blust); Proto-Austronesian; Old Javanese; Proto-Southern Mindanaon; Old Chinese; Proto-Micronesian; Proto-Chuukic; Proto-Polynesian; Rapa; Proto-Oceanic (Pawley); Proto-Central Pacific; Proto-Greater Central Philippines; Proto-Southwestern Tai; Proto-Kra; Proto-Hlai (Norquest); Proto-Lakkja; Proto-Tai; Proto-Bisayan; Proto-Kam-Sui; Proto-Austronesian (Zorc); Proto-Malayo-Polynesian (Zorc); Proto-Atayalic; Proto-Rukai; Proto-Tibeto-Burman; Proto-Chamic; Proto-Hmong-Mien; Proto-Malayic; Proto-Puyuma; Proto-Hmongic; Proto-Mienic; Proto-Tsouic; Proto-East Mindanao; Proto-Lampungic; Proto-Koiarian; Proto-Bungku-Tolaki; Proto-Trans-New Guinea; Proto-Ongan; Proto-Sino-Tibetan; Proto-Hlai (Ostapirat); Proto-Minahasan; Proto-Sangiric; Proto-Sumba-Hawu; Proto-Mon-Khmer; Proto-Ainu; Old Japanese; Proto-South Sulawesi; Proto-Philippine; Proto-Seko; Proto-Manide-Alabat; Proto-Lolo-Burmese; Proto-Alor-Pantar; Proto-Nisoic; Proto Northern Central Vanuatu; Proto-Kimbe; Old Rapa (Rapa); Proto Central Papuan; Proto North Mainland/D'Entrecasteaux; Proto Papuan Tip; Proto Suauic; Proto-Subanen; Proto-Manobo; Proto-Sama-Bajaw; Proto North Sarawak; Proto Kenyah; Proto Siraya; Proto Malagasy; Old/Middle Javanese; Proto-Danaw; Proto-Austroasiatic; Proto-Japanese; Proto-Nivkh; Proto-Nicobarese; Proto-Aslian; Proto-Moken-Moklen; Proto-Kra-Dai; Proto-Asmat-Kamoro; Proto-Palawan; Proto-Batanic; Proto-Central Luzon; Proto-Kalamianic; Proto-Gorontalo-Mongondow; Proto-Atayal; Proto-Bunun; Fijian (Ba; Qaliyalatina)
+provenance	glottolog	glottolog-glottolog-cldf-4dbf078	.	.	v5.0 sha256=e954bd77ac4e287f8c4588bd2216bdd662eeb86469b2c528f734319ba176a433
+provenance	family_primary_indo1319	iecor	.	.	dataset used for every node it matches
+provenance	family_primary_ural1272	uralex	.	.	dataset used for every node it matches

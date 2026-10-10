@@ -80,6 +80,16 @@ Four things follow from the research and shape everything below.
   - the lexical root is 0.54 ± 0.05 either way;
   - the clock sets ~100% of the calendar width, and the report says so.
 
+- **D2, the σ_f pilot: done, and a no-go on its pre-registered rule**
+  (`docs/research/clock-pilot.md`).
+  - Over 15 nodes in 6 families, σ_tot = 0.77 (95% 0.50–1.40). Most of it
+    is within-family node scatter (τ = 0.64), not σ_f (0.33).
+  - Out of family, the learned clock does not beat the trivial baselines
+    reliably, and is slightly worse than the old default.
+  - An uncalibrated 2 ka node gets ×/÷ 6 at 95%. The expected product for
+    uncalibrated families is lexical and relative chronology plus labelled
+    calendar scenarios.
+
 ## Structure: two tracks that meet
 
 The first draft gated every phase on the previous one. Both reviews showed

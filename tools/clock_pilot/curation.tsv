@@ -1,0 +1,79 @@
+id	use	node	lo	hi	center	reason
+IE-ROM-01	interval	split:east2714|ital1285	1450	1900	.	max-leaning point; two-sided Uniform(1450,1900) from suggested_distribution
+IE-LATROM-01	exclude	split:lati1261|roma1334	.	.	.	Latin is a sampled ancestor of Romance: Latin-Romance distance measures one branch, not a split
+IE-GER-04	interval	crown:angl1264	1350	1600	.	max-leaning point; Uniform(1350,1600) from suggested_distribution
+IE-GER-05	interval	crown:nort3160	900	1200	.	interval as published
+IE-GER-06	max	split:icel1247|norw1258	.	1080	.	settlement date is a hard maximum; the 700 floor in suggested_distribution is not evidenced
+IE-GER-07	max	split:afri1274|dutc1256	.	298	.	hard maximum (1652 founding)
+IE-CEL-01	interval	crown:bryt1239	1300	1550	.	interval as published
+IE-CEL-02	interval	crown:mode1265	700	1100	.	Irish vs Scottish Gaelic-Manx = crown of Modern Goidelic; Uniform(700,1100) from suggested_distribution
+IE-CEL-03	min	split:goid1240|bryt1239	1650	.	.	min only; node read as Insular Celtic (Bouckaert data are Insular only)
+IE-SLA-01	min	crown:slav1255	1150	.	.	Holman point is itself an estimate; Bouckaert hard min 1150 is the defensible part
+IE-SLA-02	interval	crown:east1426	500	750	.	max-leaning point; Uniform(500,750) from suggested_distribution
+IE-II-01	min	split:indo1321|iran1269	2950	.	.	archaeological point is grade C; epigraphic min only
+IE-II-03	min	crown:iran1269	2550	.	.	archaeological point is grade C; epigraphic min only
+IE-II-04	min	split:indo1321|iran1269	3300	.	.	min only; exact number grade U (same node as IE-II-01)
+IE-II-06	interval	crown:roma1329	450	700	.	max-leaning point; Uniform(450,700) from suggested_distribution
+IE-TOC-01	exclude	split:tokh1242|tokh1243	1600	.	.	both daughters attested only as ancient tips; min only
+URA-FIN-01	interval	crown:finn1317	670	1850	.	99% interval as published
+URA-SAA-01	interval	crown:saam1281	1400	2000	.	95% interval as published
+URA-PER-01	interval	crown:perm1256	600	1200	.	asymmetric interval as published (fallback Uniform)
+URA-UGR-01	exclude	stem:hung1287	760	.	.	uninformative min; Ugric is not a Glottolog node, so the Hungarian stem would be the Uralic root
+MON-01	interval	stem:mogh1245	550	800	.	max-leaning point; Uniform(550,800); contested (ASJP +67%)
+TUN-01	interval	split:manc1252|xibe1242	100	186	.	max-leaning point; Uniform(100,186) from suggested_distribution; Xibe may predate 1764
+AIN-01	interval	crown:sakh1245	350	550	.	interval as published (Glottolog has no Sakhalin subdivisions)
+AN-01	interval	crown:mala1545	3950	4450	.	interval as published
+AN-04	interval	split:east2563|west2650	300	479	.	max-leaning point; Uniform(300,479)
+AN-05	interval	split:nort2994|tsat1238	600	1000	.	max-leaning point; Uniform(600,1000)
+AN-06	interval	split:maan1238|mala1537	1000	1400	.	max-leaning point; Uniform(1000,1400)
+DRA-01	min	crown:sout3138	2200	.	.	min only (attestation)
+DRA-03	interval	split:mala1464|tami1289	750	1150	.	truncated-normal interval as published; read as Malayalam vs Tamil
+DRA-04	min	stem:telu1262	1350	.	.	min only; sister of Telugu ambiguous (Glottolog Teluguic)
+DRA-05	min	split:nucl1305|tulu1258	1250	.	.	min only (same Glottolog node as DRA-01)
+SEM-01	exclude	crown:semi1276	4300	7950	.	East Semitic survives only in ancient languages: no contemporary cross pairs; max arbitrary
+SEM-07	interval	split:malt1254|nort3191	860	1080	.	interval (870 conquest to 1090 end of Arab rule); Maltese vs North African Arabic
+SEM-08	max	split:nort3191|east2729,egyp1251,arab1393,leva1239	.	1320	.	soft max only
+CUS-01	interval	crown:nucl1736	300	450	.	max-leaning point; Uniform(300,450)
+NC-03	interval	crown:swah1253	1050	1250	.	point; Uniform(1050,1250) from suggested_distribution
+HOL-002	interval	crown:mala1545	3950	4450	.	same node as AN-01
+HOL-003	point	crown:east2712	.	.	3300	Holman point, normal sd 15%
+HOL-004	max	crown:temo1244	.	3150	.	settlement is a maximum (notes)
+HOL-007	point	crown:mala1554	.	.	2350	Holman point, normal sd 15%
+HOL-008	point	split:maan1238|mala1537	.	.	1300	same node as AN-06
+HOL-010	point	crown:inui1246	.	.	750	same node as NA-002
+HOL-013	point	split:nort2994|tsat1238	.	.	950	same node as AN-05
+HOL-014	point	split:east2563|west2650	.	.	479	same node as AN-04
+HOL-015	min	split:chor1272|chol1281	1550	.	.	minimum-type evidence (same node as MA-002)
+AN-005	interval	crown:ocea1241	3200	3600	.	range as published
+AN-006	interval	crown:ocea1241	3240	3470	.	same node as AN-005
+AN-007	interval	crown:cent2060	2800	3200	.	range as published
+AN-008	max	crown:cent2060	.	3130	.	same node as AN-007
+AN-010	max	crown:reef1242	.	3150	.	maximum (notes)
+AN-011	max	crown:poly1242	.	2846	.	hard maximum (Tonga settlement)
+AN-014	max	crown:east2449	.	925	.	maximum (EP settlement)
+AN-015	min	crown:east2449	697	.	.	minimum; with AN-014 brackets the same node
+AN-017	min	split:maor1246|sout3383-maor1247	668	.	.	minimum (NZ settlement); Maori vs Southern East Polynesian Proximal
+AN-019	min	stem:marq1246	673	.	.	minimum (Marquesas settlement)
+AN-020	interval	crown:micr1243	1800	2200	.	range as published
+AN-028	max	crown:mala1537	.	1300	.	settlement is logically a maximum (notes)
+NA-001	max	split:east2534|gree1280	.	800	.	maximum for eastern dialect chain
+NA-002	interval	crown:inui1246	700	1100	.	range as published
+NA-020	exclude	crown:utoa1244	3258	5025	.	circular: Bayesian lexical estimate
+NA-021	interval	split:inup1234|west2618,east2534,gree1280	650	1000	.	same node as NA-002
+MA-002	interval	split:chor1272|chol1281	1300	1900	.	range as published
+SA-001	interval	stem:tain1254	2445	2800	.	range as published (ceramic association)
+SA-003	max	split:para1316|wayu1243	.	2520	.	sampled-ancestor culture: crown maximum
+SA-004	min	stem:arub1238	960	.	.	stem minimum
+SA-005	max	split:pali1279|mara1408	.	1850	.	sampled-ancestor culture: crown maximum
+SA-006	min	stem:maip1246	1570	.	.	stem minimum
+SA-008	max	crown:xing1249	.	1020	.	sampled-ancestor culture: crown maximum
+SA-011	min	stem:ashe1271	500	.	.	stem minimum (soft_minimum 500)
+SA-015	min	stem:arua1264	349	.	.	stem minimum (ethnonym)
+AU-01	interval	crown:wati1241	1500	5000	.	range as published (hard min 1500; inferential)
+AU-02	exclude	crown:pama1250	4455	6966	.	circular: Bayesian estimate
+CR-02	exclude	.	.	.	.	creole
+CR-03	exclude	.	.	.	.	creole
+CR-05	exclude	.	.	.	.	creole
+CR-11	exclude	.	.	.	.	creole
+CR-12	max	split:afri1274|dutc1256	.	298	.	same node as IE-GER-07; Afrikaans is partially restructured
+CR-14	interval	split:queb1247|stan1290-queb1247	187	342	.	colonial dialect split, not a creole
