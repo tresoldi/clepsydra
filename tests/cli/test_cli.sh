@@ -37,5 +37,11 @@ grep -q '^converged	0$' "$TMP/u/run_manifest.tsv" || { echo "  FAIL manifest lac
 # ... unless told it may.
 expect 0 "unconverged run, allowed" -- "$CLE" date-tree $TREE --out "$TMP/u" --warmup 5 --samples 12 --chains 2 --allow-unconverged 1
 
+# date-trees over a two-tree sample (the same tree twice) pools clade ages.
+cat "$EX/tree.nwk" "$EX/tree.nwk" > "$TMP/two.trees"
+printf 'clade_id\tmembers\nibero\tSpanish,Portuguese\n' > "$TMP/clades.tsv"
+expect 0 "date-trees on a two-tree sample" -- "$CLE" date-trees --trees "$TMP/two.trees" --forms "$EX/data/forms.tsv" --calibrations "$EX/calibrations.tsv" --clades "$TMP/clades.tsv" --out "$TMP/t" --burnin 0 --ntrees 2 --warmup 200 --samples 200 --chains 2 --concept-rates 0 --allow-unconverged 1
+grep -q '^ibero	Spanish,Portuguese	1.000' "$TMP/t/posterior_clades.tsv" || { echo "  FAIL date-trees clade row"; fail=$((fail + 1)); }
+
 if [ "$fail" -ne 0 ]; then echo "$fail of $n CLI checks failed"; exit 1; fi
 echo "$n/$n CLI checks passed"

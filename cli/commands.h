@@ -13,6 +13,8 @@
  * a calibrations TSV. Writes posterior_nodes.tsv, diagnostics.tsv and
  * run_manifest.tsv to the output directory. */
 int cmd_date_tree(int argc, char **argv);
+/* date-trees: date over a posterior sample of trees (roadmap E3.4). */
+int cmd_date_trees(int argc, char **argv);
 
 /* date-pair: P1 hierarchical pairwise divergence date from a forms TSV for two
  * languages (deterministic integration). Writes posterior_pair.tsv. */

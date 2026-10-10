@@ -16,6 +16,7 @@
 #include "gd_options.h"
 #include "gd_report.h"
 #include "gd_analysis.h"
+#include "gd_treeset.h"
 #include "gd_tree.h"
 
 #include <errno.h>
@@ -958,4 +959,241 @@ int cmd_date_pair(int argc, char **argv)
 
     gd_analysis_pair_result_destroy(res);
     return 0;
+}
+
+/* ------------------------------------------------------------- date-trees */
+
+/*
+ * Dating over a posterior sample of trees (roadmap E3.4). Each selected tree
+ * is dated with the full model; each named clade's MRCA age is pooled over
+ * trees with equal weight per tree. When the trees were estimated from the
+ * same cognates, this reuses the data (a hybrid, not one joint posterior):
+ * the README of the output says so.
+ */
+static void usage_trees(void)
+{
+    fprintf(stderr,
+      "Usage: clepsydra date-trees --trees SAMPLE.trees --forms forms.tsv \\\n"
+      "         --calibrations cal.tsv --out DIR [--clades clades.tsv] \\\n"
+      "         [--burnin 0.25] [--ntrees 50] [--draws-per-chain 100] [options]\n"
+      "  --trees: Newick (one per ';') or NEXUS with a Translate table (BEAST,\n"
+      "  MrBayes, RevBayes). Calibrations must name taxon sets (mrca:A,B) or tips:\n"
+      "  sampled trees have no internal labels. --clades: TSV with columns\n"
+      "  clade_id and members (comma-separated tips); the root is always reported.\n"
+      "  Options of date-tree apply to every tree.\n");
+}
+
+static int cmp_dbl(const void *a, const void *b)
+{
+    double x = *(const double *)a, y = *(const double *)b;
+    return (x < y) ? -1 : (x > y) ? 1 : 0;
+}
+
+/* Median and narrowest 90% interval of n values (sorted in place). */
+static void summ90(double *x, size_t n, double *med, double *lo, double *hi)
+{
+    if (n == 0) { *med = *lo = *hi = NAN; return; }
+    qsort(x, n, sizeof(double), cmp_dbl);
+    *med = (n % 2) ? x[n / 2] : 0.5 * (x[n / 2 - 1] + x[n / 2]);
+    size_t w = (size_t)ceil(0.9 * (double)n);
+    if (w < 1) w = 1;
+    size_t bi = 0; double best = HUGE_VAL;
+    for (size_t i = 0; i + w - 1 < n; i++)
+        if (x[i + w - 1] - x[i] < best) { best = x[i + w - 1] - x[i]; bi = i; }
+    *lo = x[bi]; *hi = x[bi + w - 1];
+}
+
+static char *dup_cstr(const char *s)
+{
+    size_t n = strlen(s) + 1;
+    char *d = (char *)malloc(n);
+    if (d) memcpy(d, s, n);
+    return d;
+}
+
+typedef struct {
+    char   *id, *members;
+    double *all;  size_t nall, capall;     /* MRCA age, every tree */
+    double *mono; size_t nmono, capmono;   /* only trees where monophyletic */
+    size_t  ntrees_mono;
+} clade_acc;
+
+static int acc_push(double **a, size_t *n, size_t *cap, const double *x, size_t k)
+{
+    if (*n + k > *cap) {
+        size_t nc = (*n + k) * 2;
+        double *g = (double *)realloc(*a, nc * sizeof(double));
+        if (g == NULL) return -1;
+        *a = g; *cap = nc;
+    }
+    memcpy(*a + *n, x, k * sizeof(double));
+    *n += k;
+    return 0;
+}
+
+int cmd_date_trees(int argc, char **argv)
+{
+    const char *trees_path = opt_arg(argc, argv, "--trees", NULL);
+    const char *forms_path = opt_arg(argc, argv, "--forms", NULL);
+    const char *cal_path = opt_arg(argc, argv, "--calibrations", NULL);
+    const char *out_dir = opt_arg(argc, argv, "--out", NULL);
+    const char *clades_path = opt_arg(argc, argv, "--clades", NULL);
+    if (!trees_path || !forms_path || !cal_path || !out_dir) { usage_trees(); return 1; }
+    size_t nopt;
+    const gd_option *opts = gd_options_tree(&nopt);
+    static const char *const extra[] = {
+        "--trees", "--forms", "--calibrations", "--out", "--clades", "--burnin",
+        "--ntrees", "--draws-per-chain", "--allow-unconverged", "--analysis"
+    };
+    if (reject_unknown_opts(argc, argv, opts, nopt, extra, sizeof extra / sizeof extra[0]) != 0) return 1;
+    gd_analysis_tree_config cfg;
+    gd_analysis_tree_config_default(&cfg);
+    cfg.compare_prior = false;     /* per-tree prior runs would double the cost */
+    if (apply_registry_opts(argc, argv, opts, nopt, &cfg) != 0) return 1;
+    double burnin = atof(opt_arg(argc, argv, "--burnin", "0.25"));
+    int ntrees_req = 50, dpc = 100, allow = 0;
+    if (parse_int_arg(opt_arg(argc, argv, "--ntrees", "50"), "--ntrees", &ntrees_req) != 0 ||
+        parse_int_arg(opt_arg(argc, argv, "--draws-per-chain", "100"), "--draws-per-chain", &dpc) != 0 ||
+        parse_int_arg(opt_arg(argc, argv, "--allow-unconverged", "0"), "--allow-unconverged", &allow) != 0)
+        return 1;
+    if (!(burnin >= 0.0 && burnin < 1.0) || ntrees_req < 1 || dpc < 1) {
+        fprintf(stderr, "error: need 0 <= --burnin < 1, --ntrees >= 1, --draws-per-chain >= 1\n");
+        return 1;
+    }
+    cfg.trace_draws = (size_t)dpc;
+
+    size_t tlen = 0, flen = 0, clen = 0;
+    char *tbuf = read_file(trees_path, &tlen);
+    char *fbuf = read_file(forms_path, &flen);
+    char *cbuf = read_file(cal_path, &clen);
+    char *kbuf = clades_path ? read_file(clades_path, NULL) : NULL;
+    gd_treeset *ts = NULL;
+    gd_error err = GD_ERROR_INIT;
+    clade_acc *cl = NULL; size_t ncl = 0;
+    FILE *fp = NULL, *ft = NULL;
+    int status = 1;
+    if (!tbuf || !fbuf || !cbuf || (clades_path && !kbuf)) { fprintf(stderr, "error: cannot read an input file\n"); goto out; }
+    if (gd_treeset_read(tbuf, tlen, &ts, &err) != 0) { fprintf(stderr, "error: %s\n", errmsg(&err)); goto out; }
+
+    /* Clades: the root (all tips of the first tree), then the file's rows. */
+    {
+        char *all = NULL;
+        if (gd_newick_tip_list(ts->newick[0], &all, &err) != 0) {
+            fprintf(stderr, "error: first tree: %s\n", errmsg(&err)); goto out;
+        }
+        size_t ncap = 8;
+        cl = (clade_acc *)calloc(ncap, sizeof *cl);
+        if (cl == NULL) { free(all); fprintf(stderr, "error: out of memory\n"); goto out; }
+        cl[0].id = dup_cstr("root"); cl[0].members = all; ncl = 1;
+        if (kbuf) {
+            int hdr = 1;
+            char *line = kbuf;
+            while (line != NULL && *line != '\0') {
+                char *nl = strchr(line, '\n');
+                if (nl) *nl = '\0';
+                char *tab = strchr(line, '\t');
+                if (!hdr && tab) {
+                    *tab = '\0';
+                    char *mem = tab + 1;
+                    size_t ml = strlen(mem);
+                    while (ml && (mem[ml - 1] == '\r' || mem[ml - 1] == ' ')) mem[--ml] = '\0';
+                    if (ncl == ncap) {
+                        ncap *= 2;
+                        clade_acc *g = (clade_acc *)realloc(cl, ncap * sizeof *cl);
+                        if (!g) { fprintf(stderr, "error: out of memory\n"); goto out; }
+                        cl = g;
+                    }
+                    memset(&cl[ncl], 0, sizeof cl[ncl]);
+                    cl[ncl].id = dup_cstr(line); cl[ncl].members = dup_cstr(mem);
+                    ncl++;
+                }
+                hdr = 0;
+                line = nl ? nl + 1 : NULL;
+            }
+        }
+    }
+
+    size_t first = (size_t)floor(burnin * (double)ts->ntrees);
+    size_t avail = ts->ntrees - first;
+    size_t nuse = ((size_t)ntrees_req < avail) ? (size_t)ntrees_req : avail;
+    if (mkdir_p(out_dir) != 0) { fprintf(stderr, "error: cannot create '%s'\n", out_dir); goto out; }
+    char path[1200];
+    if (!out_path(path, sizeof path, out_dir, "trees.tsv") || (ft = fopen(path, "w")) == NULL) {
+        fprintf(stderr, "error: cannot write trees.tsv\n"); goto out;
+    }
+    fprintf(ft, "tree_index\tconverged\tmax_rhat\tmin_ess_bulk\troot_median_bp\n");
+    size_t nconv = 0;
+    double *buf = (double *)malloc((size_t)dpc * cfg.n_chains * sizeof(double) + sizeof(double));
+    if (!buf) { fprintf(stderr, "error: out of memory\n"); goto out; }
+    fprintf(stderr, "clepsydra date-trees: %zu trees in the sample, %zu after burn-in, dating %zu\n",
+            ts->ntrees, avail, nuse);
+    for (size_t j = 0; j < nuse; j++) {
+        size_t ti = first + ((nuse == 1) ? 0 : j * (avail - 1) / (nuse - 1));
+        gd_analysis_tree_input ai;
+        memset(&ai, 0, sizeof ai);
+        ai.newick = ts->newick[ti]; ai.newick_len = GD_LEN_NUL_TERMINATED;
+        ai.forms_tsv = fbuf; ai.forms_len = flen;
+        ai.calibrations_tsv = cbuf; ai.cal_len = clen;
+        ai.newick_name = trees_path; ai.forms_name = forms_path; ai.cal_name = cal_path;
+        ai.analysis_id = opt_arg(argc, argv, "--analysis", NULL);
+        cfg.seed += 1;
+        gd_analysis_tree_result *res = NULL;
+        gd_error_clear(&err);
+        if (gd_analysis_tree_run(&ai, &cfg, &res, &err) != 0) {
+            fprintf(stderr, "error: tree %zu: %s\n", ti, errmsg(&err)); free(buf); goto out;
+        }
+        if (res->converged) nconv++;
+        double rmed = NAN;
+        for (size_t c = 0; c < ncl; c++) {
+            size_t nd = 0; bool mono = false;
+            gd_error_clear(&err);
+            if (gd_analysis_clade_draws(res, cl[c].members, buf, (size_t)dpc * cfg.n_chains, &nd, &mono, &err) != 0) {
+                fprintf(stderr, "error: clade %s: %s\n", cl[c].id, errmsg(&err));
+                gd_analysis_tree_result_destroy(res); free(buf); goto out;
+            }
+            if (c == 0 && nd > 0) { double *tmp = (double *)malloc(nd * sizeof(double)); if (tmp) { double lo, hi; memcpy(tmp, buf, nd * sizeof(double)); summ90(tmp, nd, &rmed, &lo, &hi); free(tmp); } }
+            if (acc_push(&cl[c].all, &cl[c].nall, &cl[c].capall, buf, nd) != 0 ||
+                (mono && acc_push(&cl[c].mono, &cl[c].nmono, &cl[c].capmono, buf, nd) != 0)) {
+                fprintf(stderr, "error: out of memory\n"); gd_analysis_tree_result_destroy(res); free(buf); goto out;
+            }
+            if (mono) cl[c].ntrees_mono++;
+        }
+        fprintf(ft, "%zu\t%d\t%.4f\t%.0f\t%.1f\n", ti, res->converged ? 1 : 0, res->max_rhat,
+                res->min_ess_bulk, rmed);
+        fprintf(stderr, "  tree %zu/%zu (sample %zu): %s, root median %.0f BP\n", j + 1, nuse, ti,
+                res->converged ? "converged" : "NOT converged", rmed);
+        gd_analysis_tree_result_destroy(res);
+    }
+    free(buf);
+    fclose(ft); ft = NULL;
+
+    if (!out_path(path, sizeof path, out_dir, "posterior_clades.tsv") || (fp = fopen(path, "w")) == NULL) {
+        fprintf(stderr, "error: cannot write posterior_clades.tsv\n"); goto out;
+    }
+    fprintf(fp, "clade\tmembers\tp_monophyletic\tmrca_median_bp\tmrca_hpd90_lo_bp\tmrca_hpd90_hi_bp\t"
+                "if_mono_median_bp\tif_mono_hpd90_lo_bp\tif_mono_hpd90_hi_bp\n");
+    for (size_t c = 0; c < ncl; c++) {
+        double m, lo, hi, m2, lo2, hi2;
+        summ90(cl[c].all, cl[c].nall, &m, &lo, &hi);
+        summ90(cl[c].mono, cl[c].nmono, &m2, &lo2, &hi2);
+        fprintf(fp, "%s\t%s\t%.3f\t%.1f\t%.1f\t%.1f\t", cl[c].id, cl[c].members,
+                (double)cl[c].ntrees_mono / (double)nuse, m, lo, hi);
+        if (cl[c].nmono > 0) fprintf(fp, "%.1f\t%.1f\t%.1f\n", m2, lo2, hi2);
+        else fprintf(fp, ".\t.\t.\n");
+    }
+    fclose(fp); fp = NULL;
+    fprintf(stderr, "wrote posterior_clades.tsv, trees.tsv to %s/ (%zu of %zu trees converged)\n",
+            out_dir, nconv, nuse);
+    status = (nconv == nuse || allow) ? 0 : 3;
+    if (nconv < nuse)
+        fprintf(stderr, "%s: %zu tree(s) did not pass the convergence check\n",
+                allow ? "warning" : "error", nuse - nconv);
+out:
+    if (fp) fclose(fp);
+    if (ft) fclose(ft);
+    for (size_t c = 0; c < ncl; c++) { free(cl[c].id); free(cl[c].members); free(cl[c].all); free(cl[c].mono); }
+    free(cl);
+    gd_treeset_destroy(ts);
+    free(tbuf); free(fbuf); free(cbuf); free(kbuf);
+    return status;
 }

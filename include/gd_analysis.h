@@ -397,6 +397,18 @@ const gd_analysis_node_age *gd_analysis_result_node(
  * field is still correct -- it is just no longer something a caller has to
  * reproduce to plot a chain.
  */
+/*
+ * A clade's MRCA age in one result (roadmap E3.4). `members` is a list of
+ * tip names, "A,B,C". Writes up to `cap` draws of the MRCA age (years BP)
+ * into `draws`, taken from the result's trace (so the run needs
+ * trace_draws > 0), and sets *monophyletic when the MRCA's tips are exactly
+ * the members. A fixed MRCA gives `cap` copies of its age. Returns 0 and sets
+ * *ndraws, or an error when a member is not a tip of the result's tree.
+ */
+int gd_analysis_clade_draws(const gd_analysis_tree_result *res, const char *members,
+                            double *draws, size_t cap, size_t *ndraws,
+                            bool *monophyletic, gd_error *err);
+
 double gd_analysis_trace_draw(const gd_analysis_tree_result *res,
                               size_t param, size_t chain, size_t k);
 

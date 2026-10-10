@@ -155,6 +155,40 @@ and 90% interval, in years; for an ancestor-descendant pair it is the time
 elapsed between the lists), the `absolute_anchored` flag, and the
 prior-dominance diagnostic.
 
+## `date-trees` — dating over a sample of trees
+
+```
+clepsydra date-trees --trees SAMPLE.trees --forms forms.tsv \
+    --calibrations cal.tsv --out DIR [--clades clades.tsv] \
+    [--burnin 0.25] [--ntrees 50] [--draws-per-chain 100] [date-tree options]
+```
+
+This dates a posterior sample of topologies, which `date-tree` cannot do.
+`--trees` takes plain Newick (one tree per `;`) or NEXUS with a
+`Translate` table and `[&…]` annotations, as written by BEAST, MrBayes and
+RevBayes. After burn-in, `--ntrees` trees evenly spaced through the sample
+are dated with the full model, one after another. Sampled trees have no
+internal labels, so calibrations must target taxon sets (`mrca:A,B`) or
+tips. Tip names must match the forms.
+
+**Output.**
+- `posterior_clades.tsv`: for the root and each row of `--clades`
+  (`clade_id`, comma-separated `members`), the fraction of trees in which
+  the clade is monophyletic, and its MRCA age pooled over trees with equal
+  weight. The MRCA of a named set is defined in every tree. The age is also
+  reported conditional on monophyly.
+- `trees.tsv`: one row per dated tree, with its convergence and root
+  median.
+
+The command exits with status 3 if any tree fails the convergence check,
+unless `--allow-unconverged 1`. It skips the per-tree prior run
+(`--compare-prior`) to halve the cost.
+
+**Caveat.** When the trees were estimated from the same cognates, the result
+is a hybrid, not one joint posterior: the data choose the topologies and
+then date them again. Report it as such, and compare with a split-by-concept
+run.
+
 ## `calib-sensitivity` — calibration-sensitivity workflows
 
 How much does the T1 chronology depend on the calibrations you supplied? This

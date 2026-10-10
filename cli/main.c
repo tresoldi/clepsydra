@@ -34,6 +34,7 @@ int main(int argc, char **argv)
         usage(argv[0]); return 0;
     }
     if (strcmp(argv[1], "date-tree") == 0) return cmd_date_tree(argc, argv);
+    if (strcmp(argv[1], "date-trees") == 0) return cmd_date_trees(argc, argv);
     if (strcmp(argv[1], "date-pair") == 0) return cmd_date_pair(argc, argv);
     if (strcmp(argv[1], "calib-sensitivity") == 0) return cmd_calib_sensitivity(argc, argv);
     fprintf(stderr, "Unknown command: %s\n", argv[1]);

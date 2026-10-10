@@ -1743,3 +1743,47 @@ done:
     gd_forms_destroy(forms);
     return rc;
 }
+
+int gd_analysis_clade_draws(const gd_analysis_tree_result *res, const char *members,
+                            double *draws, size_t cap, size_t *ndraws,
+                            bool *monophyletic, gd_error *err)
+{
+    if (res == NULL || members == NULL || draws == NULL || ndraws == NULL || monophyletic == NULL)
+        return gd_error_set(err, GD_E_INVALID_ARG, "clade_draws: NULL");
+    size_t mlen = strlen(members);
+    char *target = (char *)gd_malloc_checked(mlen + 6, err);
+    if (target == NULL) return GD_E_NOMEM;
+    memcpy(target, "mrca:", 5);
+    memcpy(target + 5, members, mlen + 1);
+    size_t v = GD_NODE_NONE;
+    int rc = gd_tree_resolve_target(res->tree, target, &v, err);
+    free(target);
+    if (rc != 0) return rc;
+    /* Members, counted; the MRCA's tips, counted. Equal counts mean the
+     * clade is exactly the MRCA's tip set (all members are under it). */
+    size_t nmem = 1;
+    for (const char *p = members; *p; p++) if (*p == ',') nmem++;
+    size_t under = 0;
+    for (size_t u = 0; u < res->tree->nnodes; u++) {
+        if (!res->tree->nodes[u].is_leaf) continue;
+        size_t w = u;
+        while (w != GD_NODE_NONE && w != v) w = res->tree->nodes[w].parent;
+        if (w == v) under++;
+    }
+    *monophyletic = (under == nmem);
+    size_t pidx = SIZE_MAX;
+    for (size_t p = 0; p < res->nparams; p++)
+        if (res->params[p].type == GD_MCMC_P_AGE && res->params[p].node == v) pidx = p;
+    size_t n = 0;
+    if (pidx == SIZE_MAX) {
+        for (; n < cap; n++) draws[n] = res->tree->nodes[v].age;
+    } else {
+        if (res->trace == NULL || res->trace_draws == 0)
+            return gd_error_set(err, GD_E_INVALID_ARG, "clade_draws: the run kept no trace (trace_draws = 0)");
+        for (size_t c = 0; c < res->n_chains && n < cap; c++)
+            for (size_t k = 0; k < res->trace_draws && n < cap; k++)
+                draws[n++] = gd_analysis_trace_draw(res, pidx, c, k);
+    }
+    *ndraws = n;
+    return 0;
+}

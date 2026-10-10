@@ -52,6 +52,15 @@ columns and example numbers are expected throughout 0.x and are listed here.
 
 ### Added
 
+- **`date-trees`: dating over a posterior sample of trees** (E3.4).
+  - **Input.** Newick or NEXUS (BEAST, MrBayes and RevBayes `Translate`
+    tables and `[&…]` comments are handled; `gd_treeset.h`). After burn-in,
+    `--ntrees` evenly spaced trees are each dated with the full model.
+  - **Output.** Named clades (`--clades`) and the root get their MRCA age
+    pooled over trees, with `P(monophyletic)` and the age conditional on
+    monophyly, in `posterior_clades.tsv`; `trees.tsv` gives per-tree
+    convergence.
+  - **Library.** `gd_analysis_clade_draws` and `gd_newick_tip_list` are new.
 - **Adequacy panel** (E2.10; `adequacy.tsv`). Posterior predictive checks
   on data replicated from 200 posterior draws. The replicates use each
   concept's rate multiplier, CRP contamination with probability ε, and the
