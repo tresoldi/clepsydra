@@ -60,12 +60,13 @@ uint32_t gd_rng_bounded(gd_rng *rng, uint32_t bound)
     /* Lemire's method: no modulo bias, no division by zero.
      * Compute 2^64-range product, take high 32 bits, reject if below bound. */
     uint32_t range = bound;
-    /* We use 32-bit: compute x = next32(); r = x % bound is biased.
-     * Lemire: threshold = (uint32_t)(-(int32_t)range) % range;
-     *         loop: x = next32(); m = (uint64_t)x * range; l = (uint32_t)m;
-     *               if (l >= threshold) return m >> 32;
-     */
-    uint32_t threshold = (uint32_t)(-(int32_t)range) % range;
+    /* An empty range has no value to return; 0 is the documented answer, and
+     * no draw is consumed. */
+    if (range == 0) return 0;
+    /* Lemire: threshold = 2^32 mod range, computed in unsigned arithmetic.
+     * It used to negate through int32_t, which is undefined behaviour for
+     * range = 0x80000000. */
+    uint32_t threshold = (0u - range) % range;
     for (;;) {
         uint32_t x = pcg32_next(rng);
         /* Use 64-bit multiply to get high and low halves. */
@@ -155,19 +156,39 @@ double gd_rng_gamma(gd_rng *rng, double shape, double scale)
     }
 }
 
+/* One Gamma(shape, 1) draw, returned both as a value and as its log. The
+ * value is computed exactly as gd_rng_gamma computes it (same draws, same
+ * arithmetic), so callers that only need the value are bit-identical; the
+ * log survives the underflow of tiny shapes, where the value is 0. */
+static double gamma_draw_log(gd_rng *rng, double shape, double *value)
+{
+    if (shape < 1.0) {
+        double g = gd_rng_gamma(rng, shape + 1.0, 1.0);
+        double u = gd_rng_uniform_open(rng);
+        *value = 1.0 * g * pow(u, 1.0 / shape);
+        return log(g) + log(u) / shape;
+    }
+    *value = gd_rng_gamma(rng, shape, 1.0);
+    return log(*value);
+}
+
 double gd_rng_beta(gd_rng *rng, double a, double b)
 {
     if (a <= 0.0 || b <= 0.0) {
         return NAN;
     }
     /* Beta(a,b) = X/(X+Y), X~Gamma(a,1), Y~Gamma(b,1). */
-    double x = gd_rng_gamma(rng, a, 1.0);
-    double y = gd_rng_gamma(rng, b, 1.0);
+    double x, y;
+    double lx = gamma_draw_log(rng, a, &x);
+    double ly = gamma_draw_log(rng, b, &y);
     double s = x + y;
-    if (s <= 0.0) {
-        return 0.5;  /* degenerate fallback */
+    if (s > 0.0 && isfinite(s)) {
+        return x / s;
     }
-    return x / s;
+    /* Both draws underflowed (very small shapes). The ratio is still defined
+     * on the log scale: X/(X+Y) = 1/(1 + exp(lY - lX)). This used to return
+     * 0.5, a point mass where a U-shaped Beta has almost none. */
+    return 1.0 / (1.0 + exp(ly - lx));
 }
 
 size_t gd_rng_categorical(gd_rng *rng, const double *probs, size_t n)

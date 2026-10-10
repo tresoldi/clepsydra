@@ -250,8 +250,38 @@ TEST(test_rng_different_streams_diverge)
     gd_rng_destroy(r2);
 }
 
+/* E0.14 (codex C28): the bounded draw is defined at its edges, and a Beta
+ * with tiny shapes is U-shaped instead of collapsing to a point at 0.5. */
+TEST(test_rng_edge_cases)
+{
+    gd_error err = GD_ERROR_INIT;
+    gd_rng *rng = gd_rng_create(11u, 3u, &err);
+    CHECK(rng != NULL);
+    CHECK(gd_rng_bounded(rng, 0u) == 0u);
+    CHECK(gd_rng_bounded(rng, 1u) == 0u);
+    for (int i = 0; i < 1000; i++) {
+        uint32_t v = gd_rng_bounded(rng, 0x80000000u);
+        CHECK(v < 0x80000000u);
+    }
+    size_t n = 20000, near_half = 0, low = 0;
+    double sum = 0.0;
+    for (size_t i = 0; i < n; i++) {
+        double x = gd_rng_beta(rng, 1e-3, 1e-3);
+        CHECK(x >= 0.0 && x <= 1.0);
+        sum += x;
+        if (fabs(x - 0.5) < 0.25) near_half++;
+        if (x < 0.5) low++;
+    }
+    gd_rng_destroy(rng);
+    /* Beta(0.001, 0.001) puts about 0.1% of its mass in (0.25, 0.75). */
+    CHECK(near_half < n / 100);
+    CHECK_APPROX(sum / (double)n, 0.5, 0.02);
+    CHECK(low > n / 3 && low < 2 * n / 3);
+}
+
 static void run_tests(void)
 {
+    RUN(test_rng_edge_cases);
     RUN(test_rng_next32_known_vector);
     RUN(test_rng_bounded_unbiased);
     RUN(test_rng_uniform_range);

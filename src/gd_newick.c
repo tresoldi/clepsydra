@@ -142,8 +142,8 @@ int gd_newick_parse(const char *in_buf, size_t in_len,
     char *buf = NULL;
     size_t buf_len = 0;
 
-    if (in_buf == NULL) {
-        return gd_error_set(err, GD_E_INVALID_ARG, "newick: no input");
+    if (in_buf == NULL || out == NULL) {
+        return gd_error_set(err, GD_E_INVALID_ARG, "newick: no input or no output pointer");
     }
     /* Work on a copy so we can NUL-terminate safely. */
     if (in_len > SIZE_MAX - 1) {

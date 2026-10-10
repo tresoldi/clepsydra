@@ -302,8 +302,57 @@ TEST(test_forms_field_with_embedded_nul_does_not_overread)
     CHECK_STREQ(got.s, "H1");
 }
 
+/* Codex finding 13: weights that are numbers but not weights, and rows with
+ * no language or concept, are refused with their line number. */
+TEST(test_forms_rejects_non_weights_and_empty_ids)
+{
+    static const char *const BAD[] = {
+        "language_id\tconcept_id\tcognate_id\tprimary_weight\nA\tc\tk\tnan\n",
+        "language_id\tconcept_id\tcognate_id\tprimary_weight\nA\tc\tk\tinf\n",
+        "language_id\tconcept_id\tcognate_id\tprimary_weight\nA\tc\tk\t-0.5\n",
+        "language_id\tconcept_id\tcognate_id\nA\tc\tk\n\tc\tk\n",
+        "language_id\tconcept_id\tcognate_id\nA\tc\tk\nA\n",
+    };
+    for (size_t i = 0; i < sizeof BAD / sizeof BAD[0]; i++) {
+        gd_forms *f = NULL;
+        gd_error err = GD_ERROR_INIT;
+        int rc = gd_forms_read(BAD[i], strlen(BAD[i]), &f, &err);
+        gd_forms_destroy(f);
+        CHECK(rc != GD_E_OK);
+        CHECK(strstr(err.message, "line") != NULL);
+    }
+}
+
+/* E0.1 at the reader: unobserved rows are counted and give no cell. */
+TEST(test_forms_skips_unobserved_rows)
+{
+    static const char *F =
+        "language_id\tconcept_id\tcognate_id\tstatus\n"
+        "A\tc1\tk1\tobserved\n"
+        "A\tc2\t.\tobserved\n"
+        "A\tc3\tk3\tabsent\n";
+    gd_forms *f = NULL;
+    gd_error err = GD_ERROR_INIT;
+    int rc = gd_forms_read(F, strlen(F), &f, &err);
+    size_t miss = 0, nconcept = 0, rows = 0;
+    int c2_null = 0;
+    if (rc == GD_E_OK) {
+        miss = f->n_missing_cognates; nconcept = f->nconcept;
+        rows = f->rows_per_lang[0];
+        c2_null = (gd_forms_primary(f, 1, 0) == NULL);
+        gd_forms_destroy(f);
+    }
+    CHECK(rc == GD_E_OK);
+    CHECK(miss == 2);
+    CHECK(nconcept == 3);   /* concepts keep the shape the file declares */
+    CHECK(rows == 1);
+    CHECK(c2_null);
+}
+
 static void run_tests(void)
 {
+    RUN(test_forms_rejects_non_weights_and_empty_ids);
+    RUN(test_forms_skips_unobserved_rows);
     RUN(test_forms_first_seen_order);
     RUN(test_forms_highest_weight_wins);
     RUN(test_forms_first_row_wins_a_tie);

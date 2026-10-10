@@ -84,6 +84,17 @@ columns and example numbers are expected throughout 0.x and are listed here.
   calibration set feasible on its own (it did, so an unpropagated or
   contradictory set reached the sampler). A chain whose initial state has a
   non-finite likelihood or prior is refused instead of sampled.
+- **Strict command line and input** (E0.14). The CLI refuses a flag with no
+  value (it used to skip it and use the default), a flag given twice, and
+  a stray argument. A short file read is an error, not a shorter file.
+  Forms rows with an empty language or concept id, and `primary_weight`
+  values that are NaN, infinite or negative, are refused with their line
+  number. `tests/cli/test_cli.sh` runs under `make test`.
+- **Public API edge cases** (E0.14). `gd_rng_bounded(rng, 0)` returns 0
+  instead of dividing by zero, and bound `0x80000000` no longer hits signed
+  overflow. `gd_rng_beta` with tiny shapes no longer returns a point mass at
+  0.5 when both gamma draws underflow. `gd_newick_parse` refuses a NULL
+  output pointer.
 - **Language count and tip resolution** (E0.10). `n_languages` counts tips
   instead of assuming a binary tree (`(nnodes + 1) / 2`). A forms language
   that matches an internal node label is an error.

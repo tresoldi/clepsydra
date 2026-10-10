@@ -14,6 +14,7 @@
 #include "gd_tsv.h"
 #include "gd_memory.h"
 
+#include <math.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -139,6 +140,15 @@ static int row_cb(const gd_tsv_row *row, void *user, gd_error *err)
     const char *gf = (b->c_cog  < row->nfields) ? row->fields[b->c_cog]  : "";
     size_t      gl = (b->c_cog  < row->nfields) ? row->lengths[b->c_cog]  : 0;
 
+    /* An empty language or concept id is a malformed row (usually a short
+     * one), not a language called "". */
+    if (field_len(lf, ll) == 0 || gd_tsv_is_missing(lf, field_len(lf, ll)) ||
+        field_len(cf, cl) == 0 || gd_tsv_is_missing(cf, field_len(cf, cl))) {
+        b->failed = GD_E_MISSING_FIELD;
+        return gd_error_setf(err, GD_E_MISSING_FIELD,
+                             "forms line %zu: empty language_id or concept_id", row->line_no);
+    }
+
     size_t li = intern(&b->languages, &b->nlang, &b->lang_cap, lf, ll);
     if (li == SIZE_MAX) { b->failed = GD_E_NOMEM; return gd_error_set(err, GD_E_NOMEM, "out of memory"); }
     size_t ci = intern(&b->concepts, &b->nconcept, &b->concept_cap, cf, cl);
@@ -162,6 +172,15 @@ static int row_cb(const gd_tsv_row *row, void *user, gd_error *err)
         if (wl != 0 && !gd_tsv_is_missing(wf, wl)) {
             double parsed;
             if (gd_tsv_parse_double(wf, wl, &parsed) == GD_E_OK) {
+                /* A number that is not a weight is refused: NaN compares
+                 * false and let a later row win, infinity won forever, and
+                 * a negative weight could hide a form. */
+                if (!isfinite(parsed) || parsed < 0.0) {
+                    b->failed = GD_E_BAD_NUMERIC;
+                    return gd_error_setf(err, GD_E_BAD_NUMERIC,
+                                         "forms line %zu: primary_weight must be finite and >= 0",
+                                         row->line_no);
+                }
                 w = parsed;
             } else {
                 b->n_unreadable_weights++;

@@ -183,11 +183,13 @@ $(BUILD)/libclepsydra_san.a: $(SAN_OBJS) | $(BUILD)
 	ar rcs $@ $(SAN_OBJS)
 
 # ---- Tests (sanitizer-clean) ----
-test: shim-check $(TEST_BINS) $(LIK_BINS) $(REG_BINS) $(SIM_BINS)
+test: shim-check $(TEST_BINS) $(LIK_BINS) $(REG_BINS) $(SIM_BINS) $(BUILD)/clepsydra
 	@for t in $(TEST_BINS) $(LIK_BINS) $(REG_BINS) $(SIM_BINS); do \
 		echo "=== $$t ==="; \
 		$$t || exit 1; \
 	done
+	@echo "=== tests/cli/test_cli.sh ==="
+	@sh tests/cli/test_cli.sh $(BUILD)/clepsydra
 	@echo "All tests passed."
 
 # The WebAssembly adapter is only compiled by web/build-wasm.sh, which needs

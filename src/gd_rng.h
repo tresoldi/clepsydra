@@ -37,7 +37,7 @@ void    gd_rng_destroy(gd_rng *rng);
 uint32_t gd_rng_next32(gd_rng *rng);
 
 /* Unbiased bounded integer in [0, bound) via Lemire's method (no modulo
- * bias). bound must be > 0. */
+ * bias). bound = 0 is an empty range: it returns 0 and consumes no draw. */
 uint32_t gd_rng_bounded(gd_rng *rng, uint32_t bound);
 
 /* Uniform doubles. */

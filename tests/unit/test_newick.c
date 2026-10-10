@@ -325,8 +325,16 @@ TEST(test_newick_rejects_a_forest)
     }
 }
 
+/* A NULL output pointer is refused, not written through (codex C28). */
+TEST(test_newick_null_out)
+{
+    gd_error err = GD_ERROR_INIT;
+    CHECK(gd_newick_parse("(a,b);", 6, NULL, &err) == GD_E_INVALID_ARG);
+}
+
 static void run_tests(void)
 {
+    RUN(test_newick_null_out);
     RUN(test_newick_rejects_a_forest);
     RUN(test_newick_reject_trailing_data);
     RUN(test_newick_reject_missing_separator);

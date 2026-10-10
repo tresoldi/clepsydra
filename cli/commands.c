@@ -173,7 +173,15 @@ static char *read_file(const char *path, size_t *len_out)
     char *buf = (char *)malloc(len + 1);
     if (buf == NULL) { fclose(fp); return NULL; }
     size_t got = fread(buf, 1, len, fp);
+    int bad = ferror(fp);
     fclose(fp);
+    /* A short read is an I/O error, not a shorter file: dating a truncated
+     * forms table would silently drop its last rows. */
+    if (bad || got != len) {
+        fprintf(stderr, "error: short read on %s (%zu of %zu bytes)\n", path, got, len);
+        free(buf);
+        return NULL;
+    }
     buf[got] = '\0';
     if (len_out != NULL) *len_out = got;
     return buf;
@@ -313,20 +321,42 @@ static int apply_registry_opts(int argc, char **argv,
     return 0;
 }
 
-/* Reject a flag that looks like an option but is not one, instead of ignoring
- * it and silently running with the default. */
+/*
+ * Check the shape of the argument list before any of it is used. Every one of
+ * these used to be silent:
+ *   - an unknown flag was ignored and the default used;
+ *   - a known flag in last position, or followed by another flag, had no value,
+ *     so it was skipped and the default used ("--samples --chains 4" ran with
+ *     the default sample count);
+ *   - a flag given twice took its first value and dropped the second;
+ *   - a stray word that is not a flag's value was ignored.
+ * Values may start with a single '-' (a negative log-rate), never with "--".
+ */
 static int reject_unknown_opts(int argc, char **argv,
                                const gd_option *opts, size_t nopt,
                                const char *const *extra, size_t nextra)
 {
     for (int i = 2; i < argc; i++) {
-        if (argv[i][0] != '-' || argv[i][1] != '-') continue;
-        if (gd_option_find_flag(opts, nopt, argv[i]) != NULL) { i++; continue; }
-        size_t k = 0;
-        for (; k < nextra; k++) if (strcmp(argv[i], extra[k]) == 0) break;
-        if (k == nextra) {
+        if (argv[i][0] != '-' || argv[i][1] != '-') {
+            fprintf(stderr, "error: unexpected argument '%s'\n", argv[i]);
+            return -1;
+        }
+        bool known = (gd_option_find_flag(opts, nopt, argv[i]) != NULL);
+        for (size_t k = 0; !known && k < nextra; k++)
+            if (strcmp(argv[i], extra[k]) == 0) known = true;
+        if (!known) {
             fprintf(stderr, "error: unknown option '%s'\n", argv[i]);
             return -1;
+        }
+        if (i + 1 >= argc || (argv[i + 1][0] == '-' && argv[i + 1][1] == '-')) {
+            fprintf(stderr, "error: option '%s' needs a value\n", argv[i]);
+            return -1;
+        }
+        for (int j = 2; j < i; j++) {
+            if (strcmp(argv[j], argv[i]) == 0) {
+                fprintf(stderr, "error: option '%s' given more than once\n", argv[i]);
+                return -1;
+            }
         }
         i++;
     }
