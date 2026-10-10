@@ -1,0 +1,36 @@
+C=200 concept-rate uncertainty sref=0.50
+T=1 ky  sum P=200.000000 (should be C=200)
+   sb=0.0 sf=0.0 sd(log age) AB=0.265 ABC=0.181 DE=0.226 ABCDE=0.140 FG=0.193 R=0.116 | sd(log ratio to root) 0.274 0.188 0.231 0.133 0.176
+   sb=0.1 sf=0.0 sd(log age) AB=0.273 ABC=0.188 DE=0.235 ABCDE=0.146 FG=0.206 R=0.122 | sd(log ratio to root) 0.283 0.196 0.242 0.140 0.187
+   sb=0.3 sf=0.0 sd(log age) AB=0.331 ABC=0.236 DE=0.300 ABCDE=0.186 FG=0.287 R=0.160 | sd(log ratio to root) 0.351 0.253 0.315 0.186 0.257
+   sb=0.0 sf=0.3 sd(log age) AB=0.400 ABC=0.350 DE=0.375 ABCDE=0.331 FG=0.357 R=0.322 | sd(log ratio to root) 0.274 0.188 0.231 0.133 0.176
+   sb=0.3 sf=0.3 sd(log age) AB=0.447 ABC=0.382 DE=0.424 ABCDE=0.353 FG=0.415 R=0.340 | sd(log ratio to root) 0.351 0.253 0.315 0.186 0.257
+   sb=0.3 sf=0.5 sd(log age) AB=0.600 ABC=0.553 DE=0.583 ABCDE=0.534 FG=0.576 R=0.525 | sd(log ratio to root) 0.351 0.253 0.315 0.186 0.257
+T=2 ky  sum P=200.000000 (should be C=200)
+   sb=0.0 sf=0.0 sd(log age) AB=0.199 ABC=0.140 DE=0.172 ABCDE=0.109 FG=0.150 R=0.093 | sd(log ratio to root) 0.205 0.144 0.176 0.104 0.138
+   sb=0.1 sf=0.0 sd(log age) AB=0.209 ABC=0.149 DE=0.185 ABCDE=0.117 FG=0.166 R=0.100 | sd(log ratio to root) 0.218 0.155 0.190 0.113 0.151
+   sb=0.3 sf=0.0 sd(log age) AB=0.281 ABC=0.205 DE=0.263 ABCDE=0.164 FG=0.260 R=0.145 | sd(log ratio to root) 0.300 0.223 0.278 0.166 0.232
+   sb=0.0 sf=0.3 sd(log age) AB=0.360 ABC=0.331 DE=0.346 ABCDE=0.319 FG=0.336 R=0.314 | sd(log ratio to root) 0.205 0.144 0.176 0.104 0.138
+   sb=0.3 sf=0.3 sd(log age) AB=0.411 ABC=0.363 DE=0.399 ABCDE=0.342 FG=0.397 R=0.333 | sd(log ratio to root) 0.300 0.223 0.278 0.166 0.232
+   sb=0.3 sf=0.5 sd(log age) AB=0.574 ABC=0.540 DE=0.565 ABCDE=0.526 FG=0.564 R=0.521 | sd(log ratio to root) 0.300 0.223 0.278 0.166 0.232
+T=4 ky  sum P=200.000000 (should be C=200)
+   sb=0.0 sf=0.0 sd(log age) AB=0.155 ABC=0.113 DE=0.138 ABCDE=0.090 FG=0.124 R=0.080 | sd(log ratio to root) 0.161 0.118 0.142 0.088 0.116
+   sb=0.1 sf=0.0 sd(log age) AB=0.169 ABC=0.125 DE=0.153 ABCDE=0.099 FG=0.143 R=0.088 | sd(log ratio to root) 0.177 0.132 0.160 0.098 0.132
+   sb=0.3 sf=0.0 sd(log age) AB=0.252 ABC=0.188 DE=0.242 ABCDE=0.153 FG=0.246 R=0.137 | sd(log ratio to root) 0.272 0.207 0.258 0.157 0.220
+   sb=0.0 sf=0.3 sd(log age) AB=0.338 ABC=0.321 DE=0.330 ABCDE=0.313 FG=0.325 R=0.310 | sd(log ratio to root) 0.161 0.118 0.142 0.088 0.116
+   sb=0.3 sf=0.3 sd(log age) AB=0.392 ABC=0.354 DE=0.385 ABCDE=0.337 FG=0.388 R=0.330 | sd(log ratio to root) 0.272 0.207 0.258 0.157 0.220
+   sb=0.3 sf=0.5 sd(log age) AB=0.560 ABC=0.534 DE=0.556 ABCDE=0.523 FG=0.557 R=0.518 | sd(log ratio to root) 0.272 0.207 0.258 0.157 0.220
+T=6 ky  sum P=200.000000 (should be C=200)
+   sb=0.0 sf=0.0 sd(log age) AB=0.137 ABC=0.103 DE=0.125 ABCDE=0.084 FG=0.116 R=0.076 | sd(log ratio to root) 0.145 0.110 0.130 0.083 0.110
+   sb=0.1 sf=0.0 sd(log age) AB=0.153 ABC=0.116 DE=0.142 ABCDE=0.094 FG=0.136 R=0.085 | sd(log ratio to root) 0.162 0.124 0.149 0.094 0.126
+   sb=0.3 sf=0.0 sd(log age) AB=0.242 ABC=0.183 DE=0.235 ABCDE=0.149 FG=0.242 R=0.134 | sd(log ratio to root) 0.263 0.202 0.252 0.154 0.216
+   sb=0.0 sf=0.3 sd(log age) AB=0.330 ABC=0.317 DE=0.325 ABCDE=0.312 FG=0.322 R=0.309 | sd(log ratio to root) 0.145 0.110 0.130 0.083 0.110
+   sb=0.3 sf=0.3 sd(log age) AB=0.386 ABC=0.351 DE=0.381 ABCDE=0.335 FG=0.385 R=0.329 | sd(log ratio to root) 0.263 0.202 0.252 0.154 0.216
+   sb=0.3 sf=0.5 sd(log age) AB=0.556 ABC=0.532 DE=0.553 ABCDE=0.522 FG=0.555 R=0.518 | sd(log ratio to root) 0.263 0.202 0.252 0.154 0.216
+T=8 ky  sum P=200.000000 (should be C=200)
+   sb=0.0 sf=0.0 sd(log age) AB=0.128 ABC=0.099 DE=0.118 ABCDE=0.082 FG=0.112 R=0.075 | sd(log ratio to root) 0.136 0.106 0.125 0.082 0.108
+   sb=0.1 sf=0.0 sd(log age) AB=0.144 ABC=0.112 DE=0.136 ABCDE=0.092 FG=0.133 R=0.084 | sd(log ratio to root) 0.155 0.121 0.144 0.093 0.124
+   sb=0.3 sf=0.0 sd(log age) AB=0.237 ABC=0.181 DE=0.232 ABCDE=0.148 FG=0.240 R=0.134 | sd(log ratio to root) 0.259 0.201 0.250 0.154 0.215
+   sb=0.0 sf=0.3 sd(log age) AB=0.326 ABC=0.316 DE=0.322 ABCDE=0.311 FG=0.320 R=0.309 | sd(log ratio to root) 0.136 0.106 0.125 0.082 0.108
+   sb=0.3 sf=0.3 sd(log age) AB=0.382 ABC=0.350 DE=0.379 ABCDE=0.334 FG=0.384 R=0.329 | sd(log ratio to root) 0.259 0.201 0.250 0.154 0.215
+   sb=0.3 sf=0.5 sd(log age) AB=0.553 ABC=0.532 DE=0.551 ABCDE=0.521 FG=0.555 R=0.518 | sd(log ratio to root) 0.259 0.201 0.250 0.154 0.215
