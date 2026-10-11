@@ -417,7 +417,9 @@ TEST(test_m9_prior_only_funnel)
     gd_mcmc_result *res = gd_mcmc_run(&model, t, cs, &cfg, 4, &err);
     CHECK(res != NULL);
     size_t total = res->n_chains * res->n_draws, np = res->n_param, p_sig = (size_t)-1, p_b = (size_t)-1;
+    size_t p_r = (size_t)-1;
     for (size_t p = 0; p < np; p++) {
+        if (res->param_type[p] == GD_MCMC_P_LOGRATE) p_r = p;
         if (res->param_type[p] == GD_MCMC_P_LOG_SIGMA_B) p_sig = p;
         if (res->param_type[p] == GD_MCMC_P_BRANCH_LOGMULT && p_b == (size_t)-1) p_b = p;
     }
@@ -443,6 +445,31 @@ TEST(test_m9_prior_only_funnel)
            below[0] / (double)total, below[1] / (double)total, below[2] / (double)total,
            btail / (double)total, ref, res->rhat[p_sig], res->ess[p_sig]);
     for (int k = 0; k < 3; k++) CHECK_APPROX(below[k] / (double)total, 0.25 * (double)(k + 1), 0.03);
+    /* The rate-shift move moves the log rate and every multiplier together.
+     * It must leave the target alone: the log rate's marginal (which the
+     * lexical-root prior tilts away from N(log 5e-4, 0.5)) is the same with
+     * the move off. */
+    CHECK(p_r != (size_t)-1);
+    cfg.shift_move = false;
+    gd_mcmc_result *off = gd_mcmc_run(&model, t, cs, &cfg, 4, &err);
+    CHECK(off != NULL);
+    double mom[2][2];
+    for (int r = 0; r < 2; r++) {
+        const gd_mcmc_result *x = r == 0 ? res : off;
+        size_t tot = x->n_chains * x->n_draws;
+        double mu = 0.0, v = 0.0;
+        for (size_t i = 0; i < tot; i++) mu += x->samples[i * np + p_r];
+        mu /= (double)tot;
+        for (size_t i = 0; i < tot; i++) {
+            double d = x->samples[i * np + p_r] - mu; v += d * d;
+        }
+        mom[r][0] = mu; mom[r][1] = sqrt(v / (double)(tot - 1));
+    }
+    printf("    log rate with shift move %.3f (sd %.3f, ESS %.0f), without %.3f (sd %.3f, ESS %.0f)\n",
+           mom[0][0], mom[0][1], res->ess[p_r], mom[1][0], mom[1][1], off->ess[p_r]);
+    CHECK_APPROX(mom[0][0], mom[1][0], 0.03);
+    CHECK_APPROX(mom[0][1], mom[1][1], 0.02);
+    gd_mcmc_result_destroy(off);
     CHECK_APPROX(btail / (double)total, ref, 0.01);
     CHECK(res->rhat[p_sig] < 1.01);
     CHECK(res->ess[p_sig] > 2000.0);

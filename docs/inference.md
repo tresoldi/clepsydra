@@ -205,6 +205,15 @@ unchanged):
   `log σ_b` by δ and maps every `log m_b` through its standardised
   deviation `z_b = (log m_b + σ_b²/2)/σ_b`, which stays fixed. The map's
   Jacobian is `n_b·δ`.
+- **Rate-shift move.** A branch's rate is `exp(logr + log m_b)`, so raising
+  `logr` by δ and lowering every `log m_b` by δ leaves the likelihood
+  unchanged; only the clock prior, the multiplier priors and the
+  lexical-root prior (through ρ) see it. Single-site updates cross this
+  ridge one coordinate at a time. The move is a translation (unit Jacobian).
+  The likelihood is still evaluated, so the move stays exact if the
+  invariance ever breaks. On Polynesian (8 tips) it lifts the log-rate ESS
+  from 516 to 2,151 and brings the run under R̂ 1.01. `shift_move` in
+  `gd_mcmc_config`, on by default.
 - **Contamination.** `ε ~ Beta(a,b)` sampled on the logit scale, feeding the
   robust mixture of docs/model-spec.md §6, so injected loans / miscoded
   concepts are absorbed instead of biasing the dates.

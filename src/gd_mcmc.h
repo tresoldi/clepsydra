@@ -95,6 +95,12 @@ typedef struct gd_mcmc_config {
     bool     clock_move;
     double   clock_step0;       /* default 0.10 (log scale) */
 
+    /* Rate-shift move (relaxed clock): the log rate up by delta and every
+     * branch log-multiplier down by delta, which leaves every branch's rate
+     * unchanged. It moves a chain along the rate-multiplier ridge. Default
+     * true; needs sample_rate and sample_branch. */
+    bool     shift_move;
+
     /* Subtree-scaling move: for each free internal non-root node, scale the
      * free internal ages of its subtree by one factor. Nested nodes with
      * close ages, which single-site updates move only one at a time, then

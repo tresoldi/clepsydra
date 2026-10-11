@@ -11,6 +11,11 @@ columns and example numbers are expected throughout 0.x and are listed here.
 
 ### Changed (breaking)
 
+- **Relaxed clock: a rate-shift move** (the log rate up by δ, every branch
+  multiplier down by δ). Relaxed runs that stalled at 4,000 + 4,000 now
+  converge: Polynesian R̂ 1.018 → 1.007, five-IE 1.025 → 1.009. Relaxed
+  draws differ from earlier versions for the same seed. Checkpoint format 8.
+
 - **`root_var_share_data` and `root_var_share_clock` are a covariance
   split.** Each is now Cov(log root, term) / Var(log root), with log L and
   −log ρ as the terms, so the two sum to 1. They were variance ratios that
