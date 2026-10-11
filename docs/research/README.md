@@ -10,6 +10,7 @@ for lexical dating. `docs/roadmap.md` is the plan these documents support.
 | `clock-engine.md` | M1/M2 at pilot scale: the clock experiment with the full engine on Arawan-sized subtrees (σ_tot 0.70; still a no-go) |
 | `error-prior.md` | D1.3: list-level observation error from same-language list pairs (per-list e ≈ 0.09) |
 | `arawan-acceptance.md` | The Arawan re-run recorded at every roadmap gate |
+| `arawan-result.md` | M3: Arawan dated with every layer (lexical, calendar scale sources, topology, held-out 1833 list, model averaging, adequacy) |
 | `reviews/2026-10-10-codex.md` | Independent adversarial review of the code and model (Codex) |
 | `reviews/2026-10-10-claude.md` | Independent adversarial review of the code and model (Claude), with reproduced runs |
 | `reviews/2026-10-10-roadmap-codex.md` | Adversarial review of the first roadmap draft (Codex) |
