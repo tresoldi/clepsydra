@@ -85,8 +85,9 @@ ages depend on the rate prior and calibrations — the tool says so.
   clock moved off its prior (`rate_contraction`; `scale_from_prior` is 1
   below 0.5), the lexical root (median and 90% HPD) and its prior, where the
   calendar root's width comes from (`root_var_share_data` and
-  `root_var_share_clock`, the shares of Var(log root) due to the lexical root
-  and to the clock; Arawan uncalibrated is 0.01 and 1.0), the power-scaling
+  `root_var_share_clock`, the covariance shares of Var(log root) that move
+  with the lexical root and with the clock; they sum to 1, and Arawan with
+  tip dates only is 0.0 and 1.0), the power-scaling
   sensitivities, the convergence verdict (`converged`,
   `n_unconverged_params`, `max_rhat`, `min_ess_bulk`, `min_ess_tail`), and the
   scale-dependence note.

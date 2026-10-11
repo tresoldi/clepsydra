@@ -332,10 +332,12 @@ typedef struct gd_analysis_tree_result {
 
     /*
      * Where the calendar root's width comes from. log a_root = log L - log rho,
-     * so Var(log a_root) = Var(log L) + Var(log rho) - 2 Cov. `var_share_data`
-     * is Var(log L) / Var(log a_root), the part the cognates set;
-     * `var_share_clock` is Var(log rho) / Var(log a_root); the remainder is
-     * their covariance. NAN when the rate is not sampled.
+     * so Var(log a_root) = Cov(log a_root, log L) + Cov(log a_root, -log rho).
+     * `var_share_data` is the first term over Var(log a_root), the part that
+     * moves with the lexical root the cognates set; `var_share_clock` is the
+     * second, the part that moves with the clock. They sum to 1; either can
+     * fall outside [0, 1] when the two co-vary strongly (a calibrated root).
+     * NAN when the rate is not sampled.
      */
     double var_share_data, var_share_clock;
 

@@ -1094,7 +1094,9 @@ TEST(test_analysis_three_ages_and_scale_source)
     CHECK(root->prior.hpd_hi > root->prior.hpd_lo);
     CHECK(a->lexical_root.median > 0.0);
     /* Width decomposition and sensitivities are computed and sane. */
-    CHECK(a->var_share_data >= 0.0 && a->var_share_clock >= 0.0);
+    CHECK(isfinite(a->var_share_data) && isfinite(a->var_share_clock));
+    CHECK_APPROX(a->var_share_data + a->var_share_clock, 1.0, 1e-9);
+    printf("    root width shares: data %.3f, clock %.3f\n", a->var_share_data, a->var_share_clock);
     for (int k = 0; k < 4; k++) {
         if (k == GD_SENS_CALIBRATIONS) continue;   /* no sampled calibrated node here */
         CHECK(!isnan(a->sens_root[k]) && a->sens_root[k] >= 0.0);

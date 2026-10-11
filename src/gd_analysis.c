@@ -1202,15 +1202,16 @@ int gd_analysis_tree_job_run(gd_analysis_tree_job *job,
             g_root[i] = log(root_col[i]);
             g_lex[i] = lr[i] + g_root[i];
         }
-        double vroot = 0, vlex = 0, vrate = 0, mr = 0, ml = 0, mt = 0;
+        /* Covariance split: Var(log a) = Cov(log a, log L) + Cov(log a, -log rho). */
+        double vroot = 0, clex = 0, crate = 0, mr = 0, ml = 0, mt = 0;
         for (size_t i = 0; i < total; i++) { mr += g_root[i]; ml += g_lex[i]; mt += lr[i]; }
         mr /= (double)total; ml /= (double)total; mt /= (double)total;
         for (size_t i = 0; i < total; i++) {
             vroot += (g_root[i] - mr) * (g_root[i] - mr);
-            vlex += (g_lex[i] - ml) * (g_lex[i] - ml);
-            vrate += (lr[i] - mt) * (lr[i] - mt);
+            clex += (g_root[i] - mr) * (g_lex[i] - ml);
+            crate -= (g_root[i] - mr) * (lr[i] - mt);
         }
-        if (vroot > 0.0) { r->var_share_data = vlex / vroot; r->var_share_clock = vrate / vroot; }
+        if (vroot > 0.0) { r->var_share_data = clex / vroot; r->var_share_clock = crate / vroot; }
 
         /* Component log densities per draw. */
         double sdr = job->cfg.rate_logsd, sdl = job->cfg.root_lex_logsd;

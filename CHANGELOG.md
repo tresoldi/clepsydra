@@ -11,6 +11,13 @@ columns and example numbers are expected throughout 0.x and are listed here.
 
 ### Changed (breaking)
 
+- **`root_var_share_data` and `root_var_share_clock` are a covariance
+  split.** Each is now Cov(log root, term) / Var(log root), with log L and
+  −log ρ as the terms, so the two sum to 1. They were variance ratios that
+  left the covariance out. When a calibration pins the root, log L and log ρ
+  co-vary strongly, and the old values grew to 12 and 13 (Romance). Either
+  share can still fall outside [0, 1] in that case (five-IE: −0.50 / 1.50).
+
 - **Empirical prior on the concept-rate spread.** The prior is now
   `log sigma_c ~ N(-0.1, 0.35)` (`--concept-rate-prior-logmean`, `-logsd`),
   fitted on 17 calibrated subtrees in six families. It replaces

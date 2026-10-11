@@ -41,10 +41,10 @@ more than 0.02. Dropping the two historical lists changes the root by 0.02.
 The calendar scale comes from the two dated historical lists (165–170 and
 131 years of known time). That is little time against a 2,000–4,000-year
 tree, so the calendar root is set mostly by the rate prior. The engine
-reports this: `scale_from_prior 1`, and of the variance in the log of the
-root age, 99.6% comes from the clock (`root_var_share_clock` 0.996) and
-2.5% from the lexical age (`root_var_share_data` 0.025). The two shares are
-not additive, because the two terms co-vary.
+reports this: `scale_from_prior 1`, and 98.6% of the variance in the log of
+the root age moves with the clock (`root_var_share_clock` 0.986), 1.4% with
+the lexical age (`root_var_share_data` 0.014). With the empirical clock or the
+root window the split is the same (0.98 / 0.02).
 
 | scale source | root BP, median (90% HPD) | n5 BP | n4 (Deni–Kulina) BP | converged |
 |---|---|---|---|---|
