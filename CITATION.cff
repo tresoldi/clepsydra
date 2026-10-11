@@ -1,0 +1,27 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "clepsydra: Bayesian lexical dating from cognate lists"
+type: software
+authors:
+  - family-names: Tresoldi
+    given-names: Tiago
+    orcid: "https://orcid.org/0000-0002-2863-1467"
+    affiliation: "Department of Linguistics and Philology, Uppsala University"
+url: "https://github.com/tresoldi/clepsydra"
+repository-code: "https://github.com/tresoldi/clepsydra"
+license: MIT
+version: "0.2.0"
+abstract: >-
+  A C99 engine for dating language divergences from cognate data. It reports
+  posterior distributions of lexical, relative and calendar node ages on a
+  fixed tree or a sample of trees, with calibrations, dated tips, observation
+  error, among-concept rate variation, strict and relaxed clocks, adequacy
+  checks and model averaging by PSIS-LOO stacking.
+keywords:
+  - historical linguistics
+  - lexical dating
+  - glottochronology
+  - phylogenetics
+  - Bayesian inference
+  - MCMC
+  - cognates
