@@ -31,19 +31,31 @@ clepsydra date-tree --tree T.nwk --forms forms.tsv --calibrations cal.tsv --out 
 | `--warmup` / `--samples` | adapting / retained iterations per chain | 2000 / 2000 |
 | `--chains` | independent chains (per-chain seeds off `--seed`) | 4 |
 | `--threads` | chains run at once; 0 = all of them, 1 = one after another. The draws are the same whatever the value. With `--progress 1` the chains run one after another | 0 |
+| `--seed` | RNG seed; a seeded run is bit-reproducible | 42 |
 | `--rate-logmean` / `--rate-logsd` | prior on `log r` (per **year**) | −8.80 / 0.80 |
-| `--epsilon` | contamination weight for incompatible (homoplastic/loan) concepts | 0.05 |
+| `--sample-epsilon` | sample the contamination weight ε, Beta(1, 19) prior | 1 |
+| `--epsilon` | fixed ε, used with `--sample-epsilon 0` | 0.05 |
 | `--relaxed` | `1` adds per-branch rate multipliers + `σ_b` | 0 |
 | `--block-age-scaling` | decorrelate nested ages; helps on deep trees | 1 |
+| `--root-lex-logmean` / `--root-lex-logsd` | prior on log(ρ · root age), the lexical root | −1.2 / 1.5 |
+| `--prior-only` | sample the prior alone (likelihood off) | 0 |
+| `--concept-rates` | integrate out among-concept rate variation (0 = one rate for all) | 1 |
+| `--concept-rate-prior-logmean` / `-logsd` | prior on log σ_c, the concept-rate spread | −0.1 / 0.35 |
+| `--concept-rate-gamma` | gamma instead of log-normal concept rates (sensitivity) | 0 |
+| `--loan-threshold` | forms at or above this `loan_probability` are read as missing; > 1 keeps all | 0.5 |
+| `--yule` / `--yule-kappa` | Yule age prior instead of uniform ratios (sensitivity; modern tips only); κ = birth rate × root age, 0 = the expected value for the tip count | 0 / 0 |
+| `--write-pointwise` | write per-draw, per-concept log-likelihoods (`pointwise.tsv`) | 0 |
+| `--write-draws` | write every retained draw (`draws.tsv`) | 0 |
+| `--compare-prior` | also sample the prior alone and report it beside each node | 1 |
 | `--hpd-level` | credible level for the reported interval | 0.90 |
 | `--trace-draws` | evenly spaced draws kept per chain per parameter | 0 |
 | `--progress-every` | progress interval in iterations; `0` is about every 1% | 0 |
 | `--cal-drop` | withhold this calibration row, by index | keep all |
 | `--cal-widen` | multiply every soft calibration window by this | 1.0 |
 | `--progress` | `1` reports sampling progress on stderr, one rewritten line per chain | 0 |
+| `--allow-unconverged` | `1` exits 0 even if the convergence check fails | 0 |
 
-The five options above `--progress` were reachable only from the browser until
-D4; they and the CLI's flags are now one table (`include/gd_options.h`), so the
+The analysis options and the CLI's flags are one table (`include/gd_options.h`), so the
 two surfaces accept the same set with the same bounds. `clepsydra date-tree`
 with no arguments prints the table, with each default read out of the library
 rather than restated.
