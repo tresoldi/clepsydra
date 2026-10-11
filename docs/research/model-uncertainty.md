@@ -102,15 +102,33 @@ variants. A result for publication would need longer runs. The relaxed clock
 still mixes slowly on 8–9 tips: its branch multipliers and the ages trade
 off, which is the confounding that `branch_rate_confounded` flags.
 
+## After the rate-shift move (4a759bd)
+
+The slow direction in the failing runs was the log rate against all the branch
+multipliers at once. Their sum fixes each branch's rate, so the likelihood
+does not see the difference. A move along that ridge
+(`docs/inference.md` §2.6) brings the 4,000 + 4,000 runs under the threshold:
+Polynesian relaxed log-normal from R̂ 1.018 to 1.007 (log-rate ESS 516 →
+2,151), five-IE from 1.025 to 1.009.
+
+At the **default length** (2,000 + 2,000) the relaxed clock still falls short
+in 7 of 8 runs (four families × two mixing families):
+
+| family | log-normal: max R̂ (min ESS) | gamma: max R̂ (min ESS) |
+|---|---|---|
+| Romance | 1.011 (555) | 1.009 (632), converged |
+| Polynesian | 1.011 (297) | 1.008 (326) |
+| Five-IE | 1.032 (224) | 1.029 (214) |
+| Arawan | 1.012 (313) | 1.010 (274) |
+
 ## Consequences
 
-- **The default stays the strict clock for now, with the relaxed clock as
-  the standard sensitivity run.** The relaxed clock predicts better on two
-  of four families and never worse. As the default, it would have to
-  converge at default run lengths, which it does not yet do reliably on 8–9
-  tips, and its branch rates are confounded with ages wherever calibrations
-  are sparse. This is recorded as an open item: improve relaxed mixing, then
-  revisit the default.
+- **The default stays the strict clock, with the relaxed clock as the
+  standard sensitivity run.** The relaxed clock predicts better on two of
+  four families and never worse. A default must converge at the default
+  length, and the relaxed clock does not (table above; it needs about
+  4,000 + 4,000). Its branch rates are also confounded with ages wherever
+  calibrations are sparse. Run it with `--warmup 4000 --samples 4000`.
 - **Gamma concept rates** are a candidate default on the same terms: never
   worse, sometimes better. Their only cost is the heavier tail of the rate
   prior.

@@ -139,8 +139,10 @@ Four things follow from the research and shape everything below.
 - **M4.2:** `docs/scientific-methods.md` rewritten. **M4.3:**
   `docs/research/model-uncertainty.md`. The relaxed clock predicts better on
   Romance (2.4 SE) and Polynesian (4 SE), and ties on Arawan. It moves
-  internal ages by up to a quarter. The strict default stays until relaxed
-  runs converge reliably at default lengths (an open item). M4.4:
+  internal ages by up to a quarter. A rate-shift move (4a759bd) makes
+  relaxed runs converge at 4,000 + 4,000. At the default 2,000 + 2,000, 7 of 8
+  still miss R̂ 1.01, so the strict clock stays the default and the relaxed
+  clock is the standard sensitivity run. M4.4:
   `CITATION.cff`; the tag and Zenodo DOI are the author's to make.
 - **D1:** done: D1.2 (`reference/calibrations/curated_nodes.tsv`) and D1.3
   (`error-prior.md`).
