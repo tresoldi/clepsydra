@@ -12,7 +12,8 @@ for lexical dating. `docs/roadmap.md` is the plan these documents support.
 | `arawan-acceptance.md` | The Arawan re-run recorded at every roadmap gate |
 | `simworld.md` | D3: coverage of lexical ages in simulated worlds that break one assumption each; why per-list error is not the default |
 | `model-uncertainty.md` | M4.3: the example families under every clock, concept-rate and age-prior variant, stacked on PSIS-LOO |
-| `arawan-result.md` | M3: Arawan dated with every layer (lexical, calendar scale sources, topology, held-out 1833 list, model averaging, adequacy) |
+| `arawan-result.md` | M3: Arawan dated with every layer (lexical, calendar scale sources, topology, held-out 1833 list, model averaging, adequacy), under the relaxed default |
+| `arawan-glottochronology.md` | Arawan by Swadesh, Lees, Starostin, a self-calibrated rate and ASJP, against clepsydra; Romance as a control |
 | `reviews/2026-10-10-codex.md` | Independent adversarial review of the code and model (Codex) |
 | `reviews/2026-10-10-claude.md` | Independent adversarial review of the code and model (Claude), with reproduced runs |
 | `reviews/2026-10-10-roadmap-codex.md` | Adversarial review of the first roadmap draft (Codex) |

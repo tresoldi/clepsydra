@@ -104,6 +104,12 @@ columns and example numbers are expected throughout 0.x and are listed here.
 
 ### Added
 
+- **`tools/glottochronology/dating.py`**: classical lexicostatistical dating
+  of a fixed tree (Swadesh 1955, Lees 1953, Starostin 2000, a rate fitted on
+  one known pair), node dates pooled over cross-clade pairs, a bootstrap over
+  concepts, and each method's own UPGMA tree. Used in
+  `docs/research/arawan-glottochronology.md`.
+
 - **`average`: model averaging by stacking** (E2.8). It combines
   `date-tree` runs that fit different models to the same data. It computes
   PSIS-LOO for each run (`gd_loo.h`, now public), with Pareto-k
