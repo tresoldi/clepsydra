@@ -227,12 +227,17 @@ unchanged):
 - **Clock move with dated tips.** The clock move (§2.5) scales every free
   age by s and the rate by 1/s, which keeps `r·t_b` on every branch whose
   length scales with s. A branch to a dated ancient tip does not
-  (`s·a − τ ≠ s·(a − τ)`), so under the relaxed clock the move also sets
-  `log m_b' = log m_b + δ + log(t_b / t_b')` there, and the likelihood is
-  exactly invariant (`clock_branch`, on by default). Scaling heights above
-  the oldest tip below each node instead of ages was tried and rejected: it
-  breaks the lexical-root term ρ·a_root that defines the ridge, and five-IE
-  mixed worse over nine seeds.
+  (`s·a − τ ≠ s·(a − τ)`). Under the relaxed clock a second form of the move
+  therefore also sets `log m_b' = log m_b + δ + log(t_b / t_b')` on such
+  branches, which makes the likelihood exactly invariant (`clock_branch`, on
+  by default). Both forms run every sweep, each with its own step. The reset
+  form wins when tip branches are long (five-IE: R̂ 1.032 → 1.009 at
+  2,000 + 2,000). The plain form wins when one is very short: Arawan's 1833
+  list sits a few generations below its parent, and resetting that branch's
+  multiplier costs more prior mass than the likelihood loses without it.
+  Scaling heights above the oldest tip below each node, instead of ages, was
+  tried and rejected: it breaks the lexical-root term ρ·a_root that defines
+  the ridge, and five-IE mixed worse over nine seeds.
 - **Contamination.** `ε ~ Beta(a,b)` sampled on the logit scale, feeding the
   robust mixture of docs/model-spec.md §6, so injected loans / miscoded
   concepts are absorbed instead of biasing the dates.

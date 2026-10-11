@@ -95,12 +95,13 @@ typedef struct gd_mcmc_config {
     bool     clock_move;
     double   clock_step0;       /* default 0.10 (log scale) */
 
-    /* Under the relaxed clock, the clock move also resets each branch
-     * log-multiplier so that the branch's expected change is unchanged:
-     * b' = b + delta + log(len / len'). This is 0 on a branch whose length
-     * scales with the ages, and corrects a branch to a fixed-age node (a
-     * dated ancient tip), whose length does not. The likelihood is then
-     * exactly invariant. Default true. */
+    /* Under the relaxed clock with a dated tip, a second form of the clock
+     * move also resets each branch log-multiplier so that the branch's
+     * expected change is unchanged: b' = b + delta + log(len / len'). This is
+     * 0 on a branch whose length scales with the ages, and corrects a branch
+     * to a dated ancient tip, whose length does not; the likelihood is then
+     * exactly invariant. It runs alongside the plain form, each with its own
+     * step. Default true. */
     bool     clock_branch;
 
     /* Rate-shift move (relaxed clock): the log rate up by delta and every

@@ -90,6 +90,10 @@ struct gd_mcmc_chain {
     /* Clock-preserving move state. */
     int     have_clock;
     double  clock_step, clock_adapt_count, clock_acc, clock_prop;
+    /* Its second form (relaxed clock, dated tips): the same scaling, with the
+     * multipliers of branches that do not scale with it reset. */
+    int     have_clock_reset;
+    double  reset_step, reset_adapt_count, reset_acc, reset_prop;
 
     /* Subtree-scaling move: sub_start[k]..sub_start[k+1] index sub_nodes,
      * the free internal nodes under the k-th mover sub_root[k]. */
@@ -670,6 +674,13 @@ gd_mcmc_chain *gd_mcmc_chain_create(const gd_mcmc_model *model, gd_tree *tree,
     ch->block_step = cfg->block_step0;
     ch->have_clock = (cfg->clock_move && cfg->sample_rate && ch->n_age >= 1) ? 1 : 0;
     ch->clock_step = cfg->clock_step0;
+    /* The reset form only differs where a branch does not scale with the
+     * ages: a branch to a fixed tip older than 0. */
+    ch->reset_step = cfg->clock_step0;
+    if (ch->have_clock && cfg->sample_branch && cfg->clock_branch)
+        for (size_t v = 0; v < tree->nnodes; v++)
+            if (v != tree->root && !ch->scaled[v] && cal->node_lo[v] > 0.0)
+                ch->have_clock_reset = 1;
 
     /* Subtree movers: free internal non-root nodes with at least one free
      * internal descendant (a lone node gains nothing over its own move). */
@@ -845,18 +856,24 @@ static void restore_branches(gd_mcmc_chain *ch)
  * order or calibration window is violated. The Jacobian of scaling m ages is
  * s^m (the log-rate shift has unit Jacobian), so the ratio carries m * delta.
  *
- * Under the relaxed clock with cfg.clock_branch, the clock move also sets
- * b_i' = b_i + delta + log(len_i / len_i') on every branch. A branch between
+ * clock == 2 is the clock move's reset form (relaxed clock, cfg.clock_branch,
+ * dated tips). It also sets b_i' = b_i + delta + log(len_i / len_i') on every
+ * branch. A branch between
  * two scaled nodes, or from a scaled node to an age-0 tip, keeps its b_i. A
  * branch to a fixed-age node (a dated ancient tip) does not scale with s, and
  * its b_i absorbs the difference, so rate * multiplier * length is unchanged
  * on every branch. Given the ages, the b map is a translation, so the Jacobian
- * is still s^m; the map with -delta inverts it.
+ * is still s^m; the map with -delta inverts it. Both forms run each sweep,
+ * each with its own step: the reset helps when tip branches are long (five
+ * ancient IE tips), and costs prior mass when one is very short (Arawan's
+ * 1833 list, a few generations below its parent), where the plain form,
+ * whose change the likelihood barely sees on so short a branch, does better.
  */
 static int scale_move(gd_mcmc_chain *ch, int adapting, int clock, gd_error *err)
 {
-    double *step = clock ? &ch->clock_step : &ch->block_step;
-    double *adapt_count = clock ? &ch->clock_adapt_count : &ch->block_adapt_count;
+    double *step = clock == 2 ? &ch->reset_step : clock ? &ch->clock_step : &ch->block_step;
+    double *adapt_count = clock == 2 ? &ch->reset_adapt_count
+                        : clock ? &ch->clock_adapt_count : &ch->block_adapt_count;
     double delta = gd_rng_normal(ch->rng, 0.0, *step);
     double s = exp(delta);
     bool feasible = true;
@@ -895,7 +912,7 @@ static int scale_move(gd_mcmc_chain *ch, int adapting, int clock, gd_error *err)
             dprior += norm_logpdf(ch->logr, ch->cfg.rate_logmean, ch->cfg.rate_logsd)
                     - norm_logpdf(old_logr, ch->cfg.rate_logmean, ch->cfg.rate_logsd);
         }
-        int adjust = clock && ch->cfg.clock_branch && ch->funnel_param < ch->nparam;
+        int adjust = clock == 2;
         if (adjust) {
             double sb = ch->sigma_b, mb = -0.5 * sb * sb;
             for (size_t p = 0; p < ch->nparam; p++) {
@@ -954,7 +971,8 @@ static int scale_move(gd_mcmc_chain *ch, int adapting, int clock, gd_error *err)
             if (adjust) restore_branches(ch);
         }
     }
-    if (clock) { ch->clock_prop += 1.0; ch->clock_acc += (double)accepted; }
+    if (clock == 2) { ch->reset_prop += 1.0; ch->reset_acc += (double)accepted; }
+    else if (clock) { ch->clock_prop += 1.0; ch->clock_acc += (double)accepted; }
     else       { ch->block_prop += 1.0; ch->block_acc += (double)accepted; }
     if (adapting) {
         *adapt_count += 1.0;
@@ -1391,6 +1409,10 @@ static int chain_sweep(gd_mcmc_chain *ch, int adapting, gd_error *err)
         int rc = scale_move(ch, adapting, 1, err);
         if (rc != 0) return rc;
     }
+    if (ch->have_clock_reset) {
+        int rc = scale_move(ch, adapting, 2, err);
+        if (rc != 0) return rc;
+    }
     /* --- non-centred relaxed-clock spread --- */
     if (ch->funnel_param < ch->nparam) {
         int rc = funnel_move(ch, adapting, err);
@@ -1547,7 +1569,8 @@ static size_t ckpt_body_size(const gd_mcmc_chain *ch, size_t n_stored)
          + 8 + 8                              /* sub_step, sub_adapt_count */
          + 8 + 8                              /* funnel_step, funnel_adapt_count */
          + 8 + 8                              /* shift_step, shift_adapt_count */
-         + 8 + 8;                             /* slide_step, slide_adapt_count */
+         + 8 + 8                              /* slide_step, slide_adapt_count */
+         + 8 + 8;                             /* reset_step, reset_adapt_count */
 }
 
 int gd_mcmc_chain_serialize(const gd_mcmc_chain *ch, unsigned char **buf,
@@ -1598,6 +1621,8 @@ int gd_mcmc_chain_serialize(const gd_mcmc_chain *ch, unsigned char **buf,
     d = ch->shift_adapt_count; memcpy(q, &d, 8); q += 8;
     d = ch->slide_step;        memcpy(q, &d, 8); q += 8;
     d = ch->slide_adapt_count; memcpy(q, &d, 8); q += 8;
+    d = ch->reset_step;        memcpy(q, &d, 8); q += 8;
+    d = ch->reset_adapt_count; memcpy(q, &d, 8); q += 8;
     for (size_t k = 0; k < ch->n_stored; k++) {
         memcpy(q, ch->samples + k * ch->nparam, ch->nparam * 8); q += ch->nparam * 8;
         memcpy(q, &ch->sample_ll[k], 8); q += 8;
@@ -1669,6 +1694,8 @@ int gd_mcmc_chain_restore(gd_mcmc_chain *ch, const unsigned char *buf,
     memcpy(&d, q, 8); q += 8; ch->shift_adapt_count = d;
     memcpy(&d, q, 8); q += 8; ch->slide_step = d;
     memcpy(&d, q, 8); q += 8; ch->slide_adapt_count = d;
+    memcpy(&d, q, 8); q += 8; ch->reset_step = d;
+    memcpy(&d, q, 8); q += 8; ch->reset_adapt_count = d;
     for (size_t k = 0; k < n_stored; k++) {
         memcpy(ch->samples + k * ch->nparam, q, ch->nparam * 8); q += ch->nparam * 8;
         memcpy(&ch->sample_ll[k], q, 8); q += 8;
