@@ -95,11 +95,27 @@ typedef struct gd_mcmc_config {
     bool     clock_move;
     double   clock_step0;       /* default 0.10 (log scale) */
 
+    /* Under the relaxed clock, the clock move also resets each branch
+     * log-multiplier so that the branch's expected change is unchanged:
+     * b' = b + delta + log(len / len'). This is 0 on a branch whose length
+     * scales with the ages, and corrects a branch to a fixed-age node (a
+     * dated ancient tip), whose length does not. The likelihood is then
+     * exactly invariant. Default true. */
+    bool     clock_branch;
+
     /* Rate-shift move (relaxed clock): the log rate up by delta and every
      * branch log-multiplier down by delta, which leaves every branch's rate
      * unchanged. It moves a chain along the rate-multiplier ridge. Default
      * true; needs sample_rate and sample_branch. */
     bool     shift_move;
+
+    /* Rate-compensated node move (relaxed clock): each sweep, every free age
+     * also moves once with the multipliers of its adjacent branches reset so
+     * that each branch's expected change is unchanged. Node ages and branch
+     * rates are confounded wherever calibrations are sparse; this lets an age
+     * move without fighting the likelihood. Default true; needs
+     * sample_branch. */
+    bool     slide_move;
 
     /* Subtree-scaling move: for each free internal non-root node, scale the
      * free internal ages of its subtree by one factor. Nested nodes with

@@ -11,6 +11,15 @@ columns and example numbers are expected throughout 0.x and are listed here.
 
 ### Changed (breaking)
 
+- **Relaxed clock: two rate-compensated moves.** A node move that changes
+  one age and resets the multipliers of the branches meeting it, so each
+  branch's expected change is fixed; and, in the clock move, a reset of the
+  multiplier on every branch to a dated ancient tip, which that move's
+  scaling does not keep. Both leave the likelihood exactly invariant. At
+  the default 2,000 + 2,000, Polynesian and Romance relaxed runs now
+  converge (min ESS 297 → 693, 555 → 768). Relaxed draws differ from
+  earlier versions for the same seed. Checkpoint format 9.
+
 - **Relaxed clock: a rate-shift move** (the log rate up by δ, every branch
   multiplier down by δ). Relaxed runs that stalled at 4,000 + 4,000 now
   converge: Polynesian R̂ 1.018 → 1.007, five-IE 1.025 → 1.009. Relaxed

@@ -214,6 +214,25 @@ unchanged):
   invariance ever breaks. On Polynesian (8 tips) it lifts the log-rate ESS
   from 516 to 2,151 and brings the run under R̂ 1.01. `shift_move` in
   `gd_mcmc_config`, on by default.
+- **Rate-compensated node move.** Branch rates and node ages are confounded
+  wherever calibrations are sparse (§7.2 below): moving one age changes the
+  lengths of the branches meeting that node, and only matching changes in
+  their multipliers would leave the likelihood alone. Each sweep therefore
+  also moves every free age once with `log m_b' = log m_b + log(t_b / t_b')`
+  on each adjacent branch, so `r·m_b·t_b` is unchanged and only the priors
+  see the move. Given the new age the multiplier map is a translation, so
+  the only Hastings term is the root's log-scale one. On Polynesian it lifts
+  the minimum bulk ESS at 2,000 + 2,000 from 297 to 693. `slide_move`, on by
+  default.
+- **Clock move with dated tips.** The clock move (§2.5) scales every free
+  age by s and the rate by 1/s, which keeps `r·t_b` on every branch whose
+  length scales with s. A branch to a dated ancient tip does not
+  (`s·a − τ ≠ s·(a − τ)`), so under the relaxed clock the move also sets
+  `log m_b' = log m_b + δ + log(t_b / t_b')` there, and the likelihood is
+  exactly invariant (`clock_branch`, on by default). Scaling heights above
+  the oldest tip below each node instead of ages was tried and rejected: it
+  breaks the lexical-root term ρ·a_root that defines the ridge, and five-IE
+  mixed worse over nine seeds.
 - **Contamination.** `ε ~ Beta(a,b)` sampled on the logit scale, feeding the
   robust mixture of docs/model-spec.md §6, so injected loans / miscoded
   concepts are absorbed instead of biasing the dates.
@@ -232,7 +251,10 @@ where identifiable (ages fixed → posterior-mean `log m_b` correlates ~0.98 wit
 the truth); the confounding warning fires when ages are free (correlation
 ≈ −0.77); `σ_b` shrinks toward zero on strictly-clocked data; prior-only
 sampling recovers the hierarchical prior on `(σ_b, log m_b)` with `σ_b` bulk
-ESS above 6,000 (175 without the joint move, which then fails the test); and the rate
+ESS above 6,000 (175 without the joint move, which then fails the test); with a
+dated tip, prior-only sampling with the clock and node moves on matches the
+exact root-age and log-rate moments and the multiplier prior (the test fails
+when either move drops a prior term or a Jacobian power); and the rate
 estimate stays near the truth while `ε` rises as loan/miscoded concepts are
 injected (robustness). Family multipliers `β_f` reduce to the global scale on a
 single fixed tree (they need cross-family data, M11); the split-pulse model

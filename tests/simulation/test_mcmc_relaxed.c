@@ -481,6 +481,92 @@ TEST(test_m9_prior_only_funnel)
     gd_tree_destroy(t);
 }
 
+/* Two relaxed-clock moves reset branch multipliers along with ages. The clock
+ * move scales heights above the oldest tip below each node and resets every
+ * branch whose length does not scale with them (here the branch to tip a,
+ * dated at 1000). The rate-compensated node move resets the branches meeting
+ * the node it moves. Prior only, so the likelihood cannot hide a wrong
+ * Jacobian or prior term, and the marginals are known exactly. Given the
+ * root T, the uniform-conditional prior makes the other ages uniform on their
+ * region and divides by its volume, so T is log-normal with log-mean
+ * lex_logmean - rate_logmean and log-variance rate_logsd^2 + lex_logsd^2,
+ * truncated to the root window [2000, 5000]; log rho given T is normal. By
+ * quadrature: E[T] = 3126.9 (sd 832.0), E[log rho] = -7.7622 (sd 0.4751).
+ * b(a) is N(-s^2/2, s) with s ~ HalfNormal(0.3), checked by simulation. */
+TEST(test_m9_rate_compensated_moves)
+{
+    gd_error err = GD_ERROR_INIT;
+    gd_tree *t = make_quartet();
+    CHECK(t != NULL);
+    size_t n = t->nnodes, ia = gd_tree_find_label(t, "a");
+    t->nodes[ia].age = 1000.0;
+    int *store = (int *)malloc(4 * n * sizeof(int));
+    gd_cognate_data concepts[4];
+    for (size_t c = 0; c < 4; c++) {
+        for (size_t i = 0; i < n; i++) store[c * n + i] = t->nodes[i].is_leaf ? (int)(i % 2) : -1;
+        concepts[c].labels = store + c * n; concepts[c].nnodes = n;
+    }
+    gd_t1_ws *ws = gd_t1_ws_create(t, &err);
+    gd_t1_options opt; gd_t1_options_default(&opt);
+    opt.incompatible = GD_INCOMPATIBLE_EXCLUDE;
+    gd_mcmc_t1 *m = gd_mcmc_t1_create(ws, concepts, 4, &opt, &err);
+    gd_mcmc_model model; gd_mcmc_t1_model(m, &model);
+    gd_calibration_set *cs = bounds_free_internal(t, 3000.0, &err);
+    CHECK(cs != NULL);
+    size_t ir = t->root, i1 = gd_tree_find_label(t, "r1");
+    cs->node_lo[ia] = cs->node_hi[ia] = 1000.0;
+    cs->node_lo[ir] = 2000.0; cs->node_hi[ir] = 5000.0;
+    cs->node_hi[i1] = 5000.0; cs->node_hi[gd_tree_find_label(t, "r2")] = 5000.0;
+    gd_mcmc_config cfg; gd_mcmc_config_default(&cfg);
+    cfg.prior_only = true; cfg.sample_branch = true; cfg.sigma_b_prior_sd = 0.30;
+    cfg.rate_logmean = log(5e-4); cfg.rate_logsd = 0.5;
+    cfg.n_warmup = 2000; cfg.n_samples = 20000; cfg.seed = 33u;
+    CHECK(cfg.root_lex_logmean == -1.2 && cfg.root_lex_logsd == 1.5);
+    gd_mcmc_result *res = gd_mcmc_run(&model, t, cs, &cfg, 4, &err);
+    CHECK(res != NULL);
+    size_t np = res->n_param, idx[3] = { (size_t)-1, (size_t)-1, (size_t)-1 };
+    for (size_t p = 0; p < np; p++) {
+        if (res->param_type[p] == GD_MCMC_P_LOGRATE) idx[0] = p;
+        if (res->param_type[p] == GD_MCMC_P_AGE && res->param_node[p] == ir) idx[1] = p;
+        if (res->param_type[p] == GD_MCMC_P_BRANCH_LOGMULT && res->param_node[p] == ia) idx[2] = p;
+    }
+    CHECK(idx[0] != (size_t)-1 && idx[1] != (size_t)-1 && idx[2] != (size_t)-1);
+    /* Exact moments; b(a) by direct simulation of its prior. */
+    double want[3][2] = { { -7.7622, 0.4751 }, { 3126.9, 832.0 }, { 0.0, 0.0 } };
+    gd_rng *rng = gd_rng_create(78u, 1u, &err);
+    const size_t NREF = 400000;
+    double s1 = 0.0, s2 = 0.0;
+    for (size_t i = 0; i < NREF; i++) {
+        double s = fabs(gd_rng_normal(rng, 0.0, 0.3));
+        double b = gd_rng_normal(rng, -0.5 * s * s, s);
+        s1 += b; s2 += b * b;
+    }
+    want[2][0] = s1 / (double)NREF;
+    want[2][1] = sqrt(s2 / (double)NREF - want[2][0] * want[2][0]);
+    const char *name[3] = { "log rate", "root age", "b(a)" };
+    size_t tot = res->n_chains * res->n_draws;
+    for (int k = 0; k < 3; k++) {
+        double mu = 0.0, v = 0.0;
+        for (size_t i = 0; i < tot; i++) mu += res->samples[i * np + idx[k]];
+        mu /= (double)tot;
+        for (size_t i = 0; i < tot; i++) {
+            double d = res->samples[i * np + idx[k]] - mu; v += d * d;
+        }
+        double sd = sqrt(v / (double)(tot - 1));
+        /* The clock move's runs are lumpier than ESS says (rare long
+         * excursions along the ridge), hence 5 standard errors. */
+        double se = want[k][1] / sqrt(res->ess[idx[k]]);
+        printf("    %-8s %.4g (sd %.4g, ESS %.0f); exact %.4g (sd %.4g)\n",
+               name[k], mu, sd, res->ess[idx[k]], want[k][0], want[k][1]);
+        CHECK(fabs(mu - want[k][0]) < 5.0 * se);
+        CHECK_APPROX(sd / want[k][1], 1.0, 0.04);
+    }
+    gd_rng_destroy(rng);
+    gd_mcmc_result_destroy(res);
+    gd_calset_destroy(cs); gd_mcmc_t1_destroy(m); gd_t1_ws_destroy(ws);
+    gd_tree_destroy(t); free(store);
+}
+
 static void run_tests(void)
 {
     RUN(test_m9_branch_rate_recovery);
@@ -488,6 +574,7 @@ static void run_tests(void)
     RUN(test_m9_sigma_b_shrinks_to_strict);
     RUN(test_m9_robust_to_injected_loans);
     RUN(test_m9_prior_only_funnel);
+    RUN(test_m9_rate_compensated_moves);
 }
 
 TEST_MAIN()
