@@ -1,104 +1,195 @@
 # Scientific methods and honest interpretation
 
-> Milestone 12 deliverable (product brief §17). How to read a Clepsydra result
-> without over-claiming. The worked examples in `examples/` follow this to the
-> letter.
+How to read a clepsydra result without over-claiming. The worked examples in
+`examples/` and the Arawan analysis (`docs/research/arawan-result.md`)
+follow it.
 
 ## What the number is (and is not)
 
-A Clepsydra date is a **posterior distribution**, reported with a credible
-interval and convergence diagnostics — never a single "true" date. A posterior
-median is a summary of that distribution, not a fact. "Proto-Romance diverged in
-1590 BP" is wrong; "the posterior median for the proto-Romance node is ~1590 BP,
-90% HPD 1400–1810 BP, R̂ 1.00, ESS 740, under this tree, rate prior, and
-calibrations" is right.
+A clepsydra date is a **posterior distribution** under a stated model,
+tree, rate prior and set of calibrations. It is reported with a credible
+interval and convergence diagnostics, never as a single "true" date.
 
-## The five things that set the scale
+"Proto-Romance diverged in 1531 BP" is wrong. This is right: "the posterior
+median for Proto-Romance is about 1,530 BP (90% HPD 1,377–1,761; R̂ 1.00,
+ESS 3,585), with Latin fixed at 2,050 BP, the default T1 model and the
+default rate prior".
 
-Every absolute date rests on choices the output records in `run_manifest.tsv`:
+## Three kinds of age
 
-1. **The model.** T1 (strict novel-state), T2 (binary), or pairwise P0/P1 encode
-   different assumptions (see `docs/model-cards.md`). A date is a date *under a
-   model*.
-2. **The calibrations.** Absolute time is not identifiable from cognacy alone —
-   only lexical time (`r·d`) is (identifiability §7). Tip ages and node priors
-   supply the scale; the examples' calibrations are **illustrative**, flagged as
-   such, not authoritative.
-3. **The rate prior.** With few or no calibrations, the clock-rate prior largely
-   determines the absolute ages. The five-language IE example shows this
-   starkly: the PIE-root posterior shifts materially with `--rate-logmean/-logsd`,
-   and its 90% HPD spans the Steppe and Anatolian hypotheses. That width is the
-   honest answer, not a defect to be tuned away.
-4. **The topology.** v1 uses a fixed rooted tree; it does not infer or search
-   topologies. A different tree is a different analysis.
-5. **Contamination / loans.** Incompatible concepts (homoplasy, borrowing) are
-   absorbed by the contamination component and reported, never silently removed.
+Cognate data measure change, not time. Every node therefore gets three ages
+in `posterior_nodes.tsv`, and they are not equally well known.
+
+| age | columns | what it is | what sets it |
+|---|---|---|---|
+| **lexical** | `lexical_*` | ρ · a: expected replacements per concept, at the mean concept rate, from the node to the present | the cognate data |
+| **relative** | `relative_*` | a / a_root: the node's depth as a fraction of the root | the cognate data and the tree prior |
+| **calendar** | `median_bp`, `hpd90_*` | a, in years before present | the lexical age divided by the clock rate ρ |
+
+Lexical and relative ages are what the data identify. A calendar age is
+only as good as whatever fixes ρ: dated tips, node calibrations, or the
+clock prior. For Arawan the lexical root is 0.65 (0.54–0.76) under every
+variant tried. The calendar root ranges from 2,000 to 4,100 BP, depending
+on which source fixes the time scale.
+
+## Two modes, and the scale-source flag
+
+The engine runs in one of two modes and records which in `run_manifest.tsv`.
+
+- **Lexical-time mode** (`scale_source clock_prior`). No calibration, no
+  dated tip. The ages are given a proper prior on the lexical root and on the
+  ratios below it (the default `uniform_ratios`). The clock rate is
+  independent of the data, so the calendar posterior is the lexical posterior
+  rescaled by the clock prior: the data cannot narrow it beyond the clock's
+  own spread. The cross-family pilot puts that spread at σ ≈ 0.7–0.8 in
+  log rate (`docs/research/clock-pilot.md`), ×/÷ 5–6 at 95%. For an
+  uncalibrated family, report lexical and relative ages, plus calendar
+  scenarios labelled as such.
+- **Calendar time-tree mode** (`calibration`, `tip`, or `calibration+tip`).
+  At least one calendar fact enters the fit. A dated tip or a calibrated
+  node informs ρ jointly with the cognates. A user's "root window" is a
+  calibration like any other, with a source key and an optional outlier
+  probability, never "the root prior".
+
+Being in calendar mode does not mean the calendar fact did much. Two fields
+say how much:
+
+- `rate_contraction`: how far the posterior of log ρ narrowed from its
+  prior (1 − posterior variance / prior variance). `scale_from_prior 1` when it is below 0.5,
+  meaning the calendar ages still rest mostly on the clock prior. Arawan's
+  two historical lists give 0.32: they move the scale, but do not fix it.
+- **The variance split** `root_var_share_data` / `root_var_share_clock`.
+  Since log a_root = log L − log ρ, the variance of the log root age splits
+  exactly into the part that moves with the lexical root
+  (Cov(log a, log L) / Var(log a)) and the part that moves with the clock
+  (Cov(log a, −log ρ) / Var(log a)). The two sum to 1. Arawan with tip dates
+  gives 0.01 / 0.99: almost all of the calendar width is the clock's.
+  When a calibration pins the root, L and ρ co-vary, and one share can leave
+  [0, 1] (five-IE: −0.50 / 1.50). That means the calibration, through ρ,
+  is what holds the root, and extra lexical spread is cancelled by the rate.
+
+## The choices that set the answer
+
+Every date rests on choices `run_manifest.tsv` records:
+
+1. **The model.** T1 (novel-state, with concept-rate mixing and ε
+   contamination) is the engine. T2 is experimental. P0 and P1 are pairwise.
+   See `docs/model-cards.md`.
+2. **The calibrations.** The examples' calibrations are illustrative and
+   flagged as such. A calibration with no stated source is a guess, and the
+   output will carry it.
+3. **The rate prior.** In lexical-time mode it *is* the calendar answer. In
+   calendar mode it still dominates whenever `scale_from_prior` is 1.
+4. **The topology.** `date-tree` uses one fixed tree. `date-trees` dates a
+   sample of trees (BEAST, MrBayes, yvyra) and reports clade probabilities,
+   with ages conditional on each clade. A clade present in 35% of trees has
+   an age only in those trees.
+5. **The observation model.** Concepts that no single-state history can
+   produce are absorbed by ε and listed in `posterior_concepts.tsv`. They are
+   never silently removed. Lists known to be unusual (historical,
+   non-specialist, secondary) can carry a `tip_error` term.
 
 ## Reading the diagnostics first
 
 Before interpreting any age:
 
-- **R̂** near 1 (≤ ~1.01) and **ESS** large (hundreds+) — otherwise the chains
-  have not converged and the summaries are unreliable. A short run says so.
-- **`branch_rate_confounded`** (relaxed clock) — branch rates and node ages
-  trade off; a flagged run needs calibrations before branch-rate estimates mean
-  anything (identifiability §7.2, `test_mcmc_relaxed.c`).
-- **`absolute_anchored`** (pairwise) — `0` means the scale is prior-driven.
-- **prior-dominance** — a posterior close to the prior carries little data
-  signal (common with few concepts or languages).
+- **Convergence.** Every sampled parameter needs rank R̂ < 1.01 and bulk and
+  tail ESS ≥ 400. A failing run exits with status 3 and says which
+  parameters failed.
+- **Prior against posterior.** The `prior_*` columns give each node's age
+  under the prior alone, from the same run. `prior_overlap` near 1 means
+  the data did little for that node.
+- **Power-scaling** (`sensitivity_root_age`, `sensitivity_lexical_root`).
+  This measures how far the root moves when one component (clock prior,
+  lexical-root prior, calibrations, likelihood) is up- or down-weighted.
+  Above 0.2 the component is influential. If the lexical root is not mostly
+  likelihood-sensitive, the data are not driving it.
+- **`branch_rate_confounded`** (relaxed clock). Branch rates and node ages
+  trade off, so a flagged run needs calibrations before its branch rates
+  mean anything.
+- **`absolute_anchored`** (pairwise). A value of 0 means the scale is the
+  rate prior's.
 
-## Validity is not adequacy is not flexibility
+## Validity, adequacy, model choice
 
-Three distinct questions, kept separate (King 2026; `docs/model-cards.md`,
-`docs/validation.md`):
+Three distinct questions, kept separate:
 
-- **Validity** — does the code target the intended posterior? Established by
-  analytic checks, independent brute force, and SBC.
-- **Adequacy** — is the model right for *these* data? Probed by
-  posterior-predictive checks; a validly-implemented homogeneous-rate model can
-  still be inadequate for rate-heterogeneous data, and the PP check catches it.
-- **Flexibility** — a more flexible model is **not** automatically better. On
-  strictly-clocked data the relaxed clock does not beat the strict clock on
-  held-out prediction. Model choice uses held-out prediction in a shared
-  observable space, never in-sample fit or cross-encoding marginal likelihoods.
+- **Validity:** does the code target the intended posterior? It is
+  established by analytic checks, independent brute force, and
+  simulation-based calibration (SBC) with the real likelihood
+  (`docs/validation.md`).
+- **Adequacy:** is the model right for these data? It is checked with the
+  posterior-predictive panel in `adequacy.tsv`: classes per concept,
+  singleton share, the share of incompatible concepts, and sharing for
+  every pair of tips. A ppp near 0 or 1 is a feature the model does not
+  reproduce. Arawan fails one: 7.5% incompatible concepts against at most
+  1.2% replicated.
+- **Model choice:** a more flexible model is not automatically better.
+  Compare models on held-out prediction over concepts. `date-tree
+  --write-pointwise 1` writes the per-concept log-likelihoods, and
+  `clepsydra average` computes PSIS-LOO and stacking weights. It also
+  reports the between-model share of each node's uncertainty. On Arawan
+  the four strict/relaxed × log-normal/gamma models differ by less than
+  their SE, and model choice accounts for 0.2% of the root's calendar
+  uncertainty. On Romance the relaxed clock wins by 10.9 ± 4.6.
+
+## Known weak points, measured
+
+The simulation study (`docs/research/simworld.md`) breaks one assumption at a
+time and scores the 90% interval of each lexical age:
+
+- **Absorbed:** borrowing in 10% of concepts, fast concepts missing more
+  often, gamma instead of log-normal rate variation. Coverage stays at
+  0.81–0.90.
+- **Not absorbed:** coding error. With 8% wrong forms per list, ages are
+  ~55% too old (coverage 0.32), worst at shallow nodes. Careful coding
+  matters more than any model choice.
+- **Not absorbed:** a rate that falls with depth. Deep ages come out ~30%
+  too young, and the root is covered once in 20. Only calibrations at more
+  than one depth can reveal this.
+- **Clean data:** coverage is 0.81 against 0.90. That is within about
+  two standard errors, given that nodes from one tree are correlated.
 
 ## How to report a result
 
-State the model, the calibrations that set the scale, the prior package /
-rate prior, whether family data updated the rates, the split between rate and
-calibration uncertainty, the strict-inheritance fit (contamination /
-compatibility), cross-model sensitivity, and the influential concepts and
-calibrations. Give intervals, not point dates. When the data cannot answer the
-question (deep-time IE root), say so and show the width — as the five-language
-example does.
+State the following:
+- the model;
+- the mode and `scale_source`;
+- the calibrations, with their sources;
+- the rate prior;
+- `rate_contraction` and the variance split;
+- the adequacy failures, if any;
+- the model comparison or sensitivity runs;
+- the topology source.
+
+Lead with lexical and relative ages when the calendar scale is
+prior-driven. Give intervals, not point dates. When the data cannot answer
+the question, say so and show the width. The deep IE and Sino-Tibetan roots
+are examples.
 
 **A run from the browser page is not a result to report.** The page
-(`docs/web.md`) computes exactly what the CLI computes — that is checked to the
-last digit — but its default chain lengths are chosen so a run finishes while
-someone waits, and it keeps no manifest. Use it to explore, to teach, and to see
-whether a dataset behaves; do the run you intend to cite with `clepsydra
-date-tree`, which writes `run_manifest.tsv` beside the posterior so the result
-can be reproduced.
+(`docs/web.md`) computes exactly what the CLI computes, and is checked to the
+last digit. But its default chain lengths are chosen so a run finishes while
+someone waits, and it keeps no manifest. Use it to explore and to teach. Do
+the run you intend to cite with `clepsydra date-tree`, which writes
+`run_manifest.tsv` beside the posterior.
 
 ## The worked examples
 
 - `examples/pair_simple` — P1 pairwise (Spanish–Portuguese), the smallest case.
-- `examples/romance_tree` — T1 chronology of Romance, anchored by attested Latin;
-  converges cleanly and dates proto-Romance to ~1600 BP with honest intervals.
-- `examples/five_ie_reproduction` — reproduction-style IE tip-dating; a hard,
-  rate-prior-sensitive deep-time case reported with its full uncertainty.
-- `examples/sinotibetan_tree` — a **different family** (Sino-Tibetan, Sagart et
-  al. 2019): well-estimated subgroup ages (Sinitic, Tibetic, Burmish) alongside a
-  root that is honestly reported as weakly identified under a strict clock — the
-  same validity/identifiability lessons on unrelated data.
-- `examples/polynesian_tree` — a **shallow, cleanly-dated** family (Polynesian,
-  Walworth 2018): a node-calibrated Proto-Polynesian root and crisply converged
-  internal ages (~2900 BP root, Eastern Polynesian ~2250 BP), the clean-case
-  counterpoint to the deep IE/ST roots.
-- `examples/families_pairwise` — a **nine-family** pairwise gallery (Dravidian,
-  Turkic, Uralic, Semitic, Polynesian, Tupían, Arawakan, Alor-Pantar, Koreanic):
-  the same engine and pipeline run unchanged across unrelated families, with
-  divergences honestly reported as unanchored lexical time.
+- `examples/romance_tree` — T1 chronology of Romance, anchored by attested
+  Latin. Proto-Romance at about 1,530 BP. `calib_sensitivity/` shows which
+  calibrations the chronology leans on.
+- `examples/five_ie_reproduction` — IE tip-dating from five ancient
+  languages. The root is about 6,150 BP (4,420–8,440): wide,
+  rate-prior-sensitive, and reported with its full uncertainty.
+- `examples/sinotibetan_tree` — Sino-Tibetan (Sagart et al. 2019).
+  Subgroup ages are well estimated. Under a strict clock the root is pushed
+  past its soft window, a weakly identified deep root reported as such.
+- `examples/polynesian_tree` — a shallow family (Walworth 2018) with a
+  node-calibrated root (about 2,830 BP) and well-converged internal ages.
+- `examples/families_pairwise` — a nine-family pairwise gallery, reported as
+  unanchored lexical time.
 
-All run from a clean checkout (`make native`, then each `run.sh`) on real,
+All run from a clean checkout (`make`, then each `run.sh`) on real,
 CC-BY-4.0 cognate data from Lexibank / LexiCore (`examples/DATA_SOURCE.md`).
