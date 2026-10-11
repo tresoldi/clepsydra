@@ -7,7 +7,7 @@ CLE=../../build/clepsydra
 mkdir -p output
 "$CLE" date-tree \
   --tree tree.nwk --forms data/forms.tsv --calibrations calibrations.tsv \
-  --out output --warmup 6000 --samples 6000 --chains 4 --seed 42 \
+  --out output --seed 42 \
   --rate-logmean -8.8 --rate-logsd 0.8
 echo; echo "== posterior node ages (years BP) =="; cat output/posterior_nodes.tsv
 echo; echo "NOTE: the IE root age is deep-time and rate-prior-sensitive; the wide"

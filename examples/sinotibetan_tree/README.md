@@ -8,7 +8,7 @@ as attested tip anchors. This complements the Indo-European examples with a
 second, unrelated family, driven by the same converter and CLI.
 
 ```
-./run.sh          # ~2 min; writes output/posterior_nodes.tsv, diagnostics.tsv, run_manifest.tsv
+./run.sh          # ~10 min; writes output/posterior_nodes.tsv, diagnostics.tsv, run_manifest.tsv
 ```
 
 ## Inputs
@@ -22,26 +22,30 @@ second, unrelated family, driven by the same converter and CLI.
   Old Burmese 950 BP; illustrative), extant tips at 0, and a broad uniform prior
   on the Proto-Sino-Tibetan root.
 
-## Representative output (seed 42, 4 chains × 5000)
+## Representative output (seed 42, relaxed clock, 4 chains × 10,000 + 10,000)
+
+This tree needs longer chains than the 4,000 + 4,000 default: at the default
+the deep nodes reach R̂ 1.018.
 
 | node | median BP | 90% HPD | R̂ | ESS |
 |---|---|---|---|---|
-| Sinitic (Old Chinese + Mandarin) | ~2941 | 2810–3096 | 1.00 | 4474 |
-| Tibetic (Old Tibetan + Lhasa) | ~1385 | 1306–1486 | 1.00 | 5371 |
-| Burmish (Old Burmese + Rangoon) | ~1040 | 964–1129 | 1.00 | 5599 |
-| Tibeto-Burman core | ~6483 | 5773–7238 | 1.00 | 1889 |
-| proto_sino_tibetan (root) | ~8937 | 8524–9209* | 1.00 | 3750 |
+| Sinitic (Old Chinese + Mandarin) | ~3091 | 2810–3554 | 1.00 | 4991 |
+| Tibetic (Old Tibetan + Lhasa) | ~1476 | 1308–1774 | 1.00 | 4876 |
+| Burmish (Old Burmese + Rangoon) | ~1150 | 964–1430 | 1.00 | 4426 |
+| Tibeto-Burman core | ~6642 | 4878–8423 | 1.00 | 689 |
+| proto_sino_tibetan (root) | ~8248 | 6808–9173 | 1.00 | 1481 |
 
 The **subgroup ages are well estimated** and archaeologically sensible (Sinitic
-diversification ~3000 BP; Tibetic ~1400 BP). The **root is not**: under a strict
-clock the rate pinned by the recent tip anchors implies a very deep root that
-pushes against whatever upper bound the calibration sets (`*` the 90% HPD runs
-past the soft 4500–9000 BP root window, into its outlier tail). That is an honest identifiability result, not a fitted date —
-strict-clock, tip-age-only dating poorly constrains a deep family's root, and
-Sagart et al.'s ~7200 BP comes from a **relaxed clock with node calibrations**.
-Treat the root here as "deep and weakly identified", and see
-`docs/scientific-methods.md`. Adding `--relaxed 1` and internal node
-calibrations is the route to a comparable root estimate.
+diversification ~3100 BP; Tibetic ~1500 BP). The **root is deep and wide**:
+under the relaxed clock its median sits inside the soft 4500–9000 BP window,
+and its 90% HPD just reaches past the top. Under the strict clock
+(`--relaxed 0`) the rate pinned by the recent tip anchors put the root at
+~8940 BP (8524–9209), pressing on the window's upper bound: the per-branch
+rates of the relaxed clock relieve that tension. Sagart et al.'s ~7200 BP comes
+from a relaxed clock with node calibrations and an inferred topology; adding
+internal node calibrations is the route to a comparable estimate here. Treat
+the root as "deep and weakly identified", and see
+`docs/scientific-methods.md`.
 
 ## Prior only against posterior
 
@@ -49,11 +53,12 @@ calibrations is the route to a comparable root estimate.
 
 The grey bar is the node's age with the cognate likelihood switched off (the same run's `prior_*` columns: tree prior, calibrations and clock prior only). The blue bar is the posterior. `prior_overlap` in `posterior_nodes.tsv` measures how much the two share.
 
-The data dominate every node (overlaps 0.09–0.35). The subgroups with an
-attested tip collapse onto a narrow interval just above that tip. The root is
-pushed to 8,937 BP, past the prior's 90% HPD (4,368–8,437). This is a conflict
-between the cognates, under a strict clock, and the root window, not
-information about the root: the posterior sits in the window's outlier tail.
+The data dominate the subgroups with an attested tip (overlaps 0.21–0.34): each
+collapses onto a narrow interval just above that tip. Eastern Tibeto-Burman is
+pushed much older than the prior puts it (1,908 → 4,914 BP, overlap 0.28); the
+Tibeto-Burman and inner nodes move less (0.61–0.62). The root is pushed from the prior's 6,229 BP to 8,248 BP,
+toward the top of its window: the cognates, read through the attested tips,
+favour a deeper root than the window's centre.
 
 Regenerate after `./run.sh` with
 `python3 ../../tools/plotting/overlay.py output/posterior_nodes.tsv --svg prior_overlay.svg --title "Sino-Tibetan"`, which also prints the numbers as a table.

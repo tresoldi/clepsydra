@@ -190,8 +190,9 @@ generating rate with R̂ < 1.1.
 ### 2.6 Relaxed clock and robust observations (M9)
 
 The sampler is a typed-parameter engine; the M9 blocks are switched on from the
-config and are **off by default** (so the strict-clock path of §2.5 is
-unchanged):
+config. In `gd_mcmc_config` they are off by default, so the strict-clock path
+of §2.5 is unchanged; `date-tree` turns the relaxed clock on by default
+(`gd_analysis_tree_config`):
 
 - **Relaxed branch clock.** One log-multiplier `log m_b` per branch, with the
   mean-one prior `log m_b ~ N(-σ_b²/2, σ_b²)` and a HalfNormal shrinkage

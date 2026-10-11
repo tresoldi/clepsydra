@@ -528,8 +528,14 @@ void gd_analysis_tree_config_default(gd_analysis_tree_config *cfg)
 {
     if (cfg == NULL) return;
     memset(cfg, 0, sizeof *cfg);
-    cfg->n_warmup = 2000;
-    cfg->n_samples = 2000;
+    /* The relaxed clock is the default: it predicts held-out concepts as
+     * well or better on every family tried, and recovers held-out tip dates
+     * where the strict clock is confidently wrong (docs/research/
+     * model-uncertainty.md, examples/loco_benchmark). It needs 4,000 +
+     * 4,000 to converge on all eight variant runs there; 2,000 + 2,000
+     * converged on five. */
+    cfg->n_warmup = 4000;
+    cfg->n_samples = 4000;
     cfg->n_chains = 4;
     cfg->threads = 0;
     cfg->seed = 42;
@@ -537,7 +543,7 @@ void gd_analysis_tree_config_default(gd_analysis_tree_config *cfg)
     cfg->rate_logsd = 0.80;
     cfg->epsilon = 0.05;
     cfg->sample_epsilon = true;
-    cfg->relaxed = false;
+    cfg->relaxed = true;
     cfg->block_age_scaling = true;
     cfg->root_lex_logmean = -1.2;   /* exp(-1.2) = 0.30 replacements per concept */
     cfg->root_lex_logsd = 1.5;

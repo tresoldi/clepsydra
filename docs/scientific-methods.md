@@ -10,10 +10,10 @@ A clepsydra date is a **posterior distribution** under a stated model,
 tree, rate prior and set of calibrations. It is reported with a credible
 interval and convergence diagnostics, never as a single "true" date.
 
-"Proto-Romance diverged in 1531 BP" is wrong. This is right: "the posterior
-median for Proto-Romance is about 1,530 BP (90% HPD 1,377–1,761; R̂ 1.00,
-ESS 3,585), with Latin fixed at 2,050 BP, the default T1 model and the
-default rate prior".
+"Proto-Romance diverged in 1662 BP" is wrong. This is right: "the posterior
+median for Proto-Romance is about 1,660 BP (90% HPD 1,383–1,959; R̂ 1.00,
+ESS 2,928), with Latin fixed at 2,050 BP, the default T1 model with a
+relaxed clock, and the default rate prior".
 
 ## Three kinds of age
 
@@ -65,7 +65,7 @@ say how much:
   (Cov(log a, −log ρ) / Var(log a)). The two sum to 1. Arawan with tip dates
   gives 0.01 / 0.99: almost all of the calendar width is the clock's.
   When a calibration pins the root, L and ρ co-vary, and one share can leave
-  [0, 1] (five-IE: −0.50 / 1.50). That means the calibration, through ρ,
+  [0, 1] (five-IE: −0.45 / 1.45). That means the calibration, through ρ,
   is what holds the root, and extra lexical spread is cancelled by the rate.
 
 ## The choices that set the answer
@@ -100,7 +100,7 @@ Before interpreting any age:
   under the prior alone, from the same run. `prior_overlap` near 1 means
   the data did little for that node. `tools/plotting/overlay.py` draws the
   two intervals side by side; every tree example has one. In five-IE the
-  root's overlap is 0.72: its width is the priors', not the cognates'.
+  root's overlap is 0.85: its width is the priors', not the cognates'.
 - **Power-scaling** (`sensitivity_root_age`, `sensitivity_lexical_root`).
   This measures how far the root moves when one component (clock prior,
   lexical-root prior, calibrations, likelihood) is up- or down-weighted.
@@ -180,16 +180,19 @@ the run you intend to cite with `clepsydra date-tree`, which writes
 
 - `examples/pair_simple` — P1 pairwise (Spanish–Portuguese), the smallest case.
 - `examples/romance_tree` — T1 chronology of Romance, anchored by attested
-  Latin. Proto-Romance at about 1,530 BP. `calib_sensitivity/` shows which
+  Latin. Proto-Romance at about 1,660 BP. `calib_sensitivity/` shows which
   calibrations the chronology leans on.
 - `examples/five_ie_reproduction` — IE tip-dating from five ancient
-  languages. The root is about 6,150 BP (4,420–8,440): wide,
+  languages. The root is about 6,580 BP (4,190–9,430): wide,
   rate-prior-sensitive, and reported with its full uncertainty.
 - `examples/sinotibetan_tree` — Sino-Tibetan (Sagart et al. 2019).
-  Subgroup ages are well estimated. Under a strict clock the root is pushed
-  past its soft window, a weakly identified deep root reported as such.
+  Subgroup ages are well estimated. The root is deep and wide (about 8,250
+  BP, 6,810–9,170), a weakly identified deep root reported as such; under a
+  strict clock it presses past its soft window.
 - `examples/polynesian_tree` — a shallow family (Walworth 2018) with a
-  node-calibrated root (about 2,830 BP) and well-converged internal ages.
+  node-calibrated root (about 2,840 BP) and well-converged internal ages.
+  The clock choice moves the Central-Eastern core by a quarter (relaxed
+  ~1,270 BP, strict ~1,740 BP).
 - `examples/families_pairwise` — a nine-family pairwise gallery, reported as
   unanchored lexical time.
 

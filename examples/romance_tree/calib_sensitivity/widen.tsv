@@ -1,8 +1,8 @@
 node	baseline_median_bp	widened_median_bp	shift_bp	baseline_width_bp	widened_width_bp
-root	2681.1	2826.3	145.1	345.5	849.8
-proto_romance	1535.4	1564.2	28.8	387.9	929.7
-continental	1365.5	1386.1	20.5	482.7	860.0
-eastern_western	1020.3	1041.0	20.6	476.2	730.0
-italo_western	851.7	866.9	15.2	433.0	625.4
-gallo_iberian	644.7	655.4	10.7	377.9	508.6
-ibero	369.6	378.2	8.6	284.7	353.6
+root	2580.1	2752.3	172.2	539.9	950.9
+proto_romance	1662.4	1755.0	92.6	575.9	1118.0
+continental	1398.2	1462.6	64.4	671.8	1056.3
+eastern_western	1156.0	1190.2	34.2	699.7	947.7
+italo_western	936.5	962.8	26.2	652.3	835.4
+gallo_iberian	694.0	710.0	16.0	581.4	695.1
+ibero	377.2	385.9	8.7	423.0	474.6

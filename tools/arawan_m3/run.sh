@@ -22,12 +22,12 @@ printf 'calibration_id\ttarget_id\ttype\tp1\tp2\tp3\tis_hard\tsource_key\n' > "$
 echo '((((banawa,(jamamadi,jarawara)n1)n2,(deni,kulina)n4)n5,suruwaha)n6,paumari)root;' > "$OUT/tree_modern.nwk"
 
 COMMON="--forms $D/forms.tsv --warmup 4000 --samples 4000 --chains 4 --seed 42"
-run date-tree --tree "$D/tree_labeled.nwk" --calibrations "$OUT/cal_tips.tsv" --out "$OUT/strict" $COMMON || true
+run date-tree --tree "$D/tree_labeled.nwk" --calibrations "$OUT/cal_tips.tsv" --out "$OUT/strict" $COMMON --relaxed 0 || true
 run date-tree --tree "$D/tree_labeled.nwk" --calibrations "$OUT/cal_tips.tsv" --out "$OUT/relaxed" $COMMON --relaxed 1 || true
-run date-tree --tree "$OUT/tree_modern.nwk" --calibrations "$OUT/cal_modern.tsv" --out "$OUT/modern" $COMMON || true
-run date-tree --tree "$D/tree_labeled.nwk" --calibrations "$OUT/cal_tips.tsv" --out "$OUT/clock_empirical" $COMMON \
+run date-tree --tree "$OUT/tree_modern.nwk" --calibrations "$OUT/cal_modern.tsv" --out "$OUT/modern" $COMMON --relaxed 0 || true
+run date-tree --tree "$D/tree_labeled.nwk" --calibrations "$OUT/cal_tips.tsv" --out "$OUT/clock_empirical" $COMMON --relaxed 0 \
     --rate-logmean -8.32 --rate-logsd 0.77 || true
-run date-tree --tree "$D/tree_labeled.nwk" --calibrations "$OUT/cal_window.tsv" --out "$OUT/window" $COMMON || true
+run date-tree --tree "$D/tree_labeled.nwk" --calibrations "$OUT/cal_window.tsv" --out "$OUT/window" $COMMON --relaxed 0 || true
 
 # Topology: the BEAST B1 sample, lower-cased to match the forms.
 tr 'A-Z' 'a-z' < "$B1" | sed 's/^#nexus/#NEXUS/' > "$OUT/b1.trees"
@@ -42,8 +42,8 @@ echo done
 # concept rates, stacked on PSIS-LOO. Draws and pointwise output on.
 AV="--forms $D/forms.tsv --calibrations $OUT/cal_tips.tsv --warmup 8000 --samples 8000 --chains 4 --seed 42 --compare-prior 0 --write-draws 1 --write-pointwise 1"
 T="--tree $D/tree_labeled.nwk"
-run date-tree $T --out "$OUT/av_strict_ln" $AV || true
-run date-tree $T --out "$OUT/av_strict_gm" $AV --concept-rate-gamma 1 || true
+run date-tree $T --out "$OUT/av_strict_ln" $AV --relaxed 0 || true
+run date-tree $T --out "$OUT/av_strict_gm" $AV --relaxed 0 --concept-rate-gamma 1 || true
 run date-tree $T --out "$OUT/av_relaxed_ln" $AV --relaxed 1 || true
 run date-tree $T --out "$OUT/av_relaxed_gm" $AV --relaxed 1 --concept-rate-gamma 1 || true
 "$C" average --runs "$OUT/av_strict_ln,$OUT/av_strict_gm,$OUT/av_relaxed_ln,$OUT/av_relaxed_gm" \

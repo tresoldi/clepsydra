@@ -124,8 +124,8 @@ typedef struct gd_analysis_tree_input {
 } gd_analysis_tree_input;
 
 typedef struct gd_analysis_tree_config {
-    size_t   n_warmup;          /* 2000 */
-    size_t   n_samples;         /* 2000 */
+    size_t   n_warmup;          /* 4000 */
+    size_t   n_samples;         /* 4000 */
     size_t   n_chains;          /* 4 */
     size_t   threads;           /* 0: all chains at once (threaded builds); 1: in turn */
     uint64_t seed;              /* 42 */
@@ -134,7 +134,7 @@ typedef struct gd_analysis_tree_config {
     double   epsilon;           /* 0.05: contamination weight when not sampled */
     /* Sample epsilon ~ Beta(1, 19) instead of fixing it (E2.2). Default 1. */
     bool     sample_epsilon;
-    bool     relaxed;           /* relaxed branch clock (M9); 0 = strict */
+    bool     relaxed;           /* relaxed branch clock (M9, default); 0 = strict */
     bool     block_age_scaling; /* 1: decorrelate nested ages (deep trees) */
     /* Prior on the lexical root L = rho * a_root, in expected replacements
      * per concept along a root-to-tip path (gd_tree_prior.h). */

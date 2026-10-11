@@ -58,7 +58,7 @@ def _run(binary, sub, out, samples, scope, log):
            "--forms", os.path.join(sub, "forms.tsv"),
            "--calibrations", os.path.join(sub, "calibrations.tsv"),
            "--out", out, "--warmup", str(WARMUP), "--samples", str(samples),
-           "--chains", str(CHAINS), "--seed", str(SEED)]
+           "--chains", str(CHAINS), "--seed", str(SEED), "--relaxed", "0"]
     if scope:
         cmd = SCOPE + cmd
     t0 = time.time()

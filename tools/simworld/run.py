@@ -13,9 +13,10 @@ scenario then breaks one assumption:
   missing_fast concepts with fast rates are missing more often (non-random)
   gamma_rates  concept multipliers are gamma (CV 1.2) instead of log-normal
 
-The fit is the default date-tree model with no calendar information. For
-every internal node the true lexical age (rate x age, the mean rate) is
-compared with the 90% HPD of lexical_* in posterior_nodes.tsv.
+The fit is date-tree with the strict clock (the default when D3 ran) and no
+calendar information. For every internal node the true lexical age (rate x
+age, the mean rate) is compared with the 90% HPD of lexical_* in
+posterior_nodes.tsv.
 
     cd tools && python3 -m simworld.run --reps 20 --out ../docs/research/simworld
 
@@ -139,6 +140,7 @@ def run_rep(scen, rep, binary, outdir, tip_error=False):
            "--forms", os.path.join(d, "forms.tsv"), "--calibrations", os.path.join(d, "cal.tsv"),
            "--out", os.path.join(d, "out"), "--warmup", "2000", "--samples", "2000",
            "--chains", "4", "--seed", str(rep + 1), "--compare-prior", "0",
+           "--relaxed", "0",
            "--allow-unconverged", "1"]
     subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
     rows = []

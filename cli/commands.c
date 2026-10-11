@@ -1023,7 +1023,8 @@ static void usage_trees(void)
       "  MrBayes, RevBayes). Calibrations must name taxon sets (mrca:A,B) or tips:\n"
       "  sampled trees have no internal labels. --clades: TSV with columns\n"
       "  clade_id and members (comma-separated tips); the root is always reported.\n"
-      "  Options of date-tree apply to every tree.\n");
+      "  Options of date-tree apply to every tree, with two different defaults:\n"
+      "  the strict clock (--relaxed 0) and 2000 + 2000 iterations per tree.\n");
 }
 
 static int cmp_dbl(const void *a, const void *b)
@@ -1092,6 +1093,12 @@ int cmd_date_trees(int argc, char **argv)
     gd_analysis_tree_config cfg;
     gd_analysis_tree_config_default(&cfg);
     cfg.compare_prior = false;     /* per-tree prior runs would double the cost */
+    /* One fit per tree, up to --ntrees of them: the strict clock at 2,000 +
+     * 2,000 keeps a 50-tree run affordable. --relaxed 1 and longer chains
+     * are available as flags. */
+    cfg.relaxed = false;
+    cfg.n_warmup = 2000;
+    cfg.n_samples = 2000;
     if (apply_registry_opts(argc, argv, opts, nopt, &cfg) != 0) return 1;
     double burnin = atof(opt_arg(argc, argv, "--burnin", "0.25"));
     int ntrees_req = 50, dpc = 100, allow = 0;

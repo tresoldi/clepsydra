@@ -100,6 +100,9 @@ TEST(test_analysis_tree_run_summarizes_ages)
     gd_analysis_tree_input in; tree_input(&in);
     gd_analysis_tree_config cfg; quick_config(&cfg);
     gd_error err = GD_ERROR_INIT;
+    /* The relaxed clock is the default; this test checks the strict path. */
+    CHECK(cfg.relaxed);
+    cfg.relaxed = false;
 
     gd_analysis_tree_result *res = NULL;
     CHECK(gd_analysis_tree_run(&in, &cfg, &res, &err) == 0);

@@ -11,6 +11,18 @@ columns and example numbers are expected throughout 0.x and are listed here.
 
 ### Changed (breaking)
 
+- **The relaxed clock is the default for `date-tree`, at 4,000 + 4,000
+  iterations** (`--relaxed 1`, `--warmup 4000`, `--samples 4000`; was strict
+  at 2,000 + 2,000). It predicts held-out concepts as well or better on
+  every family tried, recovers held-out tip dates where the strict clock is
+  confidently wrong (7/9 against 1/9), and now converges on all eight
+  variant runs at the new length. `--relaxed 0` restores the strict clock.
+  `calib-sensitivity` follows `date-tree`. `date-trees` keeps the strict
+  clock and 2,000 + 2,000 per tree, for cost. Research scripts whose
+  committed results are strict-clock (`tools/simworld`, `tools/arawan_m3`,
+  `tools/clock_engine`, the LOCO harness) now pass `--relaxed` explicitly.
+  The examples are regenerated under the new default.
+
 - **Relaxed clock: two rate-compensated moves.** A node move that changes
   one age and resets the multipliers of the branches meeting it, so each
   branch's expected change is fixed; and a second form of the clock move

@@ -121,14 +121,35 @@ in 7 of 8 runs (four families × two mixing families):
 | Five-IE | 1.032 (224) | 1.029 (214) |
 | Arawan | 1.012 (313) | 1.010 (274) |
 
+## After the rate-compensated moves (dedea86, 3c4dee7)
+
+Two more moves keep every branch's expected change fixed while ages move: a
+node move that resets the multipliers of the branches meeting the node, and a
+second form of the clock move that resets the branches to dated ancient tips
+(`docs/inference.md` §2.6). The same eight runs, on main at 3c4dee7, seed 42:
+
+| family | 2,000 + 2,000: log-normal | gamma | 4,000 + 4,000: log-normal | gamma |
+|---|---|---|---|---|
+| Romance | 1.007 (718) | 1.010 (710) | 1.003 (1,520) | 1.004 (1,294) |
+| Polynesian | 1.007 (693) | 1.006 (646) | 1.005 (1,211) | 1.003 (1,174) |
+| Five-IE | 1.009 (500) | 1.008 (572) | 1.003 (1,029) | 1.003 (945) |
+| Arawan | 1.005 (385) | 1.015 (434) | 1.004 (678) | 1.007 (735) |
+
+Max R̂ (min bulk ESS). At 2,000 + 2,000, 5 of 8 converge (1 of 8 before).
+At 4,000 + 4,000 all 8 do, with margin.
+
 ## Consequences
 
-- **The default stays the strict clock, with the relaxed clock as the
-  standard sensitivity run.** The relaxed clock predicts better on two of
-  four families and never worse. A default must converge at the default
-  length, and the relaxed clock does not (table above; it needs about
-  4,000 + 4,000). Its branch rates are also confounded with ages wherever
-  calibrations are sparse. Run it with `--warmup 4000 --samples 4000`.
+- **The relaxed clock is the default, at 4,000 + 4,000** (since the commit
+  after 3c4dee7). It predicts held-out concepts better on two of four
+  families and never worse, it recovers held-out tip dates where the strict
+  clock is confidently wrong (`examples/loco_benchmark`: 7/9 against 1/9),
+  and it now converges on every family at the new default length. Its
+  branch rates are still confounded with ages wherever calibrations are
+  sparse: read `branch_rate_confounded` before interpreting any branch rate.
+  `--relaxed 0` gives the strict clock, which converges in about half the
+  iterations. `date-trees` keeps the strict clock and 2,000 + 2,000 per
+  tree, for cost.
 - **Gamma concept rates** are a candidate default on the same terms: never
   worse, sometimes better. Their only cost is the heavier tail of the rate
   prior.

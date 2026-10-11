@@ -179,8 +179,7 @@ def cli_runner(binary, tree, forms, settings):
                "--rate-logmean", str(settings["rate_logmean"]),
                "--rate-logsd", str(settings["rate_logsd"]),
                "--allow-unconverged", "1"]
-        if settings.get("relaxed"):
-            cmd += ["--relaxed", "1"]
+        cmd += ["--relaxed", "1" if settings.get("relaxed") else "0"]
         subprocess.run(cmd, check=True, capture_output=True, text=True)
         return parse_posterior_nodes(os.path.join(out_dir, "posterior_nodes.tsv"))
     return run

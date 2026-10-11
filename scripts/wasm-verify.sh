@@ -43,7 +43,7 @@ echo "== date-tree (Romance, ${CHAINS} x ${WARMUP}+${SAMPLES}, seed ${SEED}) =="
     --forms examples/romance_tree/data/forms.tsv \
     --calibrations examples/romance_tree/calibrations.tsv \
     --out "$tmp/native" --warmup "$WARMUP" --samples "$SAMPLES" \
-    --chains "$CHAINS" --seed "$SEED" >/dev/null 2>&1
+    --chains "$CHAINS" --seed "$SEED" --relaxed 0 >/dev/null 2>&1
 
 node scripts/wasm_verify.js tree examples/romance_tree \
     "$WARMUP" "$SAMPLES" "$CHAINS" "$SEED" > "$tmp/wasm_tree.json"

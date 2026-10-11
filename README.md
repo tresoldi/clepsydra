@@ -35,7 +35,9 @@ Python reference-prior toolchain.
 >   - chains run in parallel threads, with draws identical to a
 >     sequential run;
 >   - the likelihood is evaluated incrementally;
->   - the relaxed clock has a non-centred move;
+>   - the relaxed clock is the `date-tree` default (4,000 + 4,000
+>     iterations), with non-centred, rate-shift and rate-compensated
+>     moves;
 >   - checkpoints are bound to their inputs and resume mid-sampling.
 > - **T2 is experimental.** The binary cognate-set likelihood is tested at the
 >   likelihood level, but nothing can fit it.
@@ -55,8 +57,9 @@ Python reference-prior toolchain.
 
 A reusable scientific library and CLI for estimating language divergence
 times from basic-vocabulary cognacy data under several explicit
-probabilistic models (classical pairwise, hierarchical pairwise, strict
-novel-state multistate tree, binary cognate-set tree), with Bayesian
+probabilistic models (classical pairwise, hierarchical pairwise,
+novel-state multistate tree under a strict or relaxed clock, binary
+cognate-set tree), with Bayesian
 posteriors, external versioned-TSV reference priors, calibrations for
 absolute time, robust contamination for incompatible concepts, and a full
 validation suite.

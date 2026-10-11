@@ -13,11 +13,12 @@ the library version; `clepsydra --help` lists the commands.
 ## `date-tree` — fixed-topology chronology (T1)
 
 Estimates internal node ages on a fixed rooted tree from cognate data, by
-Metropolis-within-Gibbs over the strict novel-state likelihood.
+Metropolis-within-Gibbs over the novel-state likelihood, under a relaxed clock
+by default.
 
 ```
 clepsydra date-tree --tree T.nwk --forms forms.tsv --calibrations cal.tsv --out DIR \
-    [--warmup 2000] [--samples 2000] [--chains 4] [--seed 42] \
+    [--warmup 4000] [--samples 4000] [--chains 4] [--seed 42] \
     [--rate-logmean -8.80] [--rate-logsd 0.80] [--epsilon 0.05] [--relaxed 0|1] \
     [--progress 0|1]
 ```
@@ -28,14 +29,14 @@ clepsydra date-tree --tree T.nwk --forms forms.tsv --calibrations cal.tsv --out 
 | `--forms` | forms TSV (`language_id, concept_id, cognate_id, primary_weight`) | — |
 | `--calibrations` | calibrations TSV (`docs/input-formats.md` §4) | — |
 | `--out` | output directory (created) | — |
-| `--warmup` / `--samples` | adapting / retained iterations per chain | 2000 / 2000 |
+| `--warmup` / `--samples` | adapting / retained iterations per chain | 4000 / 4000 |
 | `--chains` | independent chains (per-chain seeds off `--seed`) | 4 |
 | `--threads` | chains run at once; 0 = all of them, 1 = one after another. The draws are the same whatever the value. With `--progress 1` the chains run one after another | 0 |
 | `--seed` | RNG seed; a seeded run is bit-reproducible | 42 |
 | `--rate-logmean` / `--rate-logsd` | prior on `log r` (per **year**) | −8.80 / 0.80 |
 | `--sample-epsilon` | sample the contamination weight ε, Beta(1, 19) prior | 1 |
 | `--epsilon` | fixed ε, used with `--sample-epsilon 0` | 0.05 |
-| `--relaxed` | `1` adds per-branch rate multipliers + `σ_b` | 0 |
+| `--relaxed` | per-branch rate multipliers + `σ_b`; `0` is the strict clock. The relaxed clock is the default since it predicts held-out concepts as well or better on every family tried, and recovers held-out tip dates where the strict clock is confidently wrong (`docs/research/model-uncertainty.md`, `examples/loco_benchmark`). It needs the 4,000 + 4,000 default; a strict run converges in about half that | 1 |
 | `--block-age-scaling` | decorrelate nested ages; helps on deep trees | 1 |
 | `--root-lex-logmean` / `--root-lex-logsd` | prior on log(ρ · root age), the lexical root | −1.2 / 1.5 |
 | `--prior-only` | sample the prior alone (likelihood off) | 0 |
@@ -202,7 +203,9 @@ tips. Tip names must match the forms.
 
 The command exits with status 3 if any tree fails the convergence check,
 unless `--allow-unconverged 1`. It skips the per-tree prior run
-(`--compare-prior`) to halve the cost.
+(`--compare-prior`) to halve the cost. Its defaults differ from `date-tree`
+in two ways, so that a 50-tree run stays affordable: the strict clock
+(`--relaxed 0`) and 2,000 + 2,000 iterations per tree. Both can be set.
 
 **Caveat.** When the trees were estimated from the same cognates, the result
 is a hybrid, not one joint posterior: the data choose the topologies and

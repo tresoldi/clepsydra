@@ -56,6 +56,7 @@ async function main() {
       `samples=${samples}`,
       `chains=${chains}`,
       `seed=${seed}`,
+      "relaxed=0",
       logmean !== undefined ? `rate_logmean=${logmean}` : null,
       logsd !== undefined ? `rate_logsd=${logsd}` : null,
     ].filter(Boolean).join("\n");
