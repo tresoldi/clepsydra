@@ -34,11 +34,26 @@ archaeologically defensible — the clean-case counterpoint in the example set.
 | central_eastern (Māori–Tahitian–Hawaiian core) | ~1742 | 1448–2042 | 1.00 | 9443 |
 
 Every node converges (R̂ ≤ 1.001, ESS above 7,500). At 5,000 + 5,000 a few
-parameters stopped just short of R̂ 1.01, hence the longer run and the ages line up with the
+parameters stopped just short of R̂ 1.01, hence the longer run. The ages line up with the
 linguistic/archaeological picture: a Proto-Polynesian break-up ~2900 BP, an
 Eastern-Polynesian node in the low thousands, and the Central-Eastern core more
 recent. Absolute ages still rest on the root calibration and rate prior, as
 `run_manifest.tsv` records — see `docs/scientific-methods.md`.
+
+## Prior only against posterior
+
+![Polynesian: 90% HPD of each node under the prior alone and under the posterior](prior_overlay.svg)
+
+The grey bar is the node's age with the cognate likelihood switched off (the same run's `prior_*` columns: tree prior, calibrations and clock prior only). The blue bar is the posterior. `prior_overlap` in `posterior_nodes.tsv` measures how much the two share.
+
+The root is the calibration. Its overlap is 0.97, so the 2,600–3,100 BP
+window passes through unchanged, as it should for a node-calibrated family. Every
+internal node is set by the data. Without them the uniform-ratio prior would put
+the Central-Eastern core at 476 BP (0–1,276); the cognates put it at 1,742 BP
+(overlap 0.10). The internal chronology is a result; the root is an input.
+
+Regenerate after `./run.sh` with
+`python3 ../../tools/plotting/overlay.py output/posterior_nodes.tsv --svg prior_overlay.svg --title "Polynesian"`, which also prints the numbers as a table.
 
 Contrast with `examples/sinotibetan_tree` and `examples/five_ie_reproduction`,
 where the deep root is only weakly identified: the difference is time depth and

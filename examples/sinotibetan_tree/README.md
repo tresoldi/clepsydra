@@ -42,3 +42,18 @@ Sagart et al.'s ~7200 BP comes from a **relaxed clock with node calibrations**.
 Treat the root here as "deep and weakly identified", and see
 `docs/scientific-methods.md`. Adding `--relaxed 1` and internal node
 calibrations is the route to a comparable root estimate.
+
+## Prior only against posterior
+
+![Sino-Tibetan: 90% HPD of each node under the prior alone and under the posterior](prior_overlay.svg)
+
+The grey bar is the node's age with the cognate likelihood switched off (the same run's `prior_*` columns: tree prior, calibrations and clock prior only). The blue bar is the posterior. `prior_overlap` in `posterior_nodes.tsv` measures how much the two share.
+
+The data dominate every node (overlaps 0.09–0.35). The subgroups with an
+attested tip collapse onto a narrow interval just above that tip. The root is
+pushed to 8,937 BP, past the prior's 90% HPD (4,368–8,437). This is a conflict
+between the cognates, under a strict clock, and the root window, not
+information about the root: the posterior sits in the window's outlier tail.
+
+Regenerate after `./run.sh` with
+`python3 ../../tools/plotting/overlay.py output/posterior_nodes.tsv --svg prior_overlay.svg --title "Sino-Tibetan"`, which also prints the numbers as a table.

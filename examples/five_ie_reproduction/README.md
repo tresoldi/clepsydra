@@ -40,3 +40,20 @@ shifts the root age materially, which the run manifest documents.
 Since the proper age prior (lexical root plus uniform ages below it) and the
 joint moves of `docs/inference.md`, this deep tree mixes well: every node has
 ESS above 1,400. Earlier versions reached ~170.
+
+## Prior only against posterior
+
+![Five-IE (ancient tips): 90% HPD of each node under the prior alone and under the posterior](prior_overlay.svg)
+
+The grey bar is the node's age with the cognate likelihood switched off (the same run's `prior_*` columns: tree prior, calibrations and clock prior only). The blue bar is the posterior. `prior_overlap` in `posterior_nodes.tsv` measures how much the two share.
+
+**The root is mostly prior.** Its overlap is 0.72: the posterior, 4,421–8,436 BP,
+is the prior's 3,804–9,039 BP trimmed at both ends. The width of the root is
+therefore the width of the clock and root priors, not a finding from the
+cognates. The data do act on the inner nodes, which they push much older than
+the prior's uniform ratios put them (Italo-Celtic 2,835 → 5,397 BP, overlap
+0.20): the ancient tips are lexically far apart, so their common ancestors must
+be old.
+
+Regenerate after `./run.sh` with
+`python3 ../../tools/plotting/overlay.py output/posterior_nodes.tsv --svg prior_overlay.svg --title "Five-IE (ancient tips)"`, which also prints the numbers as a table.

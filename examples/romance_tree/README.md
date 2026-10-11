@@ -34,5 +34,19 @@ posterior **distribution** with a credible interval and convergence diagnostics
 (R̂, ESS) — never a point date. Absolute ages depend on the rate prior and the
 calibrations, as `run_manifest.tsv` records.
 
+## Prior only against posterior
+
+![Romance: 90% HPD of each node under the prior alone and under the posterior](prior_overlay.svg)
+
+The grey bar is the node's age with the cognate likelihood switched off (the same run's `prior_*` columns: tree prior, calibrations and clock prior only). The blue bar is the posterior. `prior_overlap` in `posterior_nodes.tsv` measures how much the two share.
+
+The data move every node. Overlaps are 0.29–0.54. They push the root
+older than its prior (median 2,246 → 2,686 BP) and Proto-Romance younger
+(1,871 → 1,531). Below Proto-Romance the prior is nearly flat across the
+allowed range; the cognates cut each interval to under half its width.
+
+Regenerate after `./run.sh` with
+`python3 ../../tools/plotting/overlay.py output/posterior_nodes.tsv --svg prior_overlay.svg --title "Romance"`, which also prints the numbers as a table.
+
 Try `--relaxed 1` to add per-branch rate multipliers, and compare the branch-
 rate/date confounding diagnostic in `run_manifest.tsv`.

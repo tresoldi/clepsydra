@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="320" viewBox="0 0 760 320" font-family="Helvetica, Arial, sans-serif" font-size="12">
+<rect width="100%" height="100%" fill="#ffffff"/>
+<text x="170" y="20" font-size="14" font-weight="bold" fill="#1d232a">Romance</text>
+<rect x="170" y="31" width="24" height="7" fill="#9aa3ad"/>
+<text x="200" y="39" fill="#1d232a">prior only</text>
+<rect x="280" y="31" width="24" height="7" fill="#1f6fb4"/>
+<text x="310" y="39" fill="#1d232a">posterior</text>
+<text x="400" y="39" fill="#1d232a">bars: 90% HPD; ticks: median</text>
+<line x1="730.0" y1="58" x2="730.0" y2="278" stroke="#e3e7eb"/>
+<text x="730.0" y="294" text-anchor="middle" fill="#1d232a">0</text>
+<line x1="636.7" y1="58" x2="636.7" y2="278" stroke="#e3e7eb"/>
+<text x="636.7" y="294" text-anchor="middle" fill="#1d232a">500</text>
+<line x1="543.3" y1="58" x2="543.3" y2="278" stroke="#e3e7eb"/>
+<text x="543.3" y="294" text-anchor="middle" fill="#1d232a">1,000</text>
+<line x1="450.0" y1="58" x2="450.0" y2="278" stroke="#e3e7eb"/>
+<text x="450.0" y="294" text-anchor="middle" fill="#1d232a">1,500</text>
+<line x1="356.7" y1="58" x2="356.7" y2="278" stroke="#e3e7eb"/>
+<text x="356.7" y="294" text-anchor="middle" fill="#1d232a">2,000</text>
+<line x1="263.3" y1="58" x2="263.3" y2="278" stroke="#e3e7eb"/>
+<text x="263.3" y="294" text-anchor="middle" fill="#1d232a">2,500</text>
+<line x1="170.0" y1="58" x2="170.0" y2="278" stroke="#e3e7eb"/>
+<text x="170.0" y="294" text-anchor="middle" fill="#1d232a">3,000</text>
+<text x="450.0" y="312" text-anchor="middle" fill="#1d232a">years BP</text>
+<text x="160" y="81.0" text-anchor="end" fill="#1d232a">root</text>
+<rect x="243.2" y="68.0" width="104.2" height="7" fill="#9aa3ad"/>
+<line x1="310.8" y1="66.0" x2="310.8" y2="77.0" stroke="#1d232a" stroke-width="2"/>
+<rect x="202.7" y="79.0" width="64.3" height="7" fill="#1f6fb4"/>
+<line x1="228.7" y1="77.0" x2="228.7" y2="88.0" stroke="#1d232a" stroke-width="2"/>
+<text x="160" y="111.0" text-anchor="end" fill="#1d232a">proto_romance</text>
+<rect x="343.2" y="98.0" width="97.0" height="7" fill="#9aa3ad"/>
+<line x1="380.7" y1="96.0" x2="380.7" y2="107.0" stroke="#1d232a" stroke-width="2"/>
+<rect x="401.4" y="109.0" width="71.6" height="7" fill="#1f6fb4"/>
+<line x1="444.2" y1="107.0" x2="444.2" y2="118.0" stroke="#1d232a" stroke-width="2"/>
+<text x="160" y="141.0" text-anchor="end" fill="#1d232a">continental</text>
+<rect x="355.6" y="128.0" width="170.1" height="7" fill="#9aa3ad"/>
+<line x1="438.4" y1="126.0" x2="438.4" y2="137.0" stroke="#1d232a" stroke-width="2"/>
+<rect x="425.5" y="139.0" width="88.7" height="7" fill="#1f6fb4"/>
+<line x1="475.2" y1="137.0" x2="475.2" y2="148.0" stroke="#1d232a" stroke-width="2"/>
+<text x="160" y="171.0" text-anchor="end" fill="#1d232a">eastern_western</text>
+<rect x="388.9" y="158.0" width="214.6" height="7" fill="#9aa3ad"/>
+<line x1="498.3" y1="156.0" x2="498.3" y2="167.0" stroke="#1d232a" stroke-width="2"/>
+<rect x="493.8" y="169.0" width="89.1" height="7" fill="#1f6fb4"/>
+<line x1="538.9" y1="167.0" x2="538.9" y2="178.0" stroke="#1d232a" stroke-width="2"/>
+<text x="160" y="201.0" text-anchor="end" fill="#1d232a">italo_western</text>
+<rect x="448.3" y="188.0" width="223.5" height="7" fill="#9aa3ad"/>
+<line x1="561.1" y1="186.0" x2="561.1" y2="197.0" stroke="#1d232a" stroke-width="2"/>
+<rect x="527.2" y="199.0" width="81.0" height="7" fill="#1f6fb4"/>
+<line x1="570.6" y1="197.0" x2="570.6" y2="208.0" stroke="#1d232a" stroke-width="2"/>
+<text x="160" y="231.0" text-anchor="end" fill="#1d232a">gallo_iberian</text>
+<rect x="520.2" y="218.0" width="196.5" height="7" fill="#9aa3ad"/>
+<line x1="623.0" y1="216.0" x2="623.0" y2="227.0" stroke="#1d232a" stroke-width="2"/>
+<rect x="572.8" y="229.0" width="69.1" height="7" fill="#1f6fb4"/>
+<line x1="609.3" y1="227.0" x2="609.3" y2="238.0" stroke="#1d232a" stroke-width="2"/>
+<text x="160" y="261.0" text-anchor="end" fill="#1d232a">ibero</text>
+<rect x="602.2" y="248.0" width="127.8" height="7" fill="#9aa3ad"/>
+<line x1="685.6" y1="246.0" x2="685.6" y2="257.0" stroke="#1d232a" stroke-width="2"/>
+<rect x="632.4" y="259.0" width="54.2" height="7" fill="#1f6fb4"/>
+<line x1="660.2" y1="257.0" x2="660.2" y2="268.0" stroke="#1d232a" stroke-width="2"/>
+</svg>

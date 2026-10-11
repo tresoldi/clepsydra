@@ -98,7 +98,9 @@ Before interpreting any age:
   parameters failed.
 - **Prior against posterior.** The `prior_*` columns give each node's age
   under the prior alone, from the same run. `prior_overlap` near 1 means
-  the data did little for that node.
+  the data did little for that node. `tools/plotting/overlay.py` draws the
+  two intervals side by side; every tree example has one. In five-IE the
+  root's overlap is 0.72: its width is the priors', not the cognates'.
 - **Power-scaling** (`sensitivity_root_age`, `sensitivity_lexical_root`).
   This measures how far the root moves when one component (clock prior,
   lexical-root prior, calibrations, likelihood) is up- or down-weighted.

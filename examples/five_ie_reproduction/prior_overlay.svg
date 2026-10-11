@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="230" viewBox="0 0 760 230" font-family="Helvetica, Arial, sans-serif" font-size="12">
+<rect width="100%" height="100%" fill="#ffffff"/>
+<text x="170" y="20" font-size="14" font-weight="bold" fill="#1d232a">Five-IE (ancient tips)</text>
+<rect x="170" y="31" width="24" height="7" fill="#9aa3ad"/>
+<text x="200" y="39" fill="#1d232a">prior only</text>
+<rect x="280" y="31" width="24" height="7" fill="#1f6fb4"/>
+<text x="310" y="39" fill="#1d232a">posterior</text>
+<text x="400" y="39" fill="#1d232a">bars: 90% HPD; ticks: median</text>
+<line x1="730.0" y1="58" x2="730.0" y2="188" stroke="#e3e7eb"/>
+<text x="730.0" y="204" text-anchor="middle" fill="#1d232a">0</text>
+<line x1="618.0" y1="58" x2="618.0" y2="188" stroke="#e3e7eb"/>
+<text x="618.0" y="204" text-anchor="middle" fill="#1d232a">2,000</text>
+<line x1="506.0" y1="58" x2="506.0" y2="188" stroke="#e3e7eb"/>
+<text x="506.0" y="204" text-anchor="middle" fill="#1d232a">4,000</text>
+<line x1="394.0" y1="58" x2="394.0" y2="188" stroke="#e3e7eb"/>
+<text x="394.0" y="204" text-anchor="middle" fill="#1d232a">6,000</text>
+<line x1="282.0" y1="58" x2="282.0" y2="188" stroke="#e3e7eb"/>
+<text x="282.0" y="204" text-anchor="middle" fill="#1d232a">8,000</text>
+<line x1="170.0" y1="58" x2="170.0" y2="188" stroke="#e3e7eb"/>
+<text x="170.0" y="204" text-anchor="middle" fill="#1d232a">10,000</text>
+<text x="450.0" y="222" text-anchor="middle" fill="#1d232a">years BP</text>
+<text x="160" y="81.0" text-anchor="end" fill="#1d232a">proto_indo_european</text>
+<rect x="223.8" y="68.0" width="293.1" height="7" fill="#9aa3ad"/>
+<line x1="394.9" y1="66.0" x2="394.9" y2="77.0" stroke="#1d232a" stroke-width="2"/>
+<rect x="257.6" y="79.0" width="224.9" height="7" fill="#1f6fb4"/>
+<line x1="385.6" y1="77.0" x2="385.6" y2="88.0" stroke="#1d232a" stroke-width="2"/>
+<text x="160" y="111.0" text-anchor="end" fill="#1d232a">core_ie</text>
+<rect x="292.2" y="98.0" width="274.9" height="7" fill="#9aa3ad"/>
+<line x1="454.4" y1="96.0" x2="454.4" y2="107.0" stroke="#1d232a" stroke-width="2"/>
+<rect x="263.0" y="109.0" width="224.4" height="7" fill="#1f6fb4"/>
+<line x1="392.8" y1="107.0" x2="392.8" y2="118.0" stroke="#1d232a" stroke-width="2"/>
+<text x="160" y="141.0" text-anchor="end" fill="#1d232a">hellenic_italic</text>
+<rect x="386.9" y="128.0" width="208.7" height="7" fill="#9aa3ad"/>
+<line x1="512.8" y1="126.0" x2="512.8" y2="137.0" stroke="#1d232a" stroke-width="2"/>
+<rect x="279.2" y="139.0" width="216.5" height="7" fill="#1f6fb4"/>
+<line x1="403.4" y1="137.0" x2="403.4" y2="148.0" stroke="#1d232a" stroke-width="2"/>
+<text x="160" y="171.0" text-anchor="end" fill="#1d232a">italo_celtic</text>
+<rect x="479.0" y="158.0" width="136.2" height="7" fill="#9aa3ad"/>
+<line x1="571.2" y1="156.0" x2="571.2" y2="167.0" stroke="#1d232a" stroke-width="2"/>
+<rect x="311.8" y="169.0" width="206.3" height="7" fill="#1f6fb4"/>
+<line x1="427.8" y1="167.0" x2="427.8" y2="178.0" stroke="#1d232a" stroke-width="2"/>
+</svg>

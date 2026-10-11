@@ -134,8 +134,9 @@ Four things follow from the research and shape everything below.
   The held-out 1833 list is recovered. Model averaging finds no preference
   between clocks. D4.3 coding sensitivity is not done (no alternative
   coding exists).
-- **M4.1:** examples regenerated with the current engine (`2063763`). The
-  prior-only overlays and interval-scored LOCO are still to do.
+- **M4.1:** examples regenerated with the current engine (`2063763`). Each
+  tree example has a prior-only overlay (`prior_overlay.svg`,
+  `tools/plotting/overlay.py`). Interval-scored LOCO is still to do.
 - **M4.2:** `docs/scientific-methods.md` rewritten. **M4.3:**
   `docs/research/model-uncertainty.md`. The relaxed clock predicts better on
   Romance (2.4 SE) and Polynesian (4 SE), and ties on Arawan. It moves
