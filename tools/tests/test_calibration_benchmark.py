@@ -64,13 +64,37 @@ class TestHeldoutTargets(unittest.TestCase):
             cb.free_target(rows, "Nonesuch")
 
 
-def _fake_runner(posteriors):
-    """posteriors: {node: (median, hpd_lo, hpd_hi)} -> runner returning them."""
+def _fake_runner(posteriors, prior=(0.0, 4000.0)):
+    """posteriors: {node: (median, hpd_lo, hpd_hi)} -> runner returning them,
+    each with the prior-only interval `prior`."""
     def run(cal_path, out_dir):
         return {n: {"median": m, "mean": m, "hpd_lo": lo, "hpd_hi": hi,
-                    "rhat": 1.0, "ess": 500.0}
+                    "rhat": 1.0, "ess": 500.0,
+                    "prior_lo": prior[0], "prior_hi": prior[1]}
                 for n, (m, lo, hi) in posteriors.items()}
     return run
+
+
+class TestIntervalScore(unittest.TestCase):
+    def test_covered_is_width(self):
+        self.assertAlmostEqual(cb.interval_score(100.0, 300.0, 200.0), 200.0)
+
+    def test_miss_charges_twenty_times_distance(self):
+        # alpha 0.1: 2/alpha = 20
+        self.assertAlmostEqual(cb.interval_score(100.0, 300.0, 50.0),
+                               200.0 + 20.0 * 50.0)
+        self.assertAlmostEqual(cb.interval_score(100.0, 300.0, 310.0),
+                               200.0 + 20.0 * 10.0)
+
+    def test_skill_against_prior(self):
+        rows = _rows(("Latin", "fixed_tip", 2050))
+        with tempfile.TemporaryDirectory() as d:
+            runner = _fake_runner({"Latin": (2100.0, 1600.0, 2600.0)},
+                                  prior=(0.0, 4000.0))
+            records, summary = cb.run_benchmark(rows, runner, d)
+        self.assertAlmostEqual(records[0]["interval_score"], 1000.0)
+        self.assertAlmostEqual(records[0]["prior_interval_score"], 4000.0)
+        self.assertAlmostEqual(summary["skill"], 0.75)
 
 
 class TestScoring(unittest.TestCase):

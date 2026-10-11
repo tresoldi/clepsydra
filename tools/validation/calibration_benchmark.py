@@ -19,7 +19,12 @@ The withheld target is the age already in the calibration file — nothing is
 fabricated; the test is whether the model recovers a datum it was not given.
 
 Aggregated over all held-out calibrations: empirical coverage (fraction whose
-true age lands in the 90% HPD), signed error, RMSE, and interval width. This is
+true age lands in the 90% HPD), signed error, RMSE, interval width, and the
+interval score of the 90% interval (Gneiting & Raftery 2007), which charges the
+width plus 20x the distance by which a miss falls outside. The same run's
+prior-only interval for the freed node (the `prior_*` columns: every other
+calibration kept, no cognate data) is scored the same way as a baseline, and
+the skill is 1 - IS(posterior) / IS(prior). This is
 NOT a large-sample coverage guarantee — it is a handful of held-out points from
 the trees you supply, so report N and read it as a calibrated-ness spot check,
 not a p-value. Deep internal nodes stay rate-prior-dominated; tips near the
@@ -43,6 +48,19 @@ import os
 import subprocess
 import sys
 import tempfile
+
+ALPHA = 0.1   # the HPD level is 90%
+
+
+def interval_score(lo, hi, y, alpha=ALPHA):
+    """Interval score of a central (1 - alpha) interval [lo, hi] for outcome y.
+    Lower is better: the width, plus 2/alpha times any miss distance."""
+    s = hi - lo
+    if y < lo:
+        s += 2.0 / alpha * (lo - y)
+    elif y > hi:
+        s += 2.0 / alpha * (y - hi)
+    return s
 
 
 def parse_calibrations(path):
@@ -141,6 +159,8 @@ def parse_posterior_nodes(path):
                 # "ess" before 0.3; "ess_bulk" since the tail ESS was added.
                 "rhat": g("rhat"),
                 "ess": g("ess_bulk") if "ess_bulk" in idx else g("ess"),
+                "prior_lo": g("prior_hpd90_lo_bp"),
+                "prior_hi": g("prior_hpd90_hi_bp"),
             }
     return out
 
@@ -157,7 +177,8 @@ def cli_runner(binary, tree, forms, settings):
                "--chains", str(settings["chains"]),
                "--seed", str(settings["seed"]),
                "--rate-logmean", str(settings["rate_logmean"]),
-               "--rate-logsd", str(settings["rate_logsd"])]
+               "--rate-logsd", str(settings["rate_logsd"]),
+               "--allow-unconverged", "1"]
         if settings.get("relaxed"):
             cmd += ["--relaxed", "1"]
         subprocess.run(cmd, check=True, capture_output=True, text=True)
@@ -178,13 +199,30 @@ def loco_one(rows, target_id, true_age, runner, out_dir):
         raise KeyError("freed node %r not in posterior output" % target_id)
     lo, hi = node["hpd_lo"], node["hpd_hi"]
     covered = 1 if (lo <= true_age <= hi) else 0
+    plo = node.get("prior_lo", float("nan"))
+    phi = node.get("prior_hi", float("nan"))
+    is_post = interval_score(lo, hi, true_age)
+    is_prior = interval_score(plo, phi, true_age)
     return {
         "target": target_id, "true_bp": true_age,
         "median_bp": node["median"], "hpd90_lo": lo, "hpd90_hi": hi,
         "covered": covered, "signed_err": node["median"] - true_age,
         "abs_err": abs(node["median"] - true_age), "width": hi - lo,
+        "interval_score": is_post, "prior_lo": plo, "prior_hi": phi,
+        "prior_interval_score": is_prior,
         "rhat": node["rhat"], "ess": node["ess"],
     }
+
+
+def _scores(records):
+    """Mean interval scores and skill (NaN-safe on the prior baseline)."""
+    n = len(records)
+    if not n:
+        return float("nan"), float("nan"), float("nan")
+    mis = sum(r["interval_score"] for r in records) / n
+    mip = sum(r["prior_interval_score"] for r in records) / n
+    skill = 1.0 - mis / mip if mip > 0 else float("nan")
+    return mis, mip, skill
 
 
 def run_benchmark(rows, runner, out_dir, targets=None):
@@ -197,23 +235,28 @@ def run_benchmark(rows, runner, out_dir, targets=None):
     rmse = math.sqrt(sum(r["signed_err"]**2 for r in records) / n) if n else float("nan")
     mae = sum(r["abs_err"] for r in records) / n if n else float("nan")
     mean_w = sum(r["width"] for r in records) / n if n else float("nan")
+    mis, mip, skill = _scores(records)
     summary = {"n": n, "coverage": cov, "rmse": rmse, "mae": mae,
-               "mean_width": mean_w}
+               "mean_width": mean_w, "interval_score": mis,
+               "prior_interval_score": mip, "skill": skill}
     return records, summary
 
 
 REPORT_COLS = ["target", "true_bp", "median_bp", "hpd90_lo", "hpd90_hi",
-               "covered", "signed_err", "abs_err", "width", "rhat", "ess"]
+               "covered", "signed_err", "abs_err", "width", "interval_score",
+               "prior_lo", "prior_hi", "prior_interval_score", "rhat", "ess"]
 
 
 def write_report(path, records):
     with open(path, "w", encoding="utf-8") as f:
         f.write("\t".join(REPORT_COLS) + "\n")
         for r in records:
-            f.write("\t".join(_fmt(r[c]) for c in REPORT_COLS) + "\n")
+            f.write("\t".join(_fmt(r[c], c) for c in REPORT_COLS) + "\n")
 
 
-def _fmt(x):
+def _fmt(x, col=None):
+    if col == "rhat" and isinstance(x, float):
+        return "%.3f" % x
     if isinstance(x, float):
         return "%.1f" % x if abs(x) >= 1 or x == 0 else "%.3f" % x
     return str(x)
@@ -280,6 +323,8 @@ def run_multi(families, defaults, out_dir, runner_factory=cli_runner):
         "rmse": math.sqrt(sum(r["signed_err"]**2 for r in all_records) / n) if n else float("nan"),
         "mae": sum(r["abs_err"] for r in all_records) / n if n else float("nan"),
     }
+    overall["interval_score"], overall["prior_interval_score"], \
+        overall["skill"] = _scores(all_records)
     return all_records, per_family, overall
 
 
@@ -288,7 +333,7 @@ def write_multi_report(path, records):
     with open(path, "w", encoding="utf-8") as f:
         f.write("\t".join(cols) + "\n")
         for r in records:
-            f.write("\t".join(_fmt(r[c]) for c in cols) + "\n")
+            f.write("\t".join(_fmt(r[c], c) for c in cols) + "\n")
 
 
 def _run_single(args):
@@ -318,6 +363,9 @@ def _run_single(args):
           "mean width=%.0f BP" % (summary["n"], summary["coverage"],
                                   summary["rmse"], summary["mae"],
                                   summary["mean_width"]))
+    print("Interval score %.0f BP (prior only %.0f BP, skill %.2f)"
+          % (summary["interval_score"], summary["prior_interval_score"],
+             summary["skill"]))
     print("Report: %s" % report_path)
     print("Read as a small-N calibrated-ness spot check, not a coverage "
           "guarantee; deep internal nodes stay rate-prior-dominated.")
@@ -344,10 +392,14 @@ def _run_manifest(args):
                  r["covered"], r["rhat"], r["ess"]))
     print("\nPer family (coverage @ 90% HPD):")
     for label, s in per_family.items():
-        print("  %-16s N=%d  coverage=%.2f  RMSE=%.0f BP"
-              % (label, s["n"], s["coverage"], s["rmse"]))
-    print("OVERALL  N=%d  coverage=%.2f  RMSE=%.0f BP  MAE=%.0f BP"
-          % (overall["n"], overall["coverage"], overall["rmse"], overall["mae"]))
+        print("  %-16s N=%d  coverage=%.2f  RMSE=%.0f BP  IS=%.0f  skill=%.2f"
+              % (label, s["n"], s["coverage"], s["rmse"],
+                 s["interval_score"], s["skill"]))
+    print("OVERALL  N=%d  coverage=%.2f  RMSE=%.0f BP  MAE=%.0f BP  "
+          "IS=%.0f (prior %.0f, skill %.2f)"
+          % (overall["n"], overall["coverage"], overall["rmse"], overall["mae"],
+             overall["interval_score"], overall["prior_interval_score"],
+             overall["skill"]))
     print("Report: %s" % report_path)
     return 0
 

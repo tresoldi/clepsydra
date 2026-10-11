@@ -489,26 +489,32 @@ async function loadValidation() {
 
   const byClock = {};
   for (const r of rows) {
-    const c = (byClock[r.clock] = byClock[r.clock] || { n: 0, hit: 0, err: 0 });
+    const c = (byClock[r.clock] = byClock[r.clock] ||
+               { n: 0, hit: 0, err: 0, is: 0, isPrior: 0 });
     c.n++;
     c.hit += r.covered ? 1 : 0;
     c.err += r.abs_err;
+    c.is += r.interval_score;
+    c.isPrior += r.prior_interval_score;
   }
   $("loco-summary").innerHTML = Object.entries(byClock).map(([clock, c]) =>
     "<span>" + esc(clock) + " clock <b>" + c.hit + "/" + c.n + " covered</b>" +
-    " (mean error " + bp(c.err / c.n) + " yr)</span>").join("");
+    " (mean error " + bp(c.err / c.n) + " yr; interval score " +
+    bp(c.is / c.n) + " against " + bp(c.isPrior / c.n) +
+    " for the prior alone)</span>").join("");
 
   $("loco-caveat").innerHTML =
     "The relaxed clock covers the withheld date far more often than the strict " +
-    "one, and with smaller errors — real lineages are rate-heterogeneous, so " +
-    "per-branch multipliers earn their keep. Note that this is the <b>opposite</b> " +
-    "of what the same comparison says on simulated strict-clock data, where " +
-    "relaxing does not help. Same test, opposite verdict, decided by the data " +
-    "rather than by preference. This is a small-N check — nine held-out points — " +
-    "so it is a spot check on calibratedness, not a coverage guarantee. The one " +
-    "target missed under both clocks is Romance-Latin, and that failure is " +
-    "structural: freeing the family's only ancient tip leaves no tip-age signal " +
-    "anywhere in the tree.";
+    "one, with smaller errors. The strict clock is overconfident: narrow " +
+    "intervals that miss. The <b>interval score</b> (width plus 20× any miss " +
+    "distance, lower is better) adds a harder test: does the posterior beat " +
+    "the same run's interval with the cognates switched off? Overall, neither " +
+    "clock does. The relaxed clock beats it on Sino-Tibetan and ties on " +
+    "Indo-European, so the other dated tips already say most of what the " +
+    "cognates can add. This is a small-N check — nine held-out points — not a " +
+    "coverage guarantee. Romance-Latin is missed under both clocks for a " +
+    "structural reason: freeing the family's only ancient tip leaves no " +
+    "tip-age signal anywhere in the tree.";
 
   let html = "<thead><tr><th>clock</th><th>family</th><th>held-out tip</th>" +
              "<th>attested BP</th><th>inferred</th><th>90% interval</th>" +

@@ -184,8 +184,8 @@ variation.
   discipline is to check.** On *real* data across three families
   (leave-one-calibration-out, `examples/loco_benchmark/`: Indo-European,
   Sino-Tibetan, Romance) the relaxed clock recovers held-out attested tip ages
-  far better than the strict clock (90% HPD coverage **0.89 vs 0.33** over nine
-  held-out points, with lower RMSE) — because real lineages are rate-
+  far better than the strict clock (90% HPD coverage **7/9 vs 1/9**, with lower
+  RMSE, and half the interval score) — because real lineages are rate-
   heterogeneous, so the flexibility earns its keep exactly where the
   strictly-clocked simulation says it should not. Same test, opposite verdict,
   decided by held-out prediction on the data at hand — never by preference for or

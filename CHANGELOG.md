@@ -70,6 +70,15 @@ columns and example numbers are expected throughout 0.x and are listed here.
   `date-tree`. It was per kiloyear. Subtract log(1000) = 6.9078 from an old
   `--rate-logmean`. The default is -8.9 (about the old -2.0 per kiloyear).
 
+- **LOCO benchmark scored by interval score.** `calibration_benchmark.py`
+  reports the interval score of each withheld date's 90% interval, the same
+  for the run's prior-only interval, and their skill. Its report gains the
+  columns `interval_score`, `prior_lo`, `prior_hi` and
+  `prior_interval_score`, and the harness passes `--allow-unconverged 1`. On
+  the current engine the strict clock covers 1 of 9 withheld dates (0.2.0:
+  3 of 9) and the relaxed clock 7 of 9 (0.2.0: 8 of 9). Neither beats the
+  prior-only interval overall (skill −1.00 and −0.13).
+
 ### Added
 
 - **`average`: model averaging by stacking** (E2.8). It combines

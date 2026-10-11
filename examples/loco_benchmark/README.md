@@ -25,6 +25,10 @@ python tools/validation/calibration_benchmark.py --binary build/clepsydra \
     --manifest examples/loco_benchmark/manifest.json --out /tmp/loco_relaxed --relaxed 1
 ```
 
+About 20 minutes for both clocks on 4 cores. `loco_multi_report.tsv` is the two
+reports stacked with a `clock` column, and `web/data/loco.tsv` must be a
+byte-identical copy (the web workflow checks it).
+
 ## Held-out targets (attested-language dates)
 
 The held-out values are **attestation dates** — when each ancient language is
@@ -47,43 +51,67 @@ Cognate data: Indo-European and Romance from IE-CoR (Heggarty et al. 2023);
 Sino-Tibetan from Sagart et al. 2019 (via Lexibank). Each family keeps the rate
 prior from its standalone example (`../<family>_tree/run.sh`).
 
-## Results
+## Scoring
 
-Per-target numbers are in `loco_multi_report.tsv` (both clocks). Coverage of the
-held-out attested age by the freed node's 90% HPD:
+Coverage alone rewards wide intervals. Each held-out date is therefore also
+scored by the **interval score** of its 90% interval (Gneiting & Raftery 2007):
+the width, plus 20 times the distance by which a miss falls outside. Lower is
+better, in years. The baseline is the same run's **prior-only** interval for the
+freed tip (`prior_*` columns: every other calibration kept, the cognate
+likelihood off). **Skill** is 1 − IS(posterior) / IS(prior). It is above 0 when
+the cognates improve on what the calibrations and tree prior already say.
 
-| clock | overall | Indo-European (5) | Sino-Tibetan (3) | Romance (1) | RMSE | MAE |
+## Results (main after e70bf68, 4 chains × 4,000 + 4,000)
+
+Per-target numbers are in `loco_multi_report.tsv`.
+
+| clock | family (N) | covered | mean width | interval score | prior-only IS | skill |
 |---|---|---|---|---|---|---|
-| strict  | 0.33 (3/9) | 0.20 | 0.67 | 0.00 | 1354 BP | 1129 BP |
-| relaxed | **0.89 (8/9)** | **1.00** | **1.00** | 0.00 | 1164 BP | 905 BP |
+| strict | Indo-European (5) | 1/5 | 2,185 | 8,483 | 4,358 | −0.95 |
+| strict | Sino-Tibetan (3) | 0/3 | 1,082 | 3,762 | 3,824 | 0.02 |
+| strict | Romance (1) | 0/1 | 1,258 | 17,078 | 2,102 | −7.1 |
+| strict | **all (9)** | **1/9** | 1,714 | **7,864** | 3,930 | **−1.00** |
+| relaxed | Indo-European (5) | 4/5 | 3,295 | 4,528 | 4,355 | −0.04 |
+| relaxed | Sino-Tibetan (3)* | 3/3 | 2,004 | 2,004 | 3,784 | **0.47** |
+| relaxed | Romance (1) | 0/1 | 1,578 | 11,012 | 2,033 | −4.4 |
+| relaxed | **all (9)** | **7/9** | 2,674 | **4,407** | 3,907 | **−0.13** |
 
-Three findings, consistent across three independent families:
+\* Sino-Tibetan under the relaxed clock mixes slowly. At 4,000 + 4,000 its
+worst R̂ was 1.07 (ESS 51). The rows above come from a 10,000 + 10,000 rerun,
+where the worst R̂ is 1.024 (Old Chinese, ESS 212). The shorter run gave the
+same picture (3/3, skill 0.43).
 
-1. **The relaxed clock is decisively better calibrated on real data** — overall
-   held-out coverage 0.89 vs 0.33, and with lower error (RMSE 1164 vs 1354 BP).
-   It is not merely wider intervals: the point errors shrink too (e.g. IE Latin
-   +737→+232 BP, Old Irish −884→−451, ST Old Tibetan −207→+81). Real lineages
-   are rate-heterogeneous, so the per-branch multipliers earn their keep. This
-   is the **mirror image** of the strictly-clocked synthetic check in
-   `docs/model-cards.md`, where relaxing does *not* help — same test, opposite
-   verdict, decided by held-out prediction on the data at hand, never by
-   preference. That the two-clock comparison flips between synthetic and real
-   data across three families is the strongest single piece of adequacy evidence
-   in the project.
+Without Romance-Latin, which cannot be recovered (finding 3), the skill over
+the eight remaining targets is **+0.13 relaxed** and **−0.61 strict**.
 
-2. **The one persistent miss is structural, not a clock failure.** Romance-Latin
-   is missed under *both* clocks (inferred ~750–930 BP vs 2050): Latin is the
-   family's *only* attested ancient tip, so freeing it leaves the tree
-   heterochronous nowhere — there is no tip-age signal left, and the fit falls
-   back to the internal node bounds. You cannot tip-date the sole ancient tip.
-   Honest, and exactly what a benchmark should surface.
+Findings:
 
-3. **Deep outgroup tips stay hard.** Vedic (IE, first-diverging) and Old Chinese
-   (ST, deep Sinitic) carry the largest errors under both clocks — freeing a deep
-   tip lets its age slide toward the wide root prior. The relaxed clock still
-   *covers* them (wider, honester intervals) where the strict clock does not.
+1. **The strict clock is overconfident.** Its intervals are the narrowest, and
+   they miss 8 of 9 withheld dates, often by more than 1,000 years. A
+   forecaster who ignored the cognates and quoted the prior would have scored
+   twice as well. Under the 0.2.0 engine the strict clock covered 3 of 9; its
+   intervals were a little wider (mean 1,956 BP) and no closer (RMSE 1,354).
+2. **The relaxed clock is roughly honest, and only modestly informative.** It
+   covers 7 of 9, with smaller point errors (RMSE 1,087 against 1,254 BP). On
+   interval score it beats the prior clearly on Sino-Tibetan, ties on
+   Indo-European, and is slightly behind overall. Its gain over the strict
+   clock comes mostly from widening the intervals, not from moving them.
+   Both clocks are wrong in the same direction for the same tips. Vedic comes
+   out too old (5,300–5,600 against 3,200 BP), Greek and Old Irish too young.
+3. **Romance-Latin cannot be recovered.** Latin is that family's only ancient
+   tip. Freeing it leaves no dated tip, so the tree has no tip-age signal at
+   all, and the fit falls back to the node windows (500–720 BP inferred against
+   2,050). The prior-only interval covers it only because it spans the whole
+   allowed range.
+4. **Deep tips are the hard ones.** Freeing the first-diverging tip (Vedic, Old
+   Chinese) lets its age trade against the root's, and these carry the largest
+   errors under both clocks.
 
-
+What this means for a user: tip dates predicted from cognates alone are
+weak evidence, even with four other dated tips on the tree. Under the default
+strict clock they are confidently wrong. Report such a date with the relaxed
+clock, alongside its prior-only interval, and read a skill near zero as "the
+cognates did not add to the calibrations".
 
 ## Reading it honestly
 

@@ -136,7 +136,11 @@ Four things follow from the research and shape everything below.
   coding exists).
 - **M4.1:** examples regenerated with the current engine (`2063763`). Each
   tree example has a prior-only overlay (`prior_overlay.svg`,
-  `tools/plotting/overlay.py`). Interval-scored LOCO is still to do.
+  `tools/plotting/overlay.py`). LOCO is scored by interval score against a
+  prior-only baseline (`examples/loco_benchmark`). Strict covers 1/9 withheld
+  dates and relaxed 7/9, but neither beats the prior-only interval overall
+  (skill −1.00 / −0.13): cognates add little to a tip date once other tips
+  are dated. M4.1 is done.
 - **M4.2:** `docs/scientific-methods.md` rewritten. **M4.3:**
   `docs/research/model-uncertainty.md`. The relaxed clock predicts better on
   Romance (2.4 SE) and Polynesian (4 SE), and ties on Arawan. It moves

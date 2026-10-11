@@ -308,25 +308,27 @@ the calibration file — nothing is fabricated; the test is recovery of a datum
 the model was not given.
 
 Run across **three families** (`examples/loco_benchmark/`, N = 9 attested tips:
-Indo-European ×5, Sino-Tibetan ×3, Romance ×1), strict vs relaxed clock:
+Indo-European ×5, Sino-Tibetan ×3, Romance ×1), strict vs relaxed clock. Each
+withheld date is scored by coverage and by the interval score of the 90%
+interval (width plus 20× any miss distance). The baseline is the same run's
+prior-only interval for the freed tip; skill = 1 − IS / IS(prior).
 
-| clock | overall | Indo-European | Sino-Tibetan | Romance | RMSE |
-|---|---|---|---|---|---|
-| strict  | 0.33 (3/9) | 0.20 | 0.67 | 0.00 | 1354 BP |
-| relaxed | 0.89 (8/9) | 1.00 | 1.00 | 0.00 | 1164 BP |
+| clock | covered | Indo-European | Sino-Tibetan | Romance | RMSE | interval score (prior) | skill |
+|---|---|---|---|---|---|---|---|
+| strict  | 1/9 | 1/5 | 0/3 | 0/1 | 1,254 BP | 7,864 (3,930) | −1.00 |
+| relaxed | 7/9 | 4/5 | 3/3 | 0/1 | 1,087 BP | 4,407 (3,907) | −0.13 |
 
-Three real findings the synthetic study cannot produce. **(1)** On real,
-rate-heterogeneous data the relaxed clock is decisively better calibrated for
-held-out prediction (0.89 vs 0.33 across three independent families) *and* by
-smaller point errors, not merely wider intervals — the **mirror image** of the
-strictly-clocked synthetic check in `docs/model-cards.md` where relaxing does not
-help. Same test, opposite verdict, decided by held-out prediction on the data at
-hand exactly as §10 requires. **(2)** The one persistent miss (Romance-Latin,
-both clocks) is structural: Latin is the family's *only* attested ancient tip, so
-freeing it leaves no heterochronous signal — you cannot tip-date the sole ancient
-tip. **(3)** Deep outgroup tips (Vedic, Old Chinese) carry the largest errors —
-freeing a deep tip lets its age slide toward the wide root prior — though the
-relaxed clock still covers them where the strict clock does not.
+Findings the synthetic study cannot produce. **(1)** On real data the strict
+clock is overconfident: narrow intervals that miss 8 of 9, scoring twice as
+badly as the prior-only interval. The relaxed clock covers 7 of 9 with smaller
+errors, the opposite of the strictly-clocked synthetic check in
+`docs/model-cards.md`, where relaxing does not help. **(2)** The relaxed clock
+is honest but only modestly informative: it beats the prior on Sino-Tibetan
+(skill 0.47), ties on Indo-European, and over the eight recoverable targets has
+skill +0.13. **(3)** Romance-Latin is structural: Latin is the family's only
+ancient tip, so freeing it leaves no tip-age signal. **(4)** Deep tips (Vedic,
+Old Chinese) carry the largest errors under both clocks: freeing them lets
+their age trade against the root's.
 
 These are **small-N spot checks** (nine held-out points), not coverage
 guarantees; the attested dates carry their own windows a point comparison
