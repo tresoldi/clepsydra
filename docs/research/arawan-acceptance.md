@@ -130,3 +130,20 @@ posterior is 0.19, more than twice the typical modern list. The root is
 1833 list now has a ppp between 0.13 and 0.97. The data therefore ask for an
 error rate on this list well above what independent same-language pairs
 suggest for ordinary lists, as expected for an 1833 non-specialist record.
+
+## Relaxed default (80da2a4, 2026-10-11)
+
+`date-tree` now defaults to the relaxed clock at 4,000 + 4,000, after the
+rate-compensated moves made every relaxed variant converge at that length.
+M3 was rerun under the new default on `mydev` (`arawan-result.md`, 26b9577).
+
+| run | root BP, median (90% HPD) | lexical root | converged |
+|---|---|---|---|
+| tips + error, default (relaxed) | 3,092 (671–7,755) | 0.641 | yes (R-hat ≤ 1.005) |
+| tips + error, strict | 3,157 (749–7,749) | 0.646 | yes |
+| tips + error + empirical clock, relaxed, 8,000 + 8,000 | 2,235 (563–5,171) | 0.645 | yes (R-hat ≤ 1.003) |
+| 1833 date held out, relaxed | 3,729 (478–9,441); list at 260 (0–751) | 0.645 | yes |
+
+At 4,000 + 4,000 the empirical-clock run missed on σ_b (R-hat 1.015), so it
+was run twice as long. The 1833 list's error posterior is 0.19 under both
+clocks. Every median moved by about 5% or less.

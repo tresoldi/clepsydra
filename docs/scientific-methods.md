@@ -28,8 +28,8 @@ in `posterior_nodes.tsv`, and they are not equally well known.
 
 Lexical and relative ages are what the data identify. A calendar age is
 only as good as whatever fixes ρ: dated tips, node calibrations, or the
-clock prior. For Arawan the lexical root is 0.65 (0.54–0.76) under every
-variant tried. The calendar root ranges from 2,000 to 4,100 BP, depending
+clock prior. For Arawan the lexical root is 0.64 (0.51–0.79) under every
+variant tried. The calendar root ranges from 1,950 to 4,250 BP, depending
 on which source fixes the time scale.
 
 ## Two modes, and the scale-source flag
@@ -63,7 +63,7 @@ say how much:
   exactly into the part that moves with the lexical root
   (Cov(log a, log L) / Var(log a)) and the part that moves with the clock
   (Cov(log a, −log ρ) / Var(log a)). The two sum to 1. Arawan with tip dates
-  gives 0.01 / 0.99: almost all of the calendar width is the clock's.
+  gives 0.03 / 0.97: almost all of the calendar width is the clock's.
   When a calibration pins the root, L and ρ co-vary, and one share can leave
   [0, 1] (five-IE: −0.45 / 1.45). That means the calibration, through ρ,
   is what holds the root, and extra lexical spread is cancelled by the rate.
@@ -134,6 +134,25 @@ Three distinct questions, kept separate:
   the four strict/relaxed × log-normal/gamma models differ by less than
   their SE, and model choice accounts for 0.2% of the root's calendar
   uncertainty. On Romance the relaxed clock wins by 10.9 ± 4.6.
+
+## Against classical glottochronology
+
+`tools/glottochronology/dating.py` dates a tree by Swadesh (1955), Lees
+(1953) and Starostin (2000), the methods a reader may compare clepsydra
+with. `docs/research/arawan-glottochronology.md` runs them on Arawan and on
+the Romance control. Three things to expect when making that comparison:
+
+- **They disagree with each other.** On the same Arawan cognates the root
+  ranges from 1,750 to 6,600 BP by word list and formula. Their bootstrap
+  intervals look narrow because they treat the rate as known.
+- **They read list error as time.** The Paumari 1833 list comes out
+  1,000–2,500 years old instead of 167. Clepsydra's list-error term covers
+  the truth.
+- **They do not give a chronology of a tree.** Pooled over pairs, they can
+  date a child older than its parent.
+
+Where they are right (shallow nodes; the Romance root under Lees),
+clepsydra agrees. Their point estimates sit inside clepsydra's intervals.
 
 ## Known weak points, measured
 

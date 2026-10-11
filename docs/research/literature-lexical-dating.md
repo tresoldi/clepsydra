@@ -887,7 +887,9 @@ comparative-method literature (Dixon 2004 "Proto-Arawá phonology", *Anthropolog
 but no date. Tupí-Guaraní, the best-studied comparable Amazonian family, shows that even a careful
 uncalibrated Bayesian analysis gives a ~3× interval. A clepsydra Arawan result should therefore be
 presented with (i) the cross-family prior-predictive age, (ii) the ASJP figure for comparison, and
-(iii) the prior→posterior contraction.
+(iii) the prior→posterior contraction. That is how it is now reported (`arawan-result.md`): root
+2,235 BP (563–5,171) on the empirical clock, `rate_contraction` 0.32–0.38, with ASJP and classical
+glottochronology alongside (`arawan-glottochronology.md`).
 
 **Calibrations used for Uto-Aztecan (template for prior-light families).** Offset lognormals: Northern
 UA median 3,230 (2,960–3,970; mesquite vocabulary), Takic 2,980 (2,690–3,730), Tübatulabal 2,450

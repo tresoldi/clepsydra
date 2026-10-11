@@ -128,12 +128,16 @@ Four things follow from the research and shape everything below.
   - E3.3: checkpoints bound to an input hash, and carrying their draws.
 
   E3 is complete.
-- **M3: done** (`docs/research/arawan-result.md`). Lexical root 0.65
-  (0.54–0.76) under every variant. Calendar root 2,300 BP (600–5,200) on
-  the empirical clock. Topology from the B1 sample adds little to the root.
-  The held-out 1833 list is recovered. Model averaging finds no preference
-  between clocks. D4.3 coding sensitivity is not done (no alternative
-  coding exists).
+- **M3: done** (`docs/research/arawan-result.md`), rerun under the relaxed
+  default (26b9577). Lexical root 0.64 (0.51–0.79) under every variant.
+  Calendar root 2,200 BP (560–5,200) on the empirical clock, within about
+  5% of the strict-clock result. Topology from the B1 sample adds little to
+  the root. The held-out 1833 list is recovered (260 BP, 0–751). Model
+  averaging finds no preference between clocks. Classical glottochronology
+  on the same data (`arawan-glottochronology.md`) gives roots from 1,750 to
+  6,600 BP by list and formula, and misdates the 1833 list six- to
+  fifteenfold. D4.3 coding sensitivity is not done (no alternative coding
+  exists).
 - **M4.1:** examples regenerated with the current engine (`2063763`). Each
   tree example has a prior-only overlay (`prior_overlay.svg`,
   `tools/plotting/overlay.py`). LOCO is scored by interval score against a

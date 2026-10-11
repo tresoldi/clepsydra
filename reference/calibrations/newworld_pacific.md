@@ -86,7 +86,7 @@ Arawá† (`arua1263`); Madi (`jama1261`: Jarawara `jara1276`, Banawá `bana1307
 7. **Archaeology:** the upper-Purus geometric earthworks (Acre geoglyphs, c.2000–700 BP; Schaan et al. 2012, doi:10.1179/0093469012Z.00000000012) lie in or next to the Arawan/Purus-Arawakan/Panoan area. They have no linguistic attribution, and ARW-006 is listed only so it is not mistaken for a calibration.
 
 ### What this implies
-* The independent indications put Proto-Arawan at **~1.2–3.5 ky**: ASJP ~1.7 ky; naive glottochronology 2.5–3.6 ky; Jolkesky's scenario ≤ ~3.2 ky; "shallow" from KAHD. These are not independent of lexical rate assumptions, so none can serve as a calibration for a lexical method.
+* The independent indications put Proto-Arawan at **~1.2–3.5 ky**: ASJP ~1.7 ky; classical glottochronology on KAHD 1.75–6.6 ky by list and formula (Lees 1.75–1.96, Swadesh 2.45–2.94, Starostin 3.9–6.6; `docs/research/arawan-glottochronology.md`); Jolkesky's scenario ≤ ~3.2 ky; "shallow" from KAHD. These are not independent of lexical rate assumptions, so none can serve as a calibration for a lexical method.
 * **Comparable families by ASJP similarity** (a proxy for depth under one method) are better anchored:
 
   | family | ASJP similarity | ASJP age (BP1950) |
@@ -106,6 +106,7 @@ Arawá† (`arua1263`); Madi (`jama1261`: Jarawara `jara1276`, Banawá `bana1307
   * Pama-Nyungan/Wati.
 
   Then report Arawan's root as a posterior and check it against the 1.2–3.5 ky window.
+  Done (M3, `docs/research/arawan-result.md`): on the empirical cross-family clock the root is 2,235 BP (563–5,171). The median falls inside the window; the interval is wider than it, as expected without Arawan soft calibrations.
 * **Neighbours:**
   * Katukinan: ASJP 1915 BP.
   * Harakmbut: no date found. Adelaar's Harakmbut–Katukinan link would be deep.
@@ -139,7 +140,7 @@ Arawá† (`arua1263`); Madi (`jama1261`: Jarawara `jara1276`, Banawá `bana1307
 | Thule/Inuit | ~1000 CE (classical) | ≥1200 CE (Friesen & Arnold 2008) |
 | Tupí-Guaraní crown | Bayesian 1762 (847–2740) | Paraná pottery 2090–1740 cal BP; Rodrigues c.2500 |
 | Pama-Nyungan root | Bayesian 5671 (Wati-dependent) | Evans & Jones / Holman 4450; ASJP 4245 |
-| Arawan root | ASJP ~1714 | naive glottochronology 2.5–3.6 ky (derived) |
+| Arawan root | ASJP ~1714 | classical glottochronology 1.75–6.6 ky by method (derived); clepsydra 2,235 (563–5,171) |
 | Melanesian Pidgin | stabilised 1840s (Keesing 1988) | 1863+ labour trade (Mühlhäusler) |
 
 ## 7. Principal sources (DOIs verified via Crossref or the publisher where given)

@@ -100,7 +100,7 @@ ages depend on the rate prior and calibrations — the tool says so.
   calendar root's width comes from (`root_var_share_data` and
   `root_var_share_clock`, the covariance shares of Var(log root) that move
   with the lexical root and with the clock; they sum to 1, and Arawan with
-  tip dates only is 0.0 and 1.0), the power-scaling
+  tip dates only is 0.03 and 0.97), the power-scaling
   sensitivities, the convergence verdict (`converged`,
   `n_unconverged_params`, `max_rhat`, `min_ess_bulk`, `min_ess_tail`), and the
   scale-dependence note.

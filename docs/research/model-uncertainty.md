@@ -28,7 +28,10 @@ Pareto k exceeds 0.7 in any run, so every LOO estimate is reliable.
 | Polynesian, uniform (210) | −29.5 ± 6.7 | −26.5 ± 6.7 | −3.1 ± 1.2 | 0 | 1.00 |
 | Polynesian, Yule | −29.7 ± 6.7 | −26.7 ± 6.7 | −3.1 ± 1.2 | −0.4 ± 0.3 | (in the row above) |
 | Five-IE (170) | −4.7 ± 3.2 | −4.0 ± 3.1 | −0.8 ± 0.5 | 0 | 0.90 |
-| Arawan (253) | −0.3 ± 1.3 | −0.4 ± 1.6 | 0 | −0.2 ± 1.0 | 0.66 |
+| Arawan (253)¹ | −0.4 ± 1.3 | −0.6 ± 1.6 | 0 | −0.3 ± 1.0 | 0.72 |
+
+¹ From the M3 rerun under the relaxed default (26b9577, `arawan-result.md`
+§5), at 4,000 + 4,000.
 
 Three findings:
 
