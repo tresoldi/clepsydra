@@ -284,8 +284,10 @@ The columns are:
 - the model-averaged `median`, and `q05`/`q95`, an equal-tailed 90%
   interval of the weighted pool;
 - `between_model_share`, the fraction of the node's log-age variance that
-  comes from disagreement between the models. This is the printed
-  model-uncertainty term of roadmap E2.8;
+  comes from disagreement between the models, under the stacking weights.
+  This is the printed model-uncertainty term of roadmap E2.8. When one model
+  takes all the weight it is 0 by construction, however much the others
+  disagree; compare the per-model medians for that;
 - each run's own median.
 
 Exit status is 0 on success and 1 on bad input.
