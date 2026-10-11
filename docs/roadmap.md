@@ -106,7 +106,13 @@ Four things follow from the research and shape everything below.
       it is inconsistent under branch subdivision.
     - E2.9: `tip_error`, with the empirical prior from D1.3.
     - E2.10: the adequacy panel.
-  - The gate's simulator (D3, `tools/simworld`) is running.
+  - The gate's simulator (D3, `docs/research/simworld.md`) has run.
+    Borrowing at 10%, non-random missingness and gamma rates are
+    absorbed. Clean coverage is 0.81 against 0.90 (about 1.5–2 SE).
+    Coding error (+0.45 log bias) and a depth-dependent rate (root covered
+    1 in 20) are not. A list-error term on every list fixes coding error
+    but breaks clean data (error and terminal branch length are confounded
+    when all tips are modern), so it stays opt-in.
 - **E3:** done:
   - E3.0: the subtree move.
   - E3.1: incremental likelihood. Edge terms are computed once per mixture
@@ -122,6 +128,14 @@ Four things follow from the research and shape everything below.
   - E3.3: checkpoints bound to an input hash, and carrying their draws.
 
   E3 is complete.
+- **M3: done** (`docs/research/arawan-result.md`). Lexical root 0.65
+  (0.54–0.76) under every variant. Calendar root 2,300 BP (600–5,200) on
+  the empirical clock. Topology from the B1 sample adds little to the root.
+  The held-out 1833 list is recovered. Model averaging finds no preference
+  between clocks. D4.3 coding sensitivity is not done (no alternative
+  coding exists).
+- **M4.1:** examples regenerated with the current engine (`2063763`). The
+  prior-only overlays and interval-scored LOCO are still to do.
 - **D1:** done: D1.2 (`reference/calibrations/curated_nodes.tsv`) and D1.3
   (`error-prior.md`).
 - **D2, the σ_f pilot: done, and a no-go on its pre-registered rule**
