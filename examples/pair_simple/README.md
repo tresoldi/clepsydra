@@ -12,16 +12,16 @@ Portuguese (170 shared meanings).
 
 ```
 n_shared_concepts     170
-n_cognate_matches     143
-retention_fraction    0.841
-divergence_median_bp  ~615
-et90_lo_bp / et90_hi_bp   ~339 / ~1105
+n_cognate_matches     142
+retention_fraction    0.835
+divergence_median_bp  ~619
+et90_lo_bp / et90_hi_bp   ~342 / ~1112
 absolute_anchored     0
-prior_dominance       ~0.215
+prior_dominance       ~0.217
 ```
 
 Spanish and Portuguese share ~84% of basic vocabulary; the P1 posterior places
-their divergence near ~615 BP with a 90% equal-tail interval of roughly
+their divergence near ~620 BP with a 90% equal-tail interval of roughly
 340–1100 BP. `absolute_anchored = 0` reports honestly that, without a tip-age
 anchor, the scale rests on the rate prior (`--rate-logmean/-logsd`, per
 year). See `../DATA_SOURCE.md` for data licence/attribution.

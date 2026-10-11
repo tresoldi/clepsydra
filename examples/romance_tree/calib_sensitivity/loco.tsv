@@ -1,4 +1,4 @@
 dropped_id	target	type	held_out_bp	loo_median_bp	loo_hpd_lo_bp	loo_hpd_hi_bp	recovered	abs_err_bp	max_other_shift_bp
-latin_age	Latin	fixed_tip	2050.0	522.3	0.5	1291.1	0	1527.7	361.3
-root_age	root	uniform_node	2425.0	3051.9	2545.7	3637.9	0	626.9	223.1
-proto_romance_age	proto_romance	uniform_node	1725.0	1334.0	895.7	1714.6	0	391.0	183.0
+latin_age	Latin	fixed_tip	2050.0	538.0	0.1	1238.8	0	1512.0	365.3
+root_age	root	uniform_node	2425.0	3081.4	2522.5	3607.6	0	656.4	237.6
+proto_romance_age	proto_romance	uniform_node	1725.0	1341.1	921.6	1724.9	0	383.9	174.2

@@ -8,7 +8,7 @@ as attested tip anchors. This complements the Indo-European examples with a
 second, unrelated family, driven by the same converter and CLI.
 
 ```
-./run.sh          # ~60-80 s; writes output/posterior_nodes.tsv, diagnostics.tsv, run_manifest.tsv
+./run.sh          # ~2 min; writes output/posterior_nodes.tsv, diagnostics.tsv, run_manifest.tsv
 ```
 
 ## Inputs
@@ -26,17 +26,17 @@ second, unrelated family, driven by the same converter and CLI.
 
 | node | median BP | 90% HPD | R̂ | ESS |
 |---|---|---|---|---|
-| Sinitic (Old Chinese + Mandarin) | ~2979 | 2816–3178 | 1.00 | 3914 |
-| Tibetic (Old Tibetan + Lhasa) | ~1407 | 1306–1521 | 1.00 | 3848 |
-| Burmish (Old Burmese + Rangoon) | ~1052 | 955–1152 | 1.00 | 3270 |
-| Tibeto-Burman core | ~5771 | 5158–6357 | 1.00 | 616 |
-| proto_sino_tibetan (root) | ~8793 | 8391–9000* | 1.00 | 2422 |
+| Sinitic (Old Chinese + Mandarin) | ~2941 | 2810–3096 | 1.00 | 4474 |
+| Tibetic (Old Tibetan + Lhasa) | ~1385 | 1306–1486 | 1.00 | 5371 |
+| Burmish (Old Burmese + Rangoon) | ~1040 | 964–1129 | 1.00 | 5599 |
+| Tibeto-Burman core | ~6483 | 5773–7238 | 1.00 | 1889 |
+| proto_sino_tibetan (root) | ~8937 | 8524–9209* | 1.00 | 3750 |
 
 The **subgroup ages are well estimated** and archaeologically sensible (Sinitic
 diversification ~3000 BP; Tibetic ~1400 BP). The **root is not**: under a strict
 clock the rate pinned by the recent tip anchors implies a very deep root that
-pushes against whatever upper bound the prior sets (`*` the 90% HPD hugs the
-9000 BP ceiling). That is an honest identifiability result, not a fitted date —
+pushes against whatever upper bound the calibration sets (`*` the 90% HPD runs
+past the soft 4500–9000 BP root window, into its outlier tail). That is an honest identifiability result, not a fitted date —
 strict-clock, tip-age-only dating poorly constrains a deep family's root, and
 Sagart et al.'s ~7200 BP comes from a **relaxed clock with node calibrations**.
 Treat the root here as "deep and weakly identified", and see

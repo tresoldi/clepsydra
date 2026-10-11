@@ -8,6 +8,6 @@ CLE=../../build/clepsydra
 mkdir -p output
 "$CLE" date-tree \
   --tree tree.nwk --forms data/forms.tsv --calibrations calibrations.tsv \
-  --out output --warmup 5000 --samples 5000 --chains 4 --seed 42 \
+  --out output --warmup 10000 --samples 10000 --chains 4 --seed 42 \
   --rate-logmean -8.8 --rate-logsd 1.2
 echo; echo "== posterior node ages (years BP) =="; cat output/posterior_nodes.tsv

@@ -7,7 +7,7 @@ anchor the chronology and, jointly with the cognate data, inform the clock rate
 re-run of any specific published analysis.
 
 ```
-./run.sh          # ~30 s
+./run.sh          # ~25 s
 ```
 
 ## Inputs
@@ -20,18 +20,23 @@ re-run of any specific published analysis.
   (Vedic 3200, Greek 2400, Latin 2050, Old Irish 1250, OCS 1050 BP; illustrative),
   and a broad uniform prior on the PIE root.
 
-## Representative output (seed 42, 4 chains × 6000, block age-scaling on)
+## Representative output (seed 42, 4 chains × 6000)
 
-| node | median BP | 90% HPD | R̂ | ESS |
-|---|---|---|---|---|
-| proto_indo_european | ~7870 | 5994–9999 | 1.02 | 168 |
+| node | median BP | 90% HPD | lexical age (90% HPD) | R̂ | ESS |
+|---|---|---|---|---|---|
+| proto_indo_european | ~6150 | 4421–8436 | 1.70 (1.30–2.15) | 1.00 | 1432 |
+| core_ie | ~6020 | 4332–8339 | 1.66 (1.27–2.10) | 1.00 | 1433 |
+| hellenic_italic | ~5830 | 4184–8050 | 1.60 (1.21–2.03) | 1.00 | 1449 |
+| italo_celtic | ~5400 | 3785–7468 | 1.48 (1.12–1.88) | 1.00 | 1493 |
 
-The PIE-root posterior is **wide and rate-prior-sensitive** — its 90% HPD spans
-the gap between the Steppe (~5500–6000 BP) and Anatolian (~8000–9500 BP)
-hypotheses. That is the honest scientific situation for deep-time lexical dating,
+The PIE-root posterior is **wide and rate-prior-sensitive**. Its median sits
+near the Steppe range (~5500–6000 BP), but its 90% HPD reaches the lower end
+of the Anatolian one (~8000–9500 BP), so five ancient tips cannot decide
+between them. That is the honest scientific situation for deep-time lexical dating,
 and the point of the example: the tool reports the uncertainty and the
 diagnostics rather than a false point date. Changing `--rate-logmean/-logsd`
 shifts the root age materially, which the run manifest documents.
 
-This deep tree mixes poorly under single-site moves; the CLI enables the block
-age-scaling move (`docs/inference.md` §2.2), which lifts ESS from ~13 to ~170.
+Since the proper age prior (lexical root plus uniform ages below it) and the
+joint moves of `docs/inference.md`, this deep tree mixes well: every node has
+ESS above 1,400. Earlier versions reached ~170.

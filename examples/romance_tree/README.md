@@ -23,11 +23,13 @@ Classical Latin as an attested tip anchoring the absolute scale.
 
 | node | median BP | 90% HPD | R̂ | ESS |
 |---|---|---|---|---|
-| root (Latin era) | ~2695 | 2519–2800 | 1.00 | 2295 |
-| proto_romance | ~1590 | 1400–1813 | 1.00 | 740 |
-| ibero (Spanish–Portuguese) | ~379 | 225–544 | 1.00 | 953 |
+| root (Latin era) | ~2686 | 2480–2825 | 1.00 | 6040 |
+| proto_romance | ~1531 | 1377–1761 | 1.00 | 3585 |
+| continental | ~1365 | 1156–1631 | 1.00 | 3452 |
+| gallo_iberian | ~647 | 472–842 | 1.00 | 4231 |
+| ibero (Spanish–Portuguese) | ~374 | 232–523 | 1.00 | 4057 |
 
-Proto-Romance lands near ~1600 BP (Late Latin dispersal). Every node reports a
+Proto-Romance lands near ~1500 BP (Late Latin dispersal). Every node reports a
 posterior **distribution** with a credible interval and convergence diagnostics
 (R̂, ESS) — never a point date. Absolute ages depend on the rate prior and the
 calibrations, as `run_manifest.tsv` records.
