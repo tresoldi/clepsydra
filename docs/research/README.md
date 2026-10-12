@@ -18,6 +18,7 @@ for lexical dating. `docs/roadmap.md` is the plan these documents support.
 | `reviews/2026-10-10-claude.md` | Independent adversarial review of the code and model (Claude), with reproduced runs |
 | `reviews/2026-10-10-roadmap-codex.md` | Adversarial review of the first roadmap draft (Codex) |
 | `reviews/2026-10-10-roadmap-claude.md` | Adversarial review of the first roadmap draft (Claude), with power calculations |
+| `reviews/2026-10-12-project-codex.md` | Independent review of the whole project at 0a671f3 (Codex): goal vs evidence, risks, low-hanging fruit, comparison with other methods, paper angles |
 | `literature-lexical-dating.md` | ~110 works on lexicostatistics and phylolinguistic dating; published node ages; validation evidence; ideas; open controversies |
 | `literature-dating-methods.md` | ~110 works from molecular clocks, archaeological chronology, stemmatology and computational statistics, with ranked transferable recommendations |
 | `mathematical-analysis.md` | The problem as a statistical one: infinite-alleles connection, rate-mixing laws, information limits (what Arawan can achieve), identifiability and scale transfer, alternative inference schemes, coverage |
