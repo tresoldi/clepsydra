@@ -397,6 +397,9 @@ size_t gd_analysis_tree_job_concepts(const gd_analysis_tree_job *job);
 /* Form rows naming a language that is not a tip of the tree; they are skipped,
  * and a caller that cares should say so rather than let them vanish. */
 size_t gd_analysis_tree_job_skipped_rows(const gd_analysis_tree_job *job);
+/* primary_weight cells that were present but not a number. They are taken as
+ * 1.0 (gd_forms.h explains why); a caller should say so before a long run. */
+size_t gd_analysis_tree_job_unreadable_weights(const gd_analysis_tree_job *job);
 
 /* Convenience for reading a result back by tree node rather than by parameter
  * order. Returns NULL when that node's age was not sampled (a fixed tip, or a

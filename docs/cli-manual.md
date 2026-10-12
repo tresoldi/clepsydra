@@ -194,23 +194,31 @@ tips. Tip names must match the forms.
 
 **Output.**
 - `posterior_clades.tsv`: for the root and each row of `--clades`
-  (`clade_id`, comma-separated `members`), the fraction of trees in which
-  the clade is monophyletic, and its MRCA age pooled over trees with equal
-  weight. The MRCA of a named set is defined in every tree. The age is also
-  reported conditional on monophyly.
-- `trees.tsv`: one row per dated tree, with its convergence and root
-  median.
+  (`clade_id`, comma-separated `members`), the fraction of pooled trees in
+  which the clade is monophyletic, and its MRCA age pooled over those trees
+  with equal weight. The MRCA of a named set is defined in every tree. The
+  age is also reported conditional on monophyly. The last column,
+  `n_trees_pooled`, is the denominator.
+- `trees.tsv`: one row per dated tree, with its convergence, root median
+  and `pooled` (1 if its draws entered `posterior_clades.tsv`).
 
-The command exits with status 3 if any tree fails the convergence check,
-unless `--allow-unconverged 1`. It skips the per-tree prior run
+**Only trees that passed the convergence check are pooled.** A tree that did
+not is dated and listed in `trees.tsv` with `pooled` 0, but its draws are not
+a sample of its posterior, and pooling them would shift the clade fractions
+and the ages without any sign in the output. The command then exits with
+status 3, and with no converged tree at all it writes no clade table. With
+`--allow-unconverged 1` every tree is pooled, and the exit status is 0. It skips the per-tree prior run
 (`--compare-prior`) to halve the cost. Its defaults differ from `date-tree`
 in two ways, so that a 50-tree run stays affordable: the strict clock
 (`--relaxed 0`) and 2,000 + 2,000 iterations per tree. Both can be set.
 
-**Caveat.** When the trees were estimated from the same cognates, the result
-is a hybrid, not one joint posterior: the data choose the topologies and
-then date them again. Report it as such, and compare with a split-by-concept
-run.
+**Caveat: a modular analysis, not a joint posterior.** Each tree is taken
+as given and dated on its own, and the dated trees are pooled with equal
+weight. When the trees were estimated from the same cognates, possibly under
+a different model, the data choose the topologies and then date them again,
+which uses them twice. Report the result as a sensitivity analysis of the
+ages to the topology, not as full topology uncertainty, and compare with a
+run on a tree sample estimated from other data or a split-by-concept run.
 
 ## `calib-sensitivity` — calibration-sensitivity workflows
 

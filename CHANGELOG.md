@@ -11,6 +11,21 @@ columns and example numbers are expected throughout 0.x and are listed here.
 
 ### Changed (breaking)
 
+- **`date-trees` pools only the trees that converged.** It used to pool every
+  tree and then exit 3, so a posterior containing unreliable fits was
+  written and could be read as an ordinary result. Now an unconverged tree
+  is dated and listed in `trees.tsv` with `pooled` 0 (a new last column) and
+  left out of `posterior_clades.tsv`, whose new last column,
+  `n_trees_pooled`, is the denominator of the monophyly fractions. With no
+  converged tree the clade table is not written. `--allow-unconverged 1`
+  pools all trees, as before. The docs now call the result a modular
+  sensitivity analysis, not a joint posterior.
+- **A `primary_weight` that is not a number is announced.** It is still
+  taken as 1.0 (the settled policy of `gd_forms.h`: the weight only chooses
+  between synonyms), but `date-tree` now prints a warning with the count
+  before it starts, besides the manifest line. New accessor
+  `gd_analysis_tree_job_unreadable_weights`.
+
 - **The relaxed clock is the default for `date-tree`, at 4,000 + 4,000
   iterations** (`--relaxed 1`, `--warmup 4000`, `--samples 4000`; was strict
   at 2,000 + 2,000). It predicts held-out concepts as well or better on

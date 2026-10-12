@@ -51,6 +51,23 @@ printf 'clade_id\tmembers\nibero\tSpanish,Portuguese\n' > "$TMP/clades.tsv"
 expect 0 "date-trees on a two-tree sample" -- "$CLE" date-trees --trees "$TMP/two.trees" --forms "$EX/data/forms.tsv" --calibrations "$EX/calibrations.tsv" --clades "$TMP/clades.tsv" --out "$TMP/t" --burnin 0 --ntrees 2 --warmup 200 --samples 200 --chains 2 --concept-rates 0 --allow-unconverged 1
 grep -q '^ibero	Spanish,Portuguese	1.000' "$TMP/t/posterior_clades.tsv" || { echo "  FAIL date-trees clade row"; fail=$((fail + 1)); }
 
+# date-trees pools only trees that passed the convergence check. Chains this
+# short never do, so by default nothing is pooled: exit 3, no clade table, and
+# trees.tsv still lists every tree with pooled = 0 ...
+expect 3 "date-trees, nothing converged" -- "$CLE" date-trees --trees "$TMP/two.trees" --forms "$EX/data/forms.tsv" --calibrations "$EX/calibrations.tsv" --clades "$TMP/clades.tsv" --out "$TMP/tu" --burnin 0 --ntrees 2 --warmup 5 --samples 12 --chains 2 --concept-rates 0
+[ ! -e "$TMP/tu/posterior_clades.tsv" ] || { echo "  FAIL date-trees pooled unconverged trees"; fail=$((fail + 1)); }
+[ "$(awk -F'\t' 'NR>1 && $6==0' "$TMP/tu/trees.tsv" | wc -l)" -eq 2 ] || { echo "  FAIL trees.tsv pooled column"; fail=$((fail + 1)); }
+# ... and --allow-unconverged 1 pools them and says how many.
+expect 0 "date-trees, unconverged allowed" -- "$CLE" date-trees --trees "$TMP/two.trees" --forms "$EX/data/forms.tsv" --calibrations "$EX/calibrations.tsv" --clades "$TMP/clades.tsv" --out "$TMP/ta" --burnin 0 --ntrees 2 --warmup 5 --samples 12 --chains 2 --concept-rates 0 --allow-unconverged 1
+[ "$(awk -F'\t' 'NR==2 {print $NF}' "$TMP/ta/posterior_clades.tsv")" = 2 ] || { echo "  FAIL n_trees_pooled"; fail=$((fail + 1)); }
+
+# A primary_weight that is not a number is taken as 1.0, and the run says so
+# before it starts (the count is also in the manifest).
+awk -F'\t' 'BEGIN{OFS="\t"} NR==1{for(i=1;i<=NF;i++) if($i=="primary_weight") w=i} NR==2{$w="oops"} {print}' "$EX/data/forms.tsv" > "$TMP/forms_bad.tsv"
+expect 0 "unreadable weight is lenient" -- "$CLE" date-tree --tree "$EX/tree.nwk" --forms "$TMP/forms_bad.tsv" --calibrations "$EX/calibrations.tsv" --out "$TMP/wb" --warmup 5 --samples 12 --chains 2 --allow-unconverged 1
+grep -q 'warning: 1 primary_weight cell' "$TMP/err" || { echo "  FAIL unreadable weight not announced"; fail=$((fail + 1)); }
+grep -q '^unreadable_primary_weights	1$' "$TMP/wb/run_manifest.tsv" || { echo "  FAIL manifest lacks unreadable_primary_weights"; fail=$((fail + 1)); }
+
 # average: two runs of the same model (different seeds) are combined; their
 # stacking weights sum to 1. A run without pointwise output is refused.
 for sd in 1 2; do

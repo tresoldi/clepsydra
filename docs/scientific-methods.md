@@ -83,7 +83,10 @@ Every date rests on choices `run_manifest.tsv` records:
 4. **The topology.** `date-tree` uses one fixed tree. `date-trees` dates a
    sample of trees (BEAST, MrBayes, yvyra) and reports clade probabilities,
    with ages conditional on each clade. A clade present in 35% of trees has
-   an age only in those trees.
+   an age only in those trees. This is a modular sensitivity analysis, not a
+   joint posterior over topology and ages: each tree is dated as given, and
+   when the sample was estimated from the same cognates the data are used
+   twice. Only trees that converge are pooled; the output says how many.
 5. **The observation model.** Concepts that no single-state history can
    produce are absorbed by ε and listed in `posterior_concepts.tsv`. They are
    never silently removed. Lists known to be unusual (historical,

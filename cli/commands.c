@@ -469,6 +469,10 @@ int cmd_date_tree(int argc, char **argv)
     if (gd_analysis_tree_job_skipped_rows(job))
         fprintf(stderr, "  note: %zu form rows for languages not in the tree were skipped\n",
                 gd_analysis_tree_job_skipped_rows(job));
+    if (gd_analysis_tree_job_unreadable_weights(job))
+        fprintf(stderr, "  warning: %zu primary_weight cell(s) are not numbers and are taken as 1.0 "
+                "(unreadable_primary_weights in run_manifest.tsv)\n",
+                gd_analysis_tree_job_unreadable_weights(job));
 
     gd_analysis_tree_result *res = NULL;
     int rc = gd_analysis_tree_job_run(job, &res, &err);
@@ -1171,8 +1175,8 @@ int cmd_date_trees(int argc, char **argv)
     if (!out_path(path, sizeof path, out_dir, "trees.tsv") || (ft = fopen(path, "w")) == NULL) {
         fprintf(stderr, "error: cannot write trees.tsv\n"); goto out;
     }
-    fprintf(ft, "tree_index\tconverged\tmax_rhat\tmin_ess_bulk\troot_median_bp\n");
-    size_t nconv = 0;
+    fprintf(ft, "tree_index\tconverged\tmax_rhat\tmin_ess_bulk\troot_median_bp\tpooled\n");
+    size_t nconv = 0, npooled = 0;
     double *buf = (double *)malloc((size_t)dpc * cfg.n_chains * sizeof(double) + sizeof(double));
     if (!buf) { fprintf(stderr, "error: out of memory\n"); goto out; }
     fprintf(stderr, "clepsydra date-trees: %zu trees in the sample, %zu after burn-in, dating %zu\n",
@@ -1193,6 +1197,12 @@ int cmd_date_trees(int argc, char **argv)
             fprintf(stderr, "error: tree %zu: %s\n", ti, errmsg(&err)); free(buf); goto out;
         }
         if (res->converged) nconv++;
+        /* A tree that failed the convergence check is dated and listed but
+         * not pooled: its draws are not a sample of its posterior, and
+         * including them would move the topology weights and the ages with
+         * no sign in the output. --allow-unconverged 1 pools it anyway. */
+        bool pool = res->converged || allow;
+        if (pool) npooled++;
         double rmed = NAN;
         for (size_t c = 0; c < ncl; c++) {
             size_t nd = 0; bool mono = false;
@@ -1202,42 +1212,50 @@ int cmd_date_trees(int argc, char **argv)
                 gd_analysis_tree_result_destroy(res); free(buf); goto out;
             }
             if (c == 0 && nd > 0) { double *tmp = (double *)malloc(nd * sizeof(double)); if (tmp) { double lo, hi; memcpy(tmp, buf, nd * sizeof(double)); summ90(tmp, nd, &rmed, &lo, &hi); free(tmp); } }
+            if (!pool) continue;
             if (acc_push(&cl[c].all, &cl[c].nall, &cl[c].capall, buf, nd) != 0 ||
                 (mono && acc_push(&cl[c].mono, &cl[c].nmono, &cl[c].capmono, buf, nd) != 0)) {
                 fprintf(stderr, "error: out of memory\n"); gd_analysis_tree_result_destroy(res); free(buf); goto out;
             }
             if (mono) cl[c].ntrees_mono++;
         }
-        fprintf(ft, "%zu\t%d\t%.4f\t%.0f\t%.1f\n", ti, res->converged ? 1 : 0, res->max_rhat,
-                res->min_ess_bulk, rmed);
-        fprintf(stderr, "  tree %zu/%zu (sample %zu): %s, root median %.0f BP\n", j + 1, nuse, ti,
-                res->converged ? "converged" : "NOT converged", rmed);
+        fprintf(ft, "%zu\t%d\t%.4f\t%.0f\t%.1f\t%d\n", ti, res->converged ? 1 : 0, res->max_rhat,
+                res->min_ess_bulk, rmed, pool ? 1 : 0);
+        fprintf(stderr, "  tree %zu/%zu (sample %zu): %s%s, root median %.0f BP\n", j + 1, nuse, ti,
+                res->converged ? "converged" : "NOT converged", pool ? "" : ", left out of the pool", rmed);
         gd_analysis_tree_result_destroy(res);
     }
     free(buf);
     fclose(ft); ft = NULL;
 
+    if (npooled == 0) {
+        fprintf(stderr, "error: none of the %zu trees passed the convergence check, so there is "
+                        "nothing to pool; run longer, or pass --allow-unconverged 1\n", nuse);
+        status = 3;
+        goto out;
+    }
     if (!out_path(path, sizeof path, out_dir, "posterior_clades.tsv") || (fp = fopen(path, "w")) == NULL) {
         fprintf(stderr, "error: cannot write posterior_clades.tsv\n"); goto out;
     }
     fprintf(fp, "clade\tmembers\tp_monophyletic\tmrca_median_bp\tmrca_hpd90_lo_bp\tmrca_hpd90_hi_bp\t"
-                "if_mono_median_bp\tif_mono_hpd90_lo_bp\tif_mono_hpd90_hi_bp\n");
+                "if_mono_median_bp\tif_mono_hpd90_lo_bp\tif_mono_hpd90_hi_bp\tn_trees_pooled\n");
     for (size_t c = 0; c < ncl; c++) {
         double m, lo, hi, m2, lo2, hi2;
         summ90(cl[c].all, cl[c].nall, &m, &lo, &hi);
         summ90(cl[c].mono, cl[c].nmono, &m2, &lo2, &hi2);
         fprintf(fp, "%s\t%s\t%.3f\t%.1f\t%.1f\t%.1f\t", cl[c].id, cl[c].members,
-                (double)cl[c].ntrees_mono / (double)nuse, m, lo, hi);
-        if (cl[c].nmono > 0) fprintf(fp, "%.1f\t%.1f\t%.1f\n", m2, lo2, hi2);
-        else fprintf(fp, ".\t.\t.\n");
+                (double)cl[c].ntrees_mono / (double)npooled, m, lo, hi);
+        if (cl[c].nmono > 0) fprintf(fp, "%.1f\t%.1f\t%.1f\t%zu\n", m2, lo2, hi2, npooled);
+        else fprintf(fp, ".\t.\t.\t%zu\n", npooled);
     }
     fclose(fp); fp = NULL;
-    fprintf(stderr, "wrote posterior_clades.tsv, trees.tsv to %s/ (%zu of %zu trees converged)\n",
-            out_dir, nconv, nuse);
+    fprintf(stderr, "wrote posterior_clades.tsv, trees.tsv to %s/ (%zu of %zu trees converged; "
+                    "%zu pooled)\n", out_dir, nconv, nuse, npooled);
     status = (nconv == nuse || allow) ? 0 : 3;
     if (nconv < nuse)
-        fprintf(stderr, "%s: %zu tree(s) did not pass the convergence check\n",
-                allow ? "warning" : "error", nuse - nconv);
+        fprintf(stderr, "%s: %zu tree(s) did not pass the convergence check%s\n",
+                allow ? "warning" : "error", nuse - nconv,
+                allow ? " and are pooled" : " and were left out of the pooled summaries");
 out:
     if (fp) fclose(fp);
     if (ft) fclose(ft);

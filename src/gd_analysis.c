@@ -635,6 +635,10 @@ size_t gd_analysis_tree_job_skipped_rows(const gd_analysis_tree_job *job)
 {
     return (job != NULL) ? job->n_skipped_rows : 0;
 }
+size_t gd_analysis_tree_job_unreadable_weights(const gd_analysis_tree_job *job)
+{
+    return (job != NULL) ? job->n_unreadable_weights : 0;
+}
 
 int gd_analysis_tree_prepare(const gd_analysis_tree_input *in,
                              const gd_analysis_tree_config *cfg,
