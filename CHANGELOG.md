@@ -10,6 +10,7 @@ Work on `docs/roadmap.md`. Breaking changes to defaults, the CLI, output
 columns and example numbers are expected throughout 0.x and are listed here.
 
 ### Changed (breaking)
+- Added `tools/gled_benchmark/` and `docs/research/gled-benchmark.md`: clepsydra on GLED against 29 known-age nodes, 12 published family roots and the ASJP (Holman 2011) method.
 - `posterior_nodes.tsv` (and the browser JSON) gains a `calendar_basis` column:
   `anchored`, or `clock_prior_scenario` when the calendar ages rest on the clock
   prior rather than on data (same condition as `scale_from_prior`).
