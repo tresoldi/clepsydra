@@ -82,7 +82,7 @@ include/    public C API (gd.h — the umbrella; gd_analysis.h, gd_options.h,
 src/        inference engine (C99)
 cli/        command-line program
 web/        browser page + WebAssembly shim (runs the engine in a browser)
-tools/      Python reference-prior builder, validation, plotting
+tools/      Python reference-prior builder, validation, plotting, GLED/ASJP benchmark
 reference/  raw sources, generated prior packages, manifests
 tests/      unit, likelihood, simulation, regression, fixtures
 fuzz/       libFuzzer harnesses over the parsers + committed corpora

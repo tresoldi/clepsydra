@@ -192,3 +192,22 @@ sampling choices of the benchmark.
 
 Files: `nodes.tsv` (29 nodes × 3 priors), `roots.tsv` (12 roots × 3 priors,
 with ASJP), `roots_calibrated.tsv` (the attested-calibration variant).
+
+## Reproducing
+
+    git clone https://github.com/lexibank/asjp ~/scratch/asjp_src   # commit cf4bf0d
+    cp -r ~/scratch/asjp_src/cldf ~/scratch/asjp/cldf               # or set ASJP_CLDF
+    # GLED CLDF at ~/lexibank_clone/gled/cldf (commit bd1e2ff)
+    cd tools
+    python3 -m gled_benchmark.runner --out OUT/nodes --variants default,empirical,lofo
+    python3 -m gled_benchmark.runner --mode roots --max-langs 30 --out OUT/roots \
+        --rates-from OUT/nodes --variants default,empirical,lofo
+    python3 -m gled_benchmark.runner --mode calroots --max-langs 30 --out OUT/cal --variants default
+    python3 -m gled_benchmark.summarize OUT/nodes/results.tsv
+
+Run `lofo` after `default` (it reads the default runs' lexical ages). The
+whole set takes about two hours on 4 cores. Known gaps in the tooling: the
+published-root list (`targets.ROOTS`) is typed from the literature survey;
+the `calroots` variant keeps only calibrations that are monophyletic in the
+UPGMA tree; the node tables in this page were assembled from `nodes.tsv` and
+`roots.tsv` by hand-run scripts (not committed).

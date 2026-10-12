@@ -171,6 +171,12 @@ time and scores the 90% interval of each lexical age:
 - **Not absorbed:** a rate that falls with depth. Deep ages come out ~30%
   too young, and the root is covered once in 20. Only calibrations at more
   than one depth can reveal this.
+- **Measured on public data (GLED, 40 concepts, no calibration):** calendar
+  ages are prior-scaled and biased young at depth, and ASJP's published
+  formula is closer to the published family dates (roots MAE 1,535 against
+  3,191 years). Shallow calibrations do not extrapolate to deep roots
+  (`docs/research/gled-benchmark.md`). Read uncalibrated calendar ages as
+  scenarios (`calendar_basis`).
 - **Clean data:** coverage is 0.81 against 0.90. That is within about
   two standard errors, given that nodes from one tree are correlated.
 

@@ -350,6 +350,27 @@ ancient tip, so freeing it leaves no tip-age signal. **(4)** Deep tips (Vedic,
 Old Chinese) carry the largest errors under both clocks: freeing them lets
 their age trade against the root's.
 
+### Blind dating on GLED against published dates and ASJP
+
+`tools/gled_benchmark/`, report `docs/research/gled-benchmark.md`. Clepsydra
+dates 29 known-age nodes (18 with two-sided windows) and 12 family roots from
+GLED's 40-concept automatic cognates, with no calibration, and the ASJP method
+(Holman et al. 2011 constants, ASJP v21) dates the same nodes. Summary:
+
+| | nodes: MAE | roots: MAE | roots: median within published window |
+|---|---|---|---|
+| clepsydra, default prior | 823 y | 3,191 y | 3 / 12 |
+| ASJP (in-sample constants) | 541 y | 1,535 y | 5 / 12 |
+
+Clepsydra is biased young at depth (log error −0.73 on nodes older than 2,500
+BP), its calendar intervals are prior-dominated (rate contraction ≈ 0) and
+too wide to inform, a leave-one-family-out rate prior did not help, and
+shallow calibrations do not extrapolate to deep roots (Indo-European
+1,529 BP against ~7,000 published). ASJP's graded distance orders the nodes
+better (ρ = 0.82) than binary automatic cognates (0.51) or clepsydra's
+lexical age (0.30). Eighteen nodes and twelve roots, automatic cognates and
+UPGMA topologies: a stress test, not a calibration study.
+
 These are **small-N spot checks** (nine held-out points), not coverage
 guarantees; the attested dates carry their own windows a point comparison
 ignores. Adding a family is a few manifest lines; the constraint is curating

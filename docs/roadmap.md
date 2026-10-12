@@ -54,6 +54,46 @@ Four things follow from the research and shape everything below.
    - The contamination floor makes the posterior improper.
    - Nothing on the engine track is worth doing before this is fixed.
 
+## Where we stopped (2026-10-12)
+
+State: the engine is validated and ships with the relaxed clock by default;
+the research record is in `docs/research/` (index: `docs/research/README.md`).
+Reviews: `docs/research/reviews/2026-10-12-project-codex.md` (independent
+review, verdict: a serious research prototype, not yet a reference
+empirical dating method).
+
+The latest evidence is `docs/research/gled-benchmark.md`: blind on GLED, the
+uncalibrated calendar ages are prior-scaled and biased young at depth, ASJP's
+formula beats clepsydra on published family dates, shallow calibrations do not
+extrapolate, and graded phonetic distance orders nodes far better than binary
+automatic cognates. The promise is therefore: audited lexical chronologies plus
+honest, labelled calendar scenarios (`calendar_basis`), not calendar
+dating of uncalibrated families.
+
+Open work, in the order it pays off:
+
+1. **Graded form information.** LDND or sound-class distance within cognate
+   sets as a second likelihood or a saturation check (largest gap in the GLED
+   benchmark).
+2. **Depth-trend (time-dependent rate) clock** and its simulation and GLED
+   tests; shallow calibrations fail at depth (Indo-European 1,529 BP).
+3. **Expert-cognate rerun of the GLED nodes** (IE-CoR, ABVD) and published
+   trees, to split data effect from model effect.
+4. **LOCO expansion**: 30–50 targets, attestation windows, BEAST/ASJP
+   comparison; Sino-Tibetan relaxed LOCO still above R̂ 1.01.
+5. Review leftovers: per-move acceptance diagnostics in the output,
+   quadrature accuracy check at extreme concept-rate spreads, joint-default
+   SBC, replicated-coding and compatible-loan benchmarks, relaxed-clock
+   `date-trees` (about 7 h on `mydev`).
+6. Paper route (review): software paper first (JOSS/SoftwareX), then the
+   "lexical time before calendar time" methods paper with the T1 likelihood
+   check, Arawan, the LOCO and GLED benchmarks as results.
+7. Release (tag, Zenodo DOI) is the author's decision (M4.4); web wasm build
+   is stale (no emsdk).
+
+Resume with: `make test`; `python3 tools/tests/test_gled_benchmark.py`;
+heavy runs on `mydev` (see the `mydev` memory note) with memory caps.
+
 ## Status (2026-10-10)
 
 - **E0: done.** All items are fixed and tested. E0.13: no external T1 code
