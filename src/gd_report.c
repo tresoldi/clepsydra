@@ -315,6 +315,10 @@ static const gd_column NODE_COLS[] = {
     { "prior_hpd90_lo_bp", "prior_hpd_lo",    1, GD_NUM_FIXED },
     { "prior_hpd90_hi_bp", "prior_hpd_hi",    1, GD_NUM_FIXED },
     { "prior_overlap",     "prior_overlap",   3, GD_NUM_FIXED },
+    /* What the calendar columns (the *_bp ones) rest on: "anchored" when the
+     * data contracted the clock rate, "clock_prior_scenario" when the scale is
+     * the clock prior's. The lexical and relative columns do not depend on it. */
+    { "calendar_basis",    "calendar_basis",  0, GD_NUM_FIXED },
 };
 
 int gd_report_nodes(const gd_analysis_tree_result *res,
@@ -352,6 +356,8 @@ int gd_report_nodes(const gd_analysis_tree_result *res,
         if ((rc = gd_table_set_num(t, 17, have_prior ? a->prior.hpd_lo : NAN, err)) != GD_E_OK) goto fail;
         if ((rc = gd_table_set_num(t, 18, have_prior ? a->prior.hpd_hi : NAN, err)) != GD_E_OK) goto fail;
         if ((rc = gd_table_set_num(t, 19, a->prior_overlap, err)) != GD_E_OK) goto fail;
+        if ((rc = gd_table_set_text(t, 20, res->scale_from_prior ? "clock_prior_scenario"
+                                                                 : "anchored", err)) != GD_E_OK) goto fail;
     }
     *out = t;
     return GD_E_OK;

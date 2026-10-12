@@ -10,6 +10,9 @@ Work on `docs/roadmap.md`. Breaking changes to defaults, the CLI, output
 columns and example numbers are expected throughout 0.x and are listed here.
 
 ### Changed (breaking)
+- `posterior_nodes.tsv` (and the browser JSON) gains a `calendar_basis` column:
+  `anchored`, or `clock_prior_scenario` when the calendar ages rest on the clock
+  prior rather than on data (same condition as `scale_from_prior`).
 - Documentation wording after the independent review: Arawan calendar ages are
   presented as clock-prior scenarios, LOCO claims narrowed, Sino-Tibetan LOCO
   rows marked indicative, `docs/validation.md` gains a delivered-versus-planned

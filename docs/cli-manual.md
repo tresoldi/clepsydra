@@ -82,6 +82,10 @@ ages depend on the rate prior and calibrations — the tool says so.
   - the node under the **prior alone** (`prior_*`, from a likelihood-free run;
     `--compare-prior 0` skips it), and `prior_overlap`, the overlap of prior
     and posterior on log age (1 means the data said nothing about the node).
+  - `calendar_basis`: `anchored` when the data contracted the clock rate, or
+    `clock_prior_scenario` when the `*_bp` columns rest on the clock prior
+    (no usable calibration). In that case read the lexical and relative
+    columns as the result and the calendar ones as a scenario.
 
   Missing values are written as `.`.
 - `diagnostics.tsv` — every sampled parameter: mean, sd, R̂, bulk and tail ESS,

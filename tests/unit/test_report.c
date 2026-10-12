@@ -170,7 +170,7 @@ TEST(test_report_posterior_nodes_columns_are_the_shipped_ones)
     CHECK(gd_table_write_tsv(t, &sink, &err) == GD_E_OK);
     gd_table_destroy(t);
     CHECK_STREQ(m.buf,
-        "node\tmean_bp\tmedian_bp\tsd\thpd90_lo_bp\thpd90_hi_bp\trhat\tess_bulk\tess_tail\tlexical_median\tlexical_hpd90_lo\tlexical_hpd90_hi\trelative_median\trelative_hpd90_lo\trelative_hpd90_hi\tprior_median_bp\tprior_hpd90_lo_bp\tprior_hpd90_hi_bp\tprior_overlap\n");
+        "node\tmean_bp\tmedian_bp\tsd\thpd90_lo_bp\thpd90_hi_bp\trhat\tess_bulk\tess_tail\tlexical_median\tlexical_hpd90_lo\tlexical_hpd90_hi\trelative_median\trelative_hpd90_lo\trelative_hpd90_hi\tprior_median_bp\tprior_hpd90_lo_bp\tprior_hpd90_hi_bp\tprior_overlap\tcalendar_basis\n");
 }
 
 TEST(test_report_diagnostics_columns_are_the_shipped_ones)
@@ -335,9 +335,9 @@ TEST(test_report_node_row_is_byte_for_byte_the_shipped_format)
     CHECK(gd_table_write_tsv(t, &sink, &err) == GD_E_OK);
 
     CHECK_STREQ(m.buf,
-        "node\tmean_bp\tmedian_bp\tsd\thpd90_lo_bp\thpd90_hi_bp\trhat\tess_bulk\tess_tail\tlexical_median\tlexical_hpd90_lo\tlexical_hpd90_hi\trelative_median\trelative_hpd90_lo\trelative_hpd90_hi\tprior_median_bp\tprior_hpd90_lo_bp\tprior_hpd90_hi_bp\tprior_overlap\n"
+        "node\tmean_bp\tmedian_bp\tsd\thpd90_lo_bp\thpd90_hi_bp\trhat\tess_bulk\tess_tail\tlexical_median\tlexical_hpd90_lo\tlexical_hpd90_hi\trelative_median\trelative_hpd90_lo\trelative_hpd90_hi\tprior_median_bp\tprior_hpd90_lo_bp\tprior_hpd90_hi_bp\tprior_overlap\tcalendar_basis\n"
         "proto_romance\t1610.4\t1601.3\t143.8\t1370.1\t1849.9\t1.004\t741\t512"
-        "\t0.2413\t0.1902\t0.3048\t0.587\t0.510\t0.665\t900.0\t120.5\t2501.0\t0.215\n");
+        "\t0.2413\t0.1902\t0.3048\t0.587\t0.510\t0.665\t900.0\t120.5\t2501.0\t0.215\tanchored\n");
 
     /* The same row as the browser sees it: different key names, different
      * precision, and the node index the TSV has no column for. */
@@ -351,7 +351,7 @@ TEST(test_report_node_row_is_byte_for_byte_the_shipped_format)
         "\"lexical_median\":0.24133,\"lexical_hpd_lo\":0.19021,\"lexical_hpd_hi\":0.30477,"
         "\"relative_median\":0.5871,\"relative_hpd_lo\":0.5102,\"relative_hpd_hi\":0.6648,"
         "\"prior_median\":900.04,\"prior_hpd_lo\":120.55,\"prior_hpd_hi\":2500.97,"
-        "\"prior_overlap\":0.2149}]");
+        "\"prior_overlap\":0.2149,\"calendar_basis\":\"anchored\"}]");
 }
 
 static void run_tests(void)
