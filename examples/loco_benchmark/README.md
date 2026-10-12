@@ -78,8 +78,9 @@ Per-target numbers are in `loco_multi_report.tsv`.
 
 \* Sino-Tibetan under the relaxed clock mixes slowly. At 4,000 + 4,000 its
 worst R̂ was 1.07 (ESS 51). The rows above come from a 10,000 + 10,000 rerun,
-where the worst R̂ is 1.024 (Old Chinese, ESS 212). The shorter run gave the
-same picture (3/3, skill 0.43).
+where the worst R̂ is 1.024 (Old Chinese, ESS 212). That is above the project's
+own 1.01 threshold, so these three rows are indicative only. The shorter run
+gave the same picture (3/3, skill 0.43).
 
 Without Romance-Latin, which cannot be recovered (finding 3), the skill over
 the eight remaining targets is **+0.13 relaxed** and **−0.61 strict**.
@@ -91,10 +92,13 @@ Findings:
    forecaster who ignored the cognates and quoted the prior would have scored
    twice as well. Under the 0.2.0 engine the strict clock covered 3 of 9; its
    intervals were a little wider (mean 1,956 BP) and no closer (RMSE 1,354).
-2. **The relaxed clock is roughly honest, and only modestly informative.** It
-   covers 7 of 9, with smaller point errors (RMSE 1,087 against 1,254 BP). On
-   interval score it beats the prior clearly on Sino-Tibetan, ties on
-   Indo-European, and is slightly behind overall. Its gain over the strict
+2. **The relaxed clock is less overconfident, and only modestly informative.**
+   It covers 7 of 9, with smaller point errors (RMSE 1,087 against 1,254 BP).
+   On interval score it beats the prior clearly on Sino-Tibetan, ties on
+   Indo-European, and is behind overall (skill −0.13 against the prior-only
+   interval). Nine targets from three families, with one structurally
+   unrecoverable, show it is less overconfident than the strict clock here;
+   they do not measure its calibration. Its gain over the strict
    clock comes mostly from widening the intervals, not from moving them.
    Both clocks are wrong in the same direction for the same tips. Vedic comes
    out too old (5,300–5,600 against 3,200 BP), Greek and Old Irish too young.

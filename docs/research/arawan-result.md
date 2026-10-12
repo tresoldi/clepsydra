@@ -58,10 +58,13 @@ empirical clock or the root window the split is the same (0.97 / 0.03 and
 | tip dates + U(300, 3000) root window | 1,948 (1,051–3,027) | 1,058 (479–1,655) | 523 (203–843) | yes |
 | modern lists only, default rate prior | 4,250 (449–12,225) | 2,291 (213–6,566) | 1,180 (113–3,405) | yes |
 
-The headline calendar estimate is the empirical-clock row. Its prior comes
-from the cross-family clock pilot (`clock-pilot.md`), with σ_tot 0.77
-pre-registered. On that prior, the root falls at about 2,200 BP with a
-90% interval of 560–5,200 BP, as under the strict clock (2,283, 634–5,152).
+The primary result is the lexical chronology of §1. The calendar row that
+rests on the most external information is the empirical-clock one, but it is
+a scenario conditioned on a clock prior, not a finding of the cognates: the
+clock pilot (`clock-pilot.md`, σ_tot 0.77 pre-registered) was a no-go for
+sharp uncalibrated dates. On that prior, the root falls at about 2,200 BP
+with a 90% interval of 560–5,200 BP, as under the strict clock (2,283,
+634–5,152).
 The interval is close to the σ_f floor that `mathematical-analysis.md`
 predicts for a family with no internal calibrations. Only expert soft
 calibrations (D4.2) would narrow it. The window row adopts the
@@ -75,24 +78,24 @@ kind, and is not adopted.
 Uncertainty about the topology comes from the BEAST B1 posterior: 20 trees,
 evenly spaced after 10% burn-in, each dated with the tip calibrations
 (`date-trees`, whose default is the strict clock at 4 chains × 2,000 +
-2,000 per tree). 18 of 20 converged; the other two reach R-hat 1.011 and
-1.015.
+2,000 per tree). 18 of 20 converged and are pooled; the other two (R-hat
+1.011 and 1.015) are listed in `trees.tsv` but left out of the summaries.
 
 | clade | P(monophyletic) | MRCA BP, median (90% HPD) |
 |---|---|---|
-| root | 1.00 | 2,817 (667–7,335) |
-| Madi (Banawa, Jamamadi, Jarawara) | 1.00 | 171 (34–461) |
-| Paumari (1833 + modern) | 1.00 | 428 (166–1,151) |
-| Deni–Kulina | 1.00 | 813 (166–2,121) |
-| non-Paumari | 0.70 | 2,666 (577–6,940) |
-| Madi + Arawa | 0.35 | 1,686 (355–4,546) |
+| root | 1.00 | 2,858 (696–7,386) |
+| Madi (Banawa, Jamamadi, Jarawara) | 1.00 | 174 (34–461) |
+| Paumari (1833 + modern) | 1.00 | 432 (166–1,158) |
+| Deni–Kulina | 1.00 | 821 (166–2,119) |
+| non-Paumari | 0.67 | 2,712 (625–7,073) |
+| Madi + Arawa | 0.39 | 1,653 (318–4,379) |
 
-Per-tree root medians range from 2,314 to 3,423 BP. That spread is small
+Per-tree root medians range from 2,313 to 3,423 BP. That spread is small
 next to the calendar interval of any one tree, so topology adds little
 uncertainty to the root (as the roadmap expected: the root is the MRCA of
 everything). It matters for the internal structure. The MCC tree's
-non-Paumari clade and its Madi + Arawa grouping are supported by 70% and
-35% of the sample. Dates for those two nodes should be read conditional
+non-Paumari clade and its Madi + Arawa grouping are supported by 67% and
+39% of the sample. Dates for those two nodes should be read conditional
 on the clade (the `if_mono_*` columns of `posterior_clades.tsv`).
 
 ## 4. Paumari 1833 as the held-out check
@@ -122,7 +125,7 @@ average`, which uses PSIS-LOO over concepts and stacking.
 
 | model | elpd_loo (SE) | Δ vs best (SE) | p_loo | max Pareto k | stacking weight |
 |---|---|---|---|---|---|
-| strict, log-normal concept rates | −763.8 (28.7) | −0.4 (1.3) | 7.7 | 0.35 | 0.28 |
+| strict, log-normal concept rates | −763.8 (28.7) | −0.4 (1.3) | 7.7 | 0.39 | 0.28 |
 | strict, gamma | −764.1 (28.6) | −0.6 (1.6) | 7.7 | 0.25 | 0.00 |
 | relaxed, log-normal (the default) | −763.4 (28.8) | 0 | 10.3 | 0.30 | 0.50 |
 | relaxed, gamma | −763.7 (28.8) | −0.3 (1.0) | 10.4 | 0.20 | 0.22 |
@@ -166,10 +169,12 @@ that coding error is the violation that biases lexical ages most.
   (0.51–0.79). The split order, the relative depths, and the shallowness of
   Madi survive every variant: clock, rate model, topology, and the historical
   lists.
-- **Calendar ages are bounded by what fixes the time scale.** The best
-  estimate uses the empirical clock prior: root 2,200 BP (560–5,200). With
+- **Calendar ages are bounded by what fixes the time scale.** As a scenario
+  under the empirical clock prior, the root is 2,200 BP (560–5,200). With
   only the default rate prior and tip dates, the median is 3,100 BP and the
-  upper bound is half again as far (7,800 BP).
+  upper bound is half again as far (7,800 BP). Neither is a finding of the
+  cognates: the two historical lists move the rate by about a third of its
+  prior variance.
 - **The checks behave as they should.** The held-out Paumari 1833 date is
   recovered. Model averaging finds no preference between clocks. The
   remaining misfit is the 7.5% of concepts that are incompatible with the

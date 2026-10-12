@@ -113,7 +113,7 @@ enough data (Arua included, the 1833 list left out):
 | ASJP (published) | 1,764 (≈ 1,250–2,280) | — |
 
 All four put Suruwaha, not Paumari, as the first split; the BEAST sample
-gives the MCC grouping of everything but Paumari 70% support.
+gives the MCC grouping of everything but Paumari 67% support.
 
 ## What the comparison shows
 

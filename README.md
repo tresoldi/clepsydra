@@ -61,8 +61,12 @@ probabilistic models (classical pairwise, hierarchical pairwise,
 novel-state multistate tree under a strict or relaxed clock, binary
 cognate-set tree), with Bayesian
 posteriors, external versioned-TSV reference priors, calibrations for
-absolute time, robust contamination for incompatible concepts, and a full
-validation suite.
+absolute time, robust contamination for incompatible concepts, and a
+validation suite. The suite checks the implementation thoroughly
+(brute-force likelihoods, simulation-based calibration, simulated
+misspecification). Its real-data check, held-out historical dates, is small
+(nine targets, three families): see `docs/validation.md` for what is
+delivered and what is planned.
 
 The scientific core is strict C99 (C standard library + libm only; native
 builds add POSIX threads for parallel chains, and `make THREADS=0` drops

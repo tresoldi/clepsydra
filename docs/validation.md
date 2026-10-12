@@ -6,6 +6,24 @@
 > simulation-based calibration (SBC). Parameter/model references are to
 > `docs/model-spec.md`.
 
+**Status.** Written as the Milestone 0 plan, this document mixes the plan with
+what was later built. Where a section says "As implemented", that part is
+delivered; the rest is the plan. Delivered against planned, at 0.3:
+
+| § | what | status |
+|---|---|---|
+| 1, 2 | unit and analytical pairwise tests | delivered |
+| 3 | brute-force likelihood, T1 and T2 | delivered |
+| 4 | simulation-based calibration | delivered for pairwise and the strict-clock tree sampler (§4.1); relaxed clock and robust observations by exact prior moments and recovery, not full rank-based SBC (§4.2); family multipliers not done |
+| 5 | parameter-recovery grids | planned as written; `tools/simworld` covers six single-assumption scenarios on 6–9 language trees, not the full grid |
+| 6 | posterior-predictive checks | delivered (`adequacy.tsv`) |
+| 7 | robustness injection | partly: borrowing, coding error, rate decay, non-random missingness and gamma rates (`docs/research/simworld.md`); not done: false or missed cognacy separately, loans within clades, erroneous calibrations, the T1 / T1+ε / T2 comparison |
+| 8 | calibration validation | partly: leave-one-calibration-out on nine tips and `calib-sensitivity`; no conflict diagnostics beyond the prior-versus-posterior overlap |
+| 9 | reference-prior validation | pilot scale (`docs/research/clock-pilot.md`), a no-go for sharp dates |
+| 10 | model comparison | delivered (PSIS-LOO, `average`) |
+| 10b | browser engine equals native | delivered, for the committed build |
+| 11 | model cards | delivered |
+
 Validation philosophy (brief §3.4, §11; King 2026): a model is not
 "implemented" merely because its MCMC runs. Implementation **validity**
 (SBC, brute-force, analytical) is separate from empirical **adequacy**
@@ -323,9 +341,11 @@ clock is overconfident: narrow intervals that miss 8 of 9, scoring twice as
 badly as the prior-only interval. The relaxed clock covers 7 of 9 with smaller
 errors, the opposite of the strictly-clocked synthetic check in
 `docs/model-cards.md`, where relaxing does not help. **(2)** The relaxed clock
-is honest but only modestly informative: it beats the prior on Sino-Tibetan
-(skill 0.47), ties on Indo-European, and over the eight recoverable targets has
-skill +0.13. **(3)** Romance-Latin is structural: Latin is the family's only
+is less overconfident but only modestly informative: it beats the prior on
+Sino-Tibetan (skill 0.47, from a run above the 1.01 R̂ threshold), ties on
+Indo-European, and over the eight recoverable targets has skill +0.13. With nine
+targets from three families, this shows less overconfidence than the strict
+clock, not calibration. **(3)** Romance-Latin is structural: Latin is the family's only
 ancient tip, so freeing it leaves no tip-age signal. **(4)** Deep tips (Vedic,
 Old Chinese) carry the largest errors under both clocks: freeing them lets
 their age trade against the root's.

@@ -130,8 +130,9 @@ Four things follow from the research and shape everything below.
   E3 is complete.
 - **M3: done** (`docs/research/arawan-result.md`), rerun under the relaxed
   default (26b9577). Lexical root 0.64 (0.51–0.79) under every variant.
-  Calendar root 2,200 BP (560–5,200) on the empirical clock, within about
-  5% of the strict-clock result. Topology from the B1 sample adds little to
+  Calendar root, as a scenario on the empirical clock prior and not a
+  finding of the cognates, 2,200 BP (560–5,200), within about 5% of the
+  strict-clock result. Topology from the B1 sample adds little to
   the root. The held-out 1833 list is recovered (260 BP, 0–751). Model
   averaging finds no preference between clocks. Classical glottochronology
   on the same data (`arawan-glottochronology.md`) gives roots from 1,750 to

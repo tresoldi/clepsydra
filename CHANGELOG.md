@@ -10,6 +10,11 @@ Work on `docs/roadmap.md`. Breaking changes to defaults, the CLI, output
 columns and example numbers are expected throughout 0.x and are listed here.
 
 ### Changed (breaking)
+- Documentation wording after the independent review: Arawan calendar ages are
+  presented as clock-prior scenarios, LOCO claims narrowed, Sino-Tibetan LOCO
+  rows marked indicative, `docs/validation.md` gains a delivered-versus-planned
+  table; the Arawan topology table is rerun with converged-only pooling.
+
 
 - **`date-trees` pools only the trees that converged.** It used to pool every
   tree and then exit 3, so a posterior containing unreliable fits was

@@ -91,10 +91,12 @@ with a long tail.
 
 ## 3. What this means for users
 
-- Lexical ages are trustworthy when the coding is careful. Coding noise of
-  a few percent per list ages shallow nodes markedly. This is the effect
-  that the adequacy panel's singleton share and incompatible share are
-  there to flag.
+- In the scenarios tried, lexical ages held up when the lists were clean:
+  even then coverage was 0.81 against 0.90, and whether coding is "careful"
+  cannot be measured for most historical data. Coding noise of a few
+  percent per list ages shallow nodes markedly. This is the effect that the
+  adequacy panel's singleton share and incompatible share are there to
+  flag.
 - Calendar ages from modern-only data rest on a constant clock. If rates
   decay with depth, deep nodes will be too young and their intervals will
   not show it.
