@@ -38,12 +38,21 @@ trap 'rm -rf "$tmp"' EXIT
 WARMUP=500 SAMPLES=500 CHAINS=2 SEED=42
 
 echo "== date-tree (Romance, ${CHAINS} x ${WARMUP}+${SAMPLES}, seed ${SEED}) =="
+# This run is deliberately short, so the CLI's convergence gate reports NOT
+# CONVERGED and exits 3 -- after writing every output. That is expected here:
+# this check is about native and Wasm agreeing on the same seeded draws, not
+# about convergence. Any other non-zero exit is a real failure.
+rc=0
 ./build/clepsydra date-tree \
     --tree examples/romance_tree/tree.nwk \
     --forms examples/romance_tree/data/forms.tsv \
     --calibrations examples/romance_tree/calibrations.tsv \
     --out "$tmp/native" --warmup "$WARMUP" --samples "$SAMPLES" \
-    --chains "$CHAINS" --seed "$SEED" --relaxed 0 >/dev/null 2>&1
+    --chains "$CHAINS" --seed "$SEED" --relaxed 0 >/dev/null 2>&1 || rc=$?
+if [ "$rc" -ne 0 ] && [ "$rc" -ne 3 ]; then
+    echo "wasm-verify: native date-tree failed (exit $rc)" >&2
+    exit 1
+fi
 
 node scripts/wasm_verify.js tree examples/romance_tree \
     "$WARMUP" "$SAMPLES" "$CHAINS" "$SEED" > "$tmp/wasm_tree.json"
@@ -85,7 +94,9 @@ with open(os.path.join(tmp, "native", "posterior_nodes.tsv")) as fh:
     header = fh.readline().rstrip("\n").split("\t")
     for line in fh:
         f = line.rstrip("\n").split("\t")
-        rows[f[0]] = dict(zip(header[1:], (float(x) for x in f[1:])))
+        # Kept as text: the file also carries non-numeric columns (e.g. the
+        # calibration status "anchored"). Only the compared columns are converted.
+        rows[f[0]] = dict(zip(header[1:], f[1:]))
 
 tree = json.load(open(os.path.join(tmp, "wasm_tree.json")))
 seen = 0
@@ -100,9 +111,11 @@ for node in tree["nodes"]:
     for key, jkey in (("mean_bp", "mean"), ("median_bp", "median"),
                       ("sd", "sd"), ("hpd90_lo_bp", "hpd_lo"),
                       ("hpd90_hi_bp", "hpd_hi")):
-        compare("tree %s.%s" % (label, jkey), nat[key], round(node[jkey], 1))
-    compare("tree %s.rhat" % label, nat["rhat"], round(node["rhat"], 3))
-    compare("tree %s.ess" % label, nat["ess"], round(node["ess"], 0))
+        compare("tree %s.%s" % (label, jkey), float(nat[key]), round(node[jkey], 1))
+    compare("tree %s.rhat" % label, float(nat["rhat"]), round(node["rhat"], 3))
+    # 3. The CLI splits ESS into ess_bulk and ess_tail; the Wasm JSON's "ess" is
+    # the bulk ESS (include/gd_analysis.h: "ess the bulk ESS; ess_tail the tail").
+    compare("tree %s.ess" % label, float(nat["ess_bulk"]), round(node["ess"], 0))
 
 if seen == 0:
     failures.append("no node ages were compared")

@@ -311,6 +311,15 @@ columns and example numbers are expected throughout 0.x and are listed here.
 
 ### Fixed
 
+- **`scripts/wasm-verify.sh` runs again.** It had gone stale three ways: the
+  native seeded run now ends with the convergence gate's exit 3 (accepted: the
+  check is native/Wasm agreement, not convergence; any other failure stops it),
+  `posterior_nodes.tsv` gained text columns (`calendar_basis`), and `ess` became
+  `ess_bulk`/`ess_tail` (the Wasm `ess` is the bulk ESS). Verified to pass, and
+  to fail on an injected one-year disagreement.
+- The WASM build compiles under Emscripten 5.0.4 (clang 19), whose `-Werror`
+  rejected a double/enum division in `overlap_log`; the cast changes no value.
+
 - **Missing cognate ids were counted as matches** (roadmap E0.1). A `.`, `?`
   or empty `cognate_id`, or a row with `status` `missing`, `excluded` or
   `absent`, was interned as an ordinary cognate class. Two languages that both
