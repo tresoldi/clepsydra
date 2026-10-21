@@ -232,7 +232,7 @@ static double overlap_log(const double *a, size_t na, const double *b, size_t nb
     for (size_t i = 0; i < na; i++) if (a[i] > 0) { double l = log(a[i]); if (l < lo) lo = l; if (l > hi) hi = l; }
     for (size_t i = 0; i < nb; i++) if (b[i] > 0) { double l = log(b[i]); if (l < lo) lo = l; if (l > hi) hi = l; }
     if (!(hi > lo)) return 1.0;
-    double ha[NB] = {0}, hb[NB] = {0}, w = (hi - lo) / NB;
+    double ha[NB] = {0}, hb[NB] = {0}, w = (hi - lo) / (double)NB;
     for (size_t i = 0; i < na; i++) if (a[i] > 0) { size_t k = (size_t)((log(a[i]) - lo) / w); ha[k < NB ? k : NB - 1] += 1.0 / (double)na; }
     for (size_t i = 0; i < nb; i++) if (b[i] > 0) { size_t k = (size_t)((log(b[i]) - lo) / w); hb[k < NB ? k : NB - 1] += 1.0 / (double)nb; }
     double s = 0.0;
